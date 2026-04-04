@@ -1,150 +1,125 @@
-// Card.tsx
 import React from "react";
-import { View, Text, StyleSheet, ViewProps, TextProps, StyleProp, ViewStyle, TextStyle, Image, ImageSourcePropType , ImageStyle} from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ViewProps,
+  TextProps,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+} from "react-native";
 
-// Centralized shadow for all cards
-const shadowStyle: ViewStyle = {
+// ==================== CONSTANTS ====================
+const SHADOW_STYLE: ViewStyle = {
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.1,
   shadowRadius: 4,
-  elevation: 3, // Android
+  elevation: 3,
 };
 
-// Centralized spacing and font sizes
-const spacing = {
-  cardPadding: 16,
-  cardMarginBottom: 8,
-};
+const SPACING = {
+  card: {
+    padding: 16,
+    marginBottom: 8,
+  },
+} as const;
 
-const fontSizes = {
-  header: 18,
-  title: 12,
-};
+const TYPOGRAPHY = {
+  header: {
+    small: 14,
+    medium: 18,
+    large: 22,
+  },
+  title: {
+    small: 12,
+    medium: 14,
+    large: 16,
+  },
+} as const;
 
-type CardProps = ViewProps & {
+// ==================== TYPES ====================
+interface CardProps extends ViewProps {
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
-};
+}
 
-const Card = ({ style, children, ...props }: CardProps) => {
-  return (
-    <View style={[styles.card, style]} {...props}>
-      {children}
-    </View>
-  );
-};
-
-type CardHeaderProps = TextProps & {
+interface CardHeaderProps extends TextProps {
   children: React.ReactNode;
   variant?: "small" | "medium" | "large";
-  icon?: string;
-  iconSize?: number;
-  iconStyle?: StyleProp<TextStyle>;
   containerStyle?: StyleProp<ViewStyle>;
-};
+}
 
-const CardHeader = ({ children, variant = "medium", icon, iconSize, iconStyle, containerStyle, style, ...props }: CardHeaderProps) => {
-  const fontSizeMap: Record<string, number> = { small: 14, medium: fontSizes.header,  large: 22 };
+interface CardTitleProps extends TextProps {
+  children: React.ReactNode;
+  variant?: "small" | "medium" | "large";
+  containerStyle?: StyleProp<ViewStyle>;
+}
+
+// ==================== COMPONENTS ====================
+export const Card = ({ style, children, ...props }: CardProps) => (
+  <View style={[styles.card, style]} {...props}>
+    {children}
+  </View>
+);
+
+export const CardHeader = ({
+  children,
+  variant = "medium",
+  containerStyle,
+  style,
+  ...props
+}: CardHeaderProps) => {
+  const fontSize = TYPOGRAPHY.header[variant];
+
   return (
-    <View style={[containerStyle]}>
-      {icon && (
-        <Icon
-          name={icon}
-          size={iconSize}
-          style={[styles.icon, iconStyle]}
-        />
-      )}
-      <Text style={[{ fontSize: fontSizeMap[variant], fontWeight: "bold" }, style]} {...props}>
+    <View style={[styles.headerContainer, containerStyle]}>
+      <Text style={[styles.headerText, { fontSize }, style]} {...props}>
         {children}
       </Text>
     </View>
   );
 };
 
-type CardTitleProps = TextProps & {
-  children: React.ReactNode;
-  variant?: "small" | "medium" | "large";
-  icon?: string;
-  iconSize?: number;
-  iconStyle?: StyleProp<TextStyle>;
-  containerStyle?: StyleProp<ViewStyle>;
-  image?: ImageSourcePropType; // Placeholder for future image support
- imageStyle?: StyleProp<ImageStyle>; // FIX
-};
-
-const CardTitle = ({
+export const CardTitle = ({
   children,
   variant = "small",
   style,
-  icon,
-  iconStyle,
-  iconSize = 16,
   containerStyle,
-  image,
-  imageStyle,
   ...props
 }: CardTitleProps) => {
-
-  const fontSizeMap: Record<string, number> = {
-    small: fontSizes.title,
-    medium: 14,
-    large: 16
-  };
-
-  const merge = image ? Image.resolveAssetSource(image).uri : null;
+  const fontSize = TYPOGRAPHY.title[variant];
 
   return (
-    <View
-      style={[
-        { flexDirection: "row", alignItems: "center" },
-        containerStyle
-      ]}
-    >
-      {image && (
-  <Image
-    source={image}
-    style={[{ width: 20, height: 20, marginRight: 8 }, imageStyle]}
-  />
-)}
-      {icon && (
-        <Icon
-          name={icon}
-          size={iconSize}
-          style={[styles.icon, iconStyle]}
-        />
-      )}
-
-      <Text
-        style={[
-          {
-            fontSize: fontSizeMap[variant],
-            fontWeight: "600"
-          },
-          style
-        ]}
-        {...props}
-      >
+    <View style={[styles.titleContainer, containerStyle]}>
+      <Text style={[styles.titleText, { fontSize }, style]} {...props}>
         {children}
       </Text>
     </View>
   );
 };
 
-export { Card, CardHeader, CardTitle };
-
+// ==================== STYLES ====================
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
     borderRadius: 10,
-    padding: spacing.cardPadding,
-    ...shadowStyle,
+    padding: SPACING.card.padding,
+    marginBottom: SPACING.card.marginBottom,
+    ...SHADOW_STYLE,
   },
-  icon: {
+  headerContainer: {
+    marginBottom: 8,
+  },
+  headerText: {
+    fontWeight: "bold",
+  },
+  titleContainer: {
+    marginBottom: 4,
+  },
+  titleText: {
+    fontWeight: "400",
 
   },
-  imageStyle: {
-
-  }
 });

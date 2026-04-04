@@ -8,6 +8,7 @@ type MenuItemType = {
   label: string;
   icon: string;
   onPress: () => void;
+  route?: string;
 };
 
 const menuItems: MenuItemType[] = [
@@ -69,7 +70,6 @@ const Footer = () => {
 
 const styles = StyleSheet.create({
   wrapper: {
-
     alignItems: 'center',
   },
   container: {

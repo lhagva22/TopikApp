@@ -1,18 +1,17 @@
-import 'react-native-gesture-handler';
-import 'react-native-reanimated'; 
-import { NavigationContainer } from "@react-navigation/native";
-import DrawerNavigator from "../TopikApp/src/shared/navigation/DrawerNavigation";
+// App.tsx
+import React from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AppNavigator from './src/shared/navigation/AppNavigator';
 
-import HomeScreen from "./src/features/home/screens/homescreen";
-import VideoLesson from "./src/features/lessons/videolessonscreen/videolesson";
-import LessonScreen from "./src/features/lessons/lessonScreen/lessonScreen";
-import ExamScreen from "./src/features/exam/examscreen/examscreen";
-
-export default function App() {
+const App = () => {
   return (
-    <NavigationContainer>
-      <DrawerNavigator />
-    </NavigationContainer>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppNavigator />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
-}
+};
 
+export default App;

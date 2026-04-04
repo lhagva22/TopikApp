@@ -1,14 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Login from '../../../features/auth/Login';
+import About from '../../../features/pages/About';
+import Contact from '../../../features/pages/Contact';
 
 const CustomDrawerContent = ({ navigation }) => {
   const menuItems = [
-    { name: 'Нэвтрэх', icon: 'log-in-outline', screen: 'Login' },
+    { name: 'Нэвтрэх', icon: 'log-in-outline', screen: Login },
     { name: 'Төлбөр төлөх', icon: 'card-outline', screen: 'Payment' },
     { name: 'Ахиц харах', icon: 'stats-chart-outline', screen: 'Progress' },
-    { name: 'Бидний тухай', icon: 'information-circle-outline', screen: 'About' },
-    { name: 'Холбоо барих', icon: 'call-outline', screen: 'Contact' },
+    { name: 'Бидний тухай', icon: 'information-circle-outline', screen: About },
+    { name: 'Холбоо барих', icon: 'call-outline', screen: Contact },
   ];
 
   return (

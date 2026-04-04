@@ -1,16 +1,20 @@
 import React from "react";
-import { Text, StyleSheet, TextProps, StyleProp, TextStyle } from "react-native";
+import { Text, StyleSheet, TextProps, StyleProp, TextStyle, View, ViewStyle } from "react-native";
 
 type SectionTitleProps = TextProps & {
   children: React.ReactNode;
-  style?: StyleProp<TextStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  viewStyle?: StyleProp<ViewStyle>;
+
 };
 
-const SectionTitle = ({ children, style, ...props }: SectionTitleProps) => {
+const SectionTitle = ({ children, viewStyle, textStyle, ...props }: SectionTitleProps) => {
   return (
-    <Text style={[styles.title, style]} {...props}>
+    <View style={viewStyle} {...props}>
+    <Text style={[styles.title, textStyle]} {...props}>
       {children}
     </Text>
+    </View>
   );
 };
 
