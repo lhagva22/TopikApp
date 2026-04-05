@@ -1,7 +1,7 @@
 import { Image, ScrollView, Text, View } from "react-native"
 import { Card, CardHeader, CardTitle } from "../../../shared/components/molecules/card"
 
-const lessonScreen = () => {
+const LessonScreen = () => {
     return (
         <ScrollView>
         <View style={{padding: 16}}>
@@ -23,4 +23,4 @@ const lessonScreen = () => {
     )
 }
 
-export default lessonScreen
+export default LessonScreen

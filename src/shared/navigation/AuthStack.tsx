@@ -1,18 +1,22 @@
 // src/shared/navigation/AuthStack.tsx
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import WelcomeScreen from '../../features/home/screens/homescreen';
-import LoginScreen from '../../features/auth/Login';
-import RegisterScreen from '../../features/auth/signin';
+import Login from '../../features/auth/Login';
+import Register from '../../features/auth/Signin';
+import ForgotPassword from '../../features/auth/Forgotpass';
 
 const Stack = createNativeStackNavigator();
 
 const AuthStack = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen name="Register" component={Register} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
     </Stack.Navigator>
   );
 };

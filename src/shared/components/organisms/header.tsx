@@ -1,51 +1,80 @@
+// src/shared/components/organisms/header.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+// Header харуулах дэлгэцүүд
+const SCREENS_WITH_HEADER = ['Home', 'Video', 'Lesson', 'Exam', 'Dictionary'];
+
 type HeaderProps = {
-  title: string;
+  title?: string;
   onMenuPress?: () => void;
   onSearchPress?: () => void;
 };
 
-const colors = {
-  background: '#fff',
-  text: '#000',
-};
-
 const Header = ({ title, onMenuPress, onSearchPress }: HeaderProps) => {
+    const navigation = useNavigation<DrawerNavigationProp<any>>();
+
+  const route = useRoute();
+
+
+  // Тухайн дэлгэц дээр Header харуулах эсэх
+  const shouldShowHeader = SCREENS_WITH_HEADER.includes(route.name);
+
+  if (!shouldShowHeader) {
+    return null; // Header харуулахгүй
+  }
+
+  const getTitle = () => {
+    switch (route.name) {
+      case 'Home': return 'Нүүр';
+      case 'Video': return 'Видео хичээл';
+      case 'Lesson': return 'Хичээл';
+      case 'Exam': return 'Шалгалт';
+      case 'Dictionary': return 'Үгийн сан';
+      default: return title || 'TopikApp';
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={onMenuPress}>
-        <Icon name="menu" size={24} color={colors.text} />
+      <TouchableOpacity onPress={() => navigation.openDrawer()} style={styles.iconButton}>
+        <Icon name="menu" size={24} color="#333" />
       </TouchableOpacity>
-      <Text style={styles.title}>{title}</Text>
-      <TouchableOpacity onPress={onSearchPress}>
-        <Icon name="search" size={24} color={colors.text} />
+      
+      <Text style={styles.title}>{getTitle()}</Text>
+      
+      <TouchableOpacity onPress={onSearchPress} style={styles.iconButton}>
+        <Icon name="search" size={22} color="#333" />
       </TouchableOpacity>
     </View>
   );
 };
 
-export default Header;
-
 const styles = StyleSheet.create({
   container: {
     height: 60,
-    backgroundColor: colors.background,
+    backgroundColor: '#fff',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    elevation: 4, // shadow Android
-    shadowColor: '#000', // shadow iOS
+    elevation: 4,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   title: {
-    color: colors.text,
+    color: '#333',
     fontSize: 18,
     fontWeight: 'bold',
   },
+  iconButton: {
+    padding: 4,
+  },
 });
+
+export default Header;

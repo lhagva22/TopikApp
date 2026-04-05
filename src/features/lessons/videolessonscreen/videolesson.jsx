@@ -3,7 +3,7 @@ import { Card, CardTitle } from "../../../shared/components/molecules/card";
 import  Icon  from "react-native-vector-icons/Ionicons";
 import SectionTitle from "../../../shared/components/atoms/sectionTitle";
 
-const videolesson = () => {
+const Videolesson = () => {
   return (
     <ScrollView>
     <View style={styles.container}>
@@ -28,7 +28,7 @@ const videolesson = () => {
   );
 }
 
-export default videolesson;
+export default Videolesson;
 
 const styles = {
   container: {

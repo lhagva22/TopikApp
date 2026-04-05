@@ -1,77 +1,90 @@
-
-import React, {useState} from 'react';
-import { View, Text, StyleSheet, TouchableOpacity  } from 'react-native';
+// src/shared/components/organisms/footer.tsx
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 type MenuItemType = {
   id: number;
   label: string;
   icon: string;
-  onPress: () => void;
-  route?: string;
+  screenName: string;
 };
 
 const menuItems: MenuItemType[] = [
-  { id: 1, label: 'Үндсэн', icon: 'document-outline', onPress: () => { } },
-  { id: 2, label: 'Видео', icon: 'videocam-outline', onPress: () => { } },
-  { id: 3, label: 'Хичээл', icon: 'book-outline', onPress: () => { } },
-  { id: 4, label: 'Шалгалт', icon: 'document-text-outline', onPress: () => { } },
-  { id: 5, label: 'Үгийн сан', icon: 'library-outline', onPress: () => { } },
+  { id: 1, label: 'Үндсэн', icon: 'home-outline', screenName: 'Home' },
+  { id: 2, label: 'Видео', icon: 'videocam-outline', screenName: 'Video' },
+  { id: 3, label: 'Хичээл', icon: 'book-outline', screenName: 'Lesson' },
+  { id: 4, label: 'Шалгалт', icon: 'document-text-outline', screenName: 'Exam' },
+  { id: 5, label: 'Үгийн сан', icon: 'library-outline', screenName: 'Dictionary' },
 ];
 
-const MenuItem = ({ icon, label }: { icon: string; label: string }) => (
-    
-    <View style={styles.menuItem}>
-      
-      <Icon name={icon} size={20} color="#000000" />
-      <Text style={styles.menuText}>{label}</Text>
-    </View>
-  )
-
+// Footer харуулах дэлгэцүүд
+const SCREENS_WITH_FOOTER = ['Home', 'Video', 'Lesson', 'Exam', 'Dictionary'];
 
 const Footer = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
 
-  const [selectedId, setSelectedId] = useState(1); 
-   return (
-    <View style={styles.wrapper}>
-      <View style={styles.container}>
-        {menuItems.map(item => {
-          const isActive = selectedId === item.id;
+  // Тухайн дэлгэц дээр Footer харуулах эсэх
+  const shouldShowFooter = SCREENS_WITH_FOOTER.includes(route.name);
 
-          return (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.menuItem}
-              onPress={() => setSelectedId(item.id)}
-              activeOpacity={0.7}
+  if (!shouldShowFooter) {
+    return null;
+  }
+
+  // ✅ Одоогийн route.name-ээр идэвхтэй ID-г тодорхойлох
+  const getActiveId = () => {
+    switch (route.name) {
+      case 'Home': return 1;
+      case 'Video': return 2;
+      case 'Lesson': return 3;
+      case 'Exam': return 4;
+      case 'Dictionary': return 5;
+      default: return 1;
+    }
+  };
+
+  const activeId = getActiveId();
+
+  const handlePress = (item: MenuItemType) => {
+    // @ts-ignore
+    navigation.navigate(item.screenName);
+  };
+
+  return (
+    <View style={styles.container}>
+      {menuItems.map((item) => {
+        const isActive = activeId === item.id;
+        return (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.menuItem}
+            onPress={() => handlePress(item)}
+            activeOpacity={0.7}
+          >
+            {isActive && <View style={styles.activeLine} />}
+            <Icon
+              name={item.icon}
+              size={22}
+              color={isActive ? '#007AFF' : '#9CA3AF'}
+            />
+            <Text
+              style={[
+                styles.menuText,
+                { color: isActive ? '#007AFF' : '#9CA3AF' },
+              ]}
             >
-              {isActive && <View style={styles.activeLine} />}
-
-              <Icon
-                name={item.icon}
-                size={22}
-                color={isActive ? '#0000FF' : '#9CA3AF'}
-              />
-              <Text
-                style={[
-                  styles.menuText,
-                  { color: isActive ? '#0000FF' : '#9CA3AF' },
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  wrapper: {
-    alignItems: 'center',
-  },
   container: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -79,14 +92,10 @@ const styles = StyleSheet.create({
     height: 70,
     justifyContent: 'space-around',
     alignItems: 'center',
-
-    // Shadow (iOS)
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
-
-    // Shadow (Android)
     elevation: 8,
   },
   menuItem: {
@@ -103,7 +112,7 @@ const styles = StyleSheet.create({
     top: -10,
     width: 40,
     height: 3,
-    backgroundColor: '#0000FF',
+    backgroundColor: '#007AFF',
     borderRadius: 2,
   },
 });

@@ -1,5 +1,8 @@
+// src/features/home/screens/homescreen.tsx
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import React from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
 import Header from '../../../shared/components/organisms/header';
 import Footer from '../../../shared/components/organisms/footer';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -14,6 +17,7 @@ interface Level {
   badgeColor: string;
   textColor: string;
 }
+
 const levels = [
   { title: "TOPIK I - 1-р түвшин", subtitle: "Анхан шат", badge: "TOPIK I", badgeColor: '#B0FFB0', textColor: '#008000' },
   { title: "TOPIK I - 2-р түвшин", subtitle: "Суурь түвшин", badge: "TOPIK I", badgeColor: '#B0B0FF', textColor: '#0000FF' },
@@ -22,7 +26,6 @@ const levels = [
   { title: "TOPIK II - 5-р түвшин", subtitle: "Ахисан түвшин", badge: "TOPIK II", badgeColor: '#FFC800', textColor: '#8A6C00' },
   { title: "TOPIK II - 6-р түвшин", subtitle: "Мэргэжлийн түвшин", badge: "TOPIK II", badgeColor: '#FFB0FF', textColor: '#A700A7' },
 ];
-
 
 const cardShadowStyle = {
   shadowColor: '#000',
@@ -46,72 +49,69 @@ const LevelCard: React.FC<{ level: Level }> = ({ level }) => {
     </Card>
   );
 };
-const HomeScreen = ({navigation}: any) => {
+
+const HomeScreen = () => {
+  // ✅ useNavigation hook ашиглах
+
+
   return (
     <View style={{ flex: 1 }}>
-      <Header title="TopikApp"  onMenuPress={() => navigation.openDrawer()}/>
-    <ScrollView style={styles.container}>
-      
 
-      <View style={styles.content}>
-
-        <Card style={[styles.schoolCard, cardShadowStyle]}>
-          <View style={styles.schoolRow}>
-            <View style={styles.schoolIconWrapper}>
-              <Icon name="school-outline" size={40} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <CardHeader>Шинэ эхлэл нархан сургууль</CardHeader>
-              <CardTitle>
-                Шинэ эхлэл нархан сургууль нь ахлах ангидаа Солонгос улсад шилжин суралцах боломжтой Монгол улсын цорын ганц сургууль юм.
-              </CardTitle>
-            </View>
-          </View>
-        </Card>
-
-
-        <SectionTitle style={{ marginTop: 24 }}>Түвшин тогтоох шалгалт</SectionTitle>
-
-        <Card style={[styles.levelTestCard, cardShadowStyle]}>
-          <CardHeader style={styles.levelTestHeader}>Өөрийн түвшинг мэдээрэй</CardHeader>
-          <CardTitle style={styles.levelTestSubtitle}>
-            Богино шалгалтаар өөрийн Солонгос хэлний түвшинг тогтоож, тохирсон хичээлийг сонгоорой
-          </CardTitle>
-
-          <Card style={[styles.levelTestInfoCard, cardShadowStyle]}>
-            <View style={styles.levelTestInfoRow}>
-              <View style={styles.levelTestInfoColumn}>
-                <CardTitle style={styles.levelTestInfoLabel}>Хугацаа</CardTitle>
-                <CardTitle style={styles.levelTestInfoValue}>15 минут</CardTitle>
+      <ScrollView style={styles.container}>
+        <View style={styles.content}>
+          <Card style={[styles.schoolCard, cardShadowStyle]}>
+            <View style={styles.schoolRow}>
+              <View style={styles.schoolIconWrapper}>
+                <Icon name="school-outline" size={40} color="#fff" />
               </View>
-              <View style={styles.levelTestInfoColumn}>
-                <CardTitle style={styles.levelTestInfoLabel}>Асуултууд</CardTitle>
-                <CardTitle style={styles.levelTestInfoValue}>20 асуулт</CardTitle>
+              <View style={{ flex: 1 }}>
+                <CardHeader>Шинэ эхлэл нархан сургууль</CardHeader>
+                <CardTitle>
+                  Шинэ эхлэл нархан сургууль нь ахлах ангидаа Солонгос улсад шилжин суралцах боломжтой Монгол улсын цорын ганц сургууль юм.
+                </CardTitle>
               </View>
             </View>
           </Card>
 
-          <CustomButton
-            icon="play-outline"
-            iconStyle={{ color: '#155DFC', marginRight: 16 }}
-            style={styles.startTestButton}
-            textStyle={styles.startTestButtonText}
-            title="Шалгалт эхлүүлэх"
-            onPress={() => { /* TODO: Add navigation or test logic */ }}
-          />
-        </Card>
+          <SectionTitle style={{ marginTop: 24 }}>Түвшин тогтоох шалгалт</SectionTitle>
 
+          <Card style={[styles.levelTestCard, cardShadowStyle]}>
+            <CardHeader style={styles.levelTestHeader}>Өөрийн түвшинг мэдээрэй</CardHeader>
+            <CardTitle style={styles.levelTestSubtitle}>
+              Богино шалгалтаар өөрийн Солонгос хэлний түвшинг тогтоож, тохирсон хичээлийг сонгоорой
+            </CardTitle>
 
-        <SectionTitle style={{ marginTop: 24 }}>Түвшнүүд</SectionTitle>
-        {levels.map((level, index) => (
-          <LevelCard key={index} level={level} />
-        ))}
-      </View>
+            <Card style={[styles.levelTestInfoCard, cardShadowStyle]}>
+              <View style={styles.levelTestInfoRow}>
+                <View style={styles.levelTestInfoColumn}>
+                  <CardTitle style={styles.levelTestInfoLabel}>Хугацаа</CardTitle>
+                  <CardTitle style={styles.levelTestInfoValue}>15 минут</CardTitle>
+                </View>
+                <View style={styles.levelTestInfoColumn}>
+                  <CardTitle style={styles.levelTestInfoLabel}>Асуултууд</CardTitle>
+                  <CardTitle style={styles.levelTestInfoValue}>20 асуулт</CardTitle>
+                </View>
+              </View>
+            </Card>
 
-      
-    </ScrollView>
-    <Footer />
-      </View>
+            <CustomButton
+              icon="play-outline"
+              iconStyle={{ color: '#155DFC', marginRight: 16 }}
+              style={styles.startTestButton}
+              textStyle={styles.startTestButtonText}
+              title="Шалгалт эхлүүлэх"
+              onPress={() => {}}
+            />
+          </Card>
+
+          <SectionTitle style={{ marginTop: 24 }}>Түвшнүүд</SectionTitle>
+          {levels.map((level, index) => (
+            <LevelCard key={index} level={level} />
+          ))}
+        </View>
+      </ScrollView>
+
+    </View>
   );
 };
 
@@ -122,13 +122,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
-  sectionTitle: {
-    marginTop: 24,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-  },
-
   schoolCard: {
     width: '100%',
     padding: 16,
@@ -149,7 +142,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   levelTestCard: {
     width: '100%',
     backgroundColor: '#155DFC',
@@ -194,7 +186,6 @@ const styles = StyleSheet.create({
     color: '#155DFC',
     fontWeight: '400',
   },
-
   cardLevel: {
     width: '100%',
     backgroundColor: '#ffffff',

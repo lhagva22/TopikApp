@@ -25,7 +25,7 @@ const items = [
     }
  ]
  
-const examScreen = () => {
+const ExamScreen = () => {
     return ( 
         <ScrollView>
         <View style={{flex: 1, backgroundColor: '#fff' ,padding: 16}}>
@@ -92,4 +92,4 @@ const examScreen = () => {
 };
 
 
-export default examScreen
+export default ExamScreen
