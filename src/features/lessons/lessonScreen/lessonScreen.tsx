@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle } from "../../../shared/components/molecule
 
 const LessonScreen = () => {
     return (
-        <ScrollView>
+        <ScrollView style={{flex: 1, backgroundColor: "#fff"}}>
         <View style={{padding: 16}}>
             
             <Card style={{ flexDirection: "row"}}>

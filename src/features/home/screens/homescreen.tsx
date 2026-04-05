@@ -51,8 +51,6 @@ const LevelCard: React.FC<{ level: Level }> = ({ level }) => {
 };
 
 const HomeScreen = () => {
-  // ✅ useNavigation hook ашиглах
-
 
   return (
     <View style={{ flex: 1 }}>
@@ -72,8 +70,8 @@ const HomeScreen = () => {
               </View>
             </View>
           </Card>
+          <SectionTitle viewStyle={{marginTop: 20}}>Түвшин тогтоох шалгалт</SectionTitle>
 
-          <SectionTitle style={{ marginTop: 24 }}>Түвшин тогтоох шалгалт</SectionTitle>
 
           <Card style={[styles.levelTestCard, cardShadowStyle]}>
             <CardHeader style={styles.levelTestHeader}>Өөрийн түвшинг мэдээрэй</CardHeader>
@@ -104,7 +102,7 @@ const HomeScreen = () => {
             />
           </Card>
 
-          <SectionTitle style={{ marginTop: 24 }}>Түвшнүүд</SectionTitle>
+          <SectionTitle viewStyle={{ marginTop: 20 }}>Түвшнүүд</SectionTitle>
           {levels.map((level, index) => (
             <LevelCard key={index} level={level} />
           ))}

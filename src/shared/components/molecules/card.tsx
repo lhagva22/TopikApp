@@ -92,7 +92,7 @@ export const CardTitle = ({
   const fontSize = TYPOGRAPHY.title[variant];
 
   return (
-    <View style={[styles.titleContainer, containerStyle]}>
+    <View style={containerStyle}>
       <Text style={[styles.titleText, { fontSize }, style]} {...props}>
         {children}
       </Text>
@@ -115,9 +115,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontWeight: "bold",
   },
-  titleContainer: {
-    marginBottom: 4,
-  },
+
   titleText: {
     fontWeight: "400",
 

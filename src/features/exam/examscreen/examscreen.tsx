@@ -27,8 +27,8 @@ const items = [
  
 const ExamScreen = () => {
     return ( 
-        <ScrollView>
-        <View style={{flex: 1, backgroundColor: '#fff' ,padding: 16}}>
+        <ScrollView style={{flex: 1, backgroundColor: "#fff"}}>
+        <View style={{padding: 16}}>
             
   
         <View style={{ justifyContent: 'space-between', flexDirection: 'row'}}>
@@ -52,22 +52,26 @@ const ExamScreen = () => {
             </Card>))}
             
         </View>
-        <SectionTitle style={{ marginTop: 20, marginBottom: 10, fontSize: 18, fontWeight: '600' }}>
-                Шалгалтуудын жагсаалт
-            </SectionTitle>
+                    <SectionTitle viewStyle={{ marginTop: 20, marginBottom: 10}}>
+                        Шалгалтуудын жагсаалт
+                    </SectionTitle>
 
             <Card style={{ flexDirection: "column"}}>
-                    <CardHeader containerStyle={{ flexDirection: 'row-reverse', justifyContent: 'flex-end', alignItems: 'center'}} style={{ fontSize: 16, fontWeight: '600'}} icon="lock-closed-outline" iconSize={15}>
-                        TOPIK I - 67-р шалгалт
+                    <CardHeader>
+                        TOPIK I - 1-р түвшин
                     </CardHeader>
-                    <CardTitle style={{ color: '#008000', fontWeight: '300', borderRadius: 10, padding: 2, backgroundColor:'#B0FFB0', marginTop: 10}}>
+                    <View style={{ alignSelf: 'flex-start' }}>
+                    <CardTitle containerStyle={{borderRadius: 10, padding: 2, backgroundColor:'#B0FFB0', marginBottom: 10, alignSelf: 'flex-start'}} style={{ color: '#008000', fontWeight: '300'}}>
                         TOPIK I
                     </CardTitle>
+                    </View>
                     <View>
-                    <CardTitle containerStyle={{flexDirection: 'row', marginTop: 20}} icon="time-outline" iconStyle={{marginRight:5, color:'#a2a2a2'}} style={{color:'#a2a2a2'}}>
-                        100 минут • 70 асуулт
+                    <View style={{flexDirection:'row', alignItems:'center', marginTop: 10}}>
+                    <Icon name="time-outline" size={16} color="#a2a2a2" />
+                    <CardTitle style={{color:'#a2a2a2'}}>
+                        100 минут 70 асуулт
                     </CardTitle>
-
+                    </View>
                     <View style={{flexDirection:'row', marginTop: 10}}>
                     <CardTitle containerStyle={{ padding:2, borderRadius: 5, backgroundColor: '#d0d0d0', marginRight:10}} style={{fontWeight:300}}>
                         Сонсгол (30) 
@@ -77,7 +81,7 @@ const ExamScreen = () => {
                     </CardTitle>
 
                     </View>
-                    <CustomButton title='Шалгалт эхлүүлэх' textStyle={{color:'#ffffff'}} style={{marginTop:30}}onPress={() => {}}>
+                    <CustomButton title='Шалгалт эхлүүлэх' textStyle={{color:'#ffffff'}} style={{marginTop:20}}onPress={() => {}}>
 
                     </CustomButton>
                     </View>
