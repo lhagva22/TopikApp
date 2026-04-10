@@ -1,24 +1,21 @@
 // src/shared/navigation/AppNavigator.tsx
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../store/authStore';
 import DrawerNavigator from './DrawerNavigation';
 import AuthStack from './AuthStack';
 
 const AppNavigator = () => {
-  const isRegistered = useAuthStore((state) => state.isRegistered);
-  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const { isLoading, isAuthenticated } = useAuth();
 
-  if (!isHydrated) {
+  if (isLoading) {
     return null;
   }
 
-  return (
-    <NavigationContainer>
-      {/* {isRegistered() ? <DrawerNavigator /> : <AuthStack />} */}
-      <DrawerNavigator />
-    </NavigationContainer>
+  return (    <DrawerNavigator/>
+
   );
+
+
 };
 
 export default AppNavigator;

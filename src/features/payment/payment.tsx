@@ -1,95 +1,216 @@
-import { Text, View , ScrollView} from "react-native";
-import Modal  from "react-native-modal";
+// features/payment/payment.tsx
+import React, { useState, useCallback, useEffect } from "react";
+import {
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Modal as RNModal,
+  BackHandler,
+  StyleSheet,
+} from "react-native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import SectionTitle from "../../shared/components/atoms/sectionTitle";
 import { Card, CardHeader, CardTitle } from "../../shared/components/molecules/card";
 import CustomButton from "../../shared/components/molecules/button";
 import Icon from "react-native-vector-icons/Ionicons";
 
+interface PaymentProps {
+  visible?: boolean;
+  onClose?: () => void;
+}
 
 const paymentItems = [
-    {
-        id: 1,
-        title: "1 сар",
-        price: "29,900₮",
-        features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
-    },
-    {
-        id: 2,
-        title: "3 сар",
-        price: "79,900₮",
-        features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
-    },
-    {
-        id: 3,
-        title: "6 сар",
-        price: "149,900₮",
-        features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
-    },
+  {
+    id: 1,
+    title: "1 сар",
+    price: "29,900₮",
+    features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
+  },
+  {
+    id: 2,
+    title: "3 сар",
+    price: "79,900₮",
+    features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
+  },
+  {
+    id: 3,
+    title: "6 сар",
+    price: "149,900₮",
+    features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
+  },
 ];
 
-const Payment = () => {
-    return (
-        <Modal 
-        isVisible={true}
-        
+const Payment = ({ visible: externalVisible, onClose }: PaymentProps) => {
+  const navigation = useNavigation();
+  const [isVisible, setIsVisible] = useState(false);
+
+  // externalVisible prop-оор удирдах
+  useEffect(() => {
+    if (externalVisible !== undefined) {
+      setIsVisible(externalVisible);
+    }
+  }, [externalVisible]);
+
+  // Screen focus үед modal нээх (prop ирээгүй үед)
+  useFocusEffect(
+    useCallback(() => {
+      if (externalVisible === undefined) {
+        setIsVisible(true);
+      }
+      
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        setIsVisible(false);
+        if (onClose) {
+          onClose();
+        } else {
+          navigation.goBack();
+        }
+        return true;
+      });
+      
+      return () => {
+        backHandler.remove();
+      };
+    }, [navigation, externalVisible, onClose])
+  );
+
+  const handleClose = () => {
+    setIsVisible(false);
+    if (onClose) {
+      onClose();
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  return (
+    <RNModal
+      visible={isVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={handleClose}
+    >
+      <View style={styles.modalOverlay}>
+        <ScrollView 
+          style={styles.modalContainer}
+          showsVerticalScrollIndicator={false}
         >
-            <ScrollView style={{backgroundColor: "white", padding: 10, borderRadius: 10}}>
-                <SectionTitle textStyle={{textAlign: "center"}}>Багц сонгох</SectionTitle> 
-                <CardTitle style={{textAlign: "center", marginVertical: 10}}>Өөрт тохирсон багцаа сонгоно уу</CardTitle> 
-                {paymentItems.map(item => (
-                <Card key={item.id} style={{marginHorizontal: 10}}>
-                    <CardHeader>
-                    <View>
-                        <Text style={{ 
-                        fontFamily: 'YourFont-Bold', 
-                        fontSize: 18,
-                        fontWeight: '700'
-                        }}>
-                        {item.title}
-                        </Text>
-                        <View style={{flexDirection: "row", alignItems: "center"}}>
-                        <Text style={{ 
-                        fontFamily: 'YourFont-Regular', 
-                        fontSize: 24,
-                        fontWeight: '600',
-                        color: '#007AFF'
-                        }}>
-                        {item.price}
-                        </Text>
-                        <Text style={{ 
-                        fontFamily: 'YourFont-Light', 
-                        fontSize: 12,
-                        color: '#666'
-                        }}>
-                        \{item.title}
-                        </Text>
-                        </View>
-                       
-                    </View>                  
-                    </CardHeader>
-                    <CardTitle>
-                             {item.features.map((feature, index) => (
-                                <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                <Icon name="checkmark" size={12} color="#000000" style={{ marginRight: 8 }} />
-                                <Text style={{
-                                    fontSize: 12,
-                                    color: '#333',
-                                    lineHeight: 20,
-                                    flex: 1
-                                }}>
-                                    {feature}
-                                </Text>
-                                </View>
-                            ))}
-                        </CardTitle>
-
-                        <CustomButton title="Сонгох" onPress={() => {}} style={{marginTop: 20}} textStyle={{fontWeight: '400', fontSize: 14}} />
-                </Card>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <Icon name="close" size={24} color="#333" />
+          </TouchableOpacity>
+          
+          <SectionTitle textStyle={styles.sectionTitle}>Багц сонгох</SectionTitle>
+          
+          <CardTitle style={styles.subtitle}>
+            Өөрт тохирсон багцаа сонгоно уу
+          </CardTitle>
+          
+          {paymentItems.map(item => (
+            <Card key={item.id} style={styles.card}>
+              <CardHeader>
+                <View>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <View style={styles.priceContainer}>
+                    <Text style={styles.price}>{item.price}</Text>
+                    <Text style={styles.pricePeriod}>/{item.title}</Text>
+                  </View>
+                </View>
+              </CardHeader>
+              
+              <CardTitle>
+                {item.features.map((feature, index) => (
+                  <View key={index} style={styles.featureItem}>
+                    <Icon name="checkmark-circle" size={16} color="#22c55e" style={styles.featureIcon} />
+                    <Text style={styles.featureText}>{feature}</Text>
+                  </View>
                 ))}
+              </CardTitle>
 
-            </ScrollView>
-        </Modal>
-    )
-}
+              <CustomButton 
+                title="Сонгох" 
+                onPress={handleClose} 
+                style={styles.selectButton}
+                textStyle={styles.selectButtonText}
+              />
+            </Card>
+          ))}
+        </ScrollView>
+      </View>
+    </RNModal>
+  );
+};
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 20,
+    margin: 20,
+    maxHeight: '90%',
+  },
+  closeButton: {
+    alignSelf: "flex-end",
+    padding: 5,
+  },
+  sectionTitle: {
+    textAlign: "center",
+  },
+  subtitle: {
+    textAlign: "center",
+    marginVertical: 10,
+  },
+  card: {
+    marginHorizontal: 10,
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+  },
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginTop: 4,
+  },
+  price: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  pricePeriod: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  featureIcon: {
+    marginRight: 8,
+  },
+  featureText: {
+    fontSize: 12,
+    color: '#333',
+    lineHeight: 20,
+    flex: 1,
+  },
+  selectButton: {
+    marginTop: 20,
+  },
+  selectButtonText: {
+    fontWeight: '400',
+    fontSize: 14,
+  },
+});
 
 export default Payment;

@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Text,
 } from "react-native";
+import { DrawerActions, useNavigation } from "@react-navigation/native";
 import { Card, CardHeader, CardTitle } from "../../shared/components/molecules/card";
 import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from "react-native-linear-gradient";
@@ -16,13 +17,16 @@ import CustomButton from "../../shared/components/molecules/button"
 import CardTitleWithIcon from "../../shared/components/molecules/cardtitlewithicon";
 
 const StatsGrid = () => {
+  const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const numColumns = isTablet ? 3 : 2;
 
   return (
     <View style={styles.grid}>
+
       <View style={[styles.gridItem, { width: `${100 / numColumns}%` }]}>
+ 
         <Card style={styles.card}>
           <View style={[styles.iconCircle, { backgroundColor: "#DCFCE7" }]}>
             <Icon name="people-outline" size={24} color="#16A34A" />
@@ -61,9 +65,14 @@ const StatsGrid = () => {
 };
 
 const About = () => {
+  const navigation = useNavigation();
   return (
     <View style={{ flex: 1 }}>
       <ScrollView style={{ padding: 16 }}>
+        <TouchableOpacity        onPress={() => {navigation.goBack(),  navigation.dispatch(DrawerActions.openDrawer());
+        }}>
+        <Icon name= "arrow-back" size={24} color="#000000"></Icon>
+        </TouchableOpacity>
         <View style={styles.schoolCard}>
           <View style={styles.schoolRow}>
             <LinearGradient

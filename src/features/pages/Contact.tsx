@@ -3,12 +3,17 @@ import SectionTitle from "../../shared/components/atoms/sectionTitle";
 import { CardTitle, Card, CardHeader } from "../../shared/components/molecules/card";
 import CardTitleWithIcon from "../../shared/components/molecules/cardtitlewithicon";
 import Icon from "react-native-vector-icons/Ionicons";
+import { DrawerActions, useNavigation } from "@react-navigation/native";
 const Contact = () =>
-{
+{ const navigation = useNavigation();
     return(
 
         <ScrollView>
+
         <View style={{flex:1 ,margin:16, gap:16}}>
+                    <TouchableOpacity        onPress={() => {navigation.goBack(), navigation.dispatch(DrawerActions.openDrawer());}}>
+                    <Icon name= "arrow-back" size={24} color="#000000"></Icon>
+                    </TouchableOpacity>
             <View style={{}}>
             <SectionTitle textStyle={{textAlign:"center", fontWeight:'500', fontSize:20, padding:10}}>Холбоо барих</SectionTitle>
             <CardTitle style={{ textAlign: "center", marginBottom:10}}>Танд тусламж хэрэгтэй юу? Асуулт байна уу? Бидэнтэй холбогдоход таатай байх болно.</CardTitle>
