@@ -1,15 +1,18 @@
 import React, { useRef, useState } from 'react';
 import { Text, View, StyleSheet, TextInput, TouchableOpacity, ScrollView } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import SectionTitle from "../../shared/components/atoms/sectionTitle";
-import CustomButton from "../../shared/components/molecules/button";
+import SectionTitle from "../../../shared/components/atoms/sectionTitle";
+import CustomButton from "../../../shared/components/molecules/button";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from "../../shared/navigation/NavigationTypes";
+import { RootStackParamList } from "../../../shared/navigation/NavigationTypes";
+import { useAuth } from '../hooks/useAuth';
+import { Alert } from 'react-native';
 
 type SigninScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Signin'>;
 
 const Signin = () => {
+  const { register, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<SigninScreenNavigationProp>();
   
   // Form state
@@ -34,11 +37,31 @@ const Signin = () => {
   const focusPassword = () => passwordRef.current?.focus();
   const focusConfirmPassword = () => confirmPasswordRef.current?.focus();
 
-  const handleSignup = () => {
-    console.log('Email:', email);
-    console.log('Name:', name);
-    console.log('Password:', password);
-    // TODO: Signup logic
+const handleSignup = async () => {
+    if (!email || !password || !name) {
+      Alert.alert('Алдаа', 'Бүх талбарыг бөглөнө үү');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Алдаа', 'Нууц үг таарахгүй байна');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Алдаа', 'Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой');
+      return;
+    }
+
+    const success = await register(email, password, name);
+    if (success) {
+      Alert.alert('Амжилттай', 'Бүртгэл амжилттай үүслээ', [
+        { text: 'OK', onPress: () => navigation.navigate('Login') }
+      ]);
+    } else if (error) {
+      Alert.alert('Алдаа', error);
+      clearError();
+    }
   };
 
   return (

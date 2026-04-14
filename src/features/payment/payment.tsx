@@ -1,23 +1,22 @@
-// features/payment/payment.tsx
-import React, { useState, useCallback, useEffect } from "react";
+// payment.tsx - бүрэн зассан хувилбар
+import React, { useState, useEffect } from 'react';
 import {
   Text,
   View,
   ScrollView,
   TouchableOpacity,
   Modal as RNModal,
-  BackHandler,
   StyleSheet,
-} from "react-native";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import SectionTitle from "../../shared/components/atoms/sectionTitle";
 import { Card, CardHeader, CardTitle } from "../../shared/components/molecules/card";
 import CustomButton from "../../shared/components/molecules/button";
 import Icon from "react-native-vector-icons/Ionicons";
 
 interface PaymentProps {
-  visible?: boolean;
-  onClose?: () => void;
+  visible: boolean;
+  onClose: () => void;
 }
 
 const paymentItems = [
@@ -41,52 +40,24 @@ const paymentItems = [
   },
 ];
 
-const Payment = ({ visible: externalVisible, onClose }: PaymentProps) => {
+const Payment = ({ visible, onClose }: PaymentProps) => {
   const navigation = useNavigation();
-  const [isVisible, setIsVisible] = useState(false);
-
-  // externalVisible prop-оор удирдах
-  useEffect(() => {
-    if (externalVisible !== undefined) {
-      setIsVisible(externalVisible);
-    }
-  }, [externalVisible]);
-
-  // Screen focus үед modal нээх (prop ирээгүй үед)
-  useFocusEffect(
-    useCallback(() => {
-      if (externalVisible === undefined) {
-        setIsVisible(true);
-      }
-      
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-        setIsVisible(false);
-        if (onClose) {
-          onClose();
-        } else {
-          navigation.goBack();
-        }
-        return true;
-      });
-      
-      return () => {
-        backHandler.remove();
-      };
-    }, [navigation, externalVisible, onClose])
-  );
 
   const handleClose = () => {
-    setIsVisible(false);
-    if (onClose) {
-      onClose();
-    } else {
-      navigation.goBack();
-    }
+    onClose();
   };
+
+  const handleSelectPlan = () => {
+    // Төлбөр төлөх логик
+    console.log('Plan selected');
+    onClose();
+  };
+
+  if (!visible) return null;
 
   return (
     <RNModal
-      visible={isVisible}
+      visible={visible}
       transparent={true}
       animationType="slide"
       onRequestClose={handleClose}
@@ -129,7 +100,7 @@ const Payment = ({ visible: externalVisible, onClose }: PaymentProps) => {
 
               <CustomButton 
                 title="Сонгох" 
-                onPress={handleClose} 
+                onPress={handleSelectPlan} 
                 style={styles.selectButton}
                 textStyle={styles.selectButtonText}
               />

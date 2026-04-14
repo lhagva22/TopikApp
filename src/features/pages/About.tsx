@@ -65,7 +65,7 @@ const StatsGrid = () => {
 };
 
 const About = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   return (
     <View style={{ flex: 1 }}>
       <ScrollView style={{ padding: 16 }}>
@@ -153,8 +153,8 @@ const About = () => {
             </CardTitle>
 
             <View style={{flexDirection:'row'}}>
-               <CustomButton style={{marginRight:10, backgroundColor:'#ffffff'}} textStyle={{fontWeight:400, color:'#000000', fontSize:12}}title="Эхлэх" onPress={() => {}} />
-                <CustomButton style={{backgroundColor:'#ffffff'}}textStyle={{fontWeight:400, color:'#000000', fontSize:12}} title="Холбоо барих" onPress={() => {}} />
+               <CustomButton style={{marginRight:10, backgroundColor:'#ffffff'}} textStyle={{fontWeight:400, color:'#000000', fontSize:12}}title="Эхлэх" onPress={() => {navigation.navigate('Home')}} />
+                <CustomButton style={{backgroundColor:'#ffffff'}}textStyle={{fontWeight:400, color:'#000000', fontSize:12}} title="Холбоо барих" onPress={() => {navigation.navigate('Contact')}} />
             </View>
             </LinearGradient>
       </ScrollView>

@@ -1,11 +1,11 @@
 import React, { useRef, useState } from "react";
 import { View, TouchableOpacity, Text, TextInput, StyleSheet, ScrollView } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import SectionTitle from "../../shared/components/atoms/sectionTitle";
-import CustomButton from "../../shared/components/molecules/button";
+import SectionTitle from "../../../shared/components/atoms/sectionTitle";
+import CustomButton from "../../../shared/components/molecules/button";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from "../../shared/navigation/NavigationTypes";
+import { RootStackParamList } from "../../../shared/navigation/NavigationTypes";
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>;
 

@@ -1,7 +1,7 @@
 // src/shared/navigation/AuthStack.tsx
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Login from '../../features/auth/Login';
+import Login from '../../features/auth/screens/Login';
 import Register from '../../features/auth/Signin';
 import ForgotPassword from '../../features/auth/Forgotpass';
 

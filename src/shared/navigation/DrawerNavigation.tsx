@@ -2,6 +2,7 @@
 import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { View, StyleSheet } from 'react-native';
+import { useSharedStore } from '../../store/sharedStore';
 import Header from '../components/organisms/header';
 import Footer from '../components/organisms/footer';
 import CustomDrawerContent from '../components/organisms/CustomDrawerContent';
@@ -12,28 +13,27 @@ import VideoScreen from '../../features/lessons/videolessonscreen/videolesson';
 import LessonScreen from '../../features/lessons/lessonScreen/lessonScreen';
 import ExamScreen from '../../features/exam/examscreen/examscreen';
 import DictionaryScreen from '../../features/dictionary/Dictionary';
-import Login from '../../features/auth/Login';
+import Login from '../../features/auth/screens/Login';
 import Payment from '../../features/payment/payment';
 import About from '../../features/pages/About';
 import Contact from '../../features/pages/Contact';
-import Signin from '../../features/auth/Signin';
-import ForgotPassword from '../../features/auth/Forgotpass';
+import Signin from '../../features/auth/screens/Signin';
+import ForgotPassword from '../../features/auth/screens/Forgotpass';
 import { Progress } from '../../features/progress/Progress';
 
 const Drawer = createDrawerNavigator();
 
-const ScreenWrapper = ({ children }: any) => {
+const ScreenWrapper = ({ children }: { children: React.ReactNode }) => {
   return (
     <View style={styles.container}>
       <Header />
-      <View style={styles.content}>
-        {children}
-      </View>
+      <View style={styles.content}>{children}</View>
       <Footer />
     </View>
   );
 };
 
+// Screens with permissions
 const HomeScreenWrapper = (props: any) => (
   <ScreenWrapper>
     <HomeScreen {...props} />
@@ -64,33 +64,43 @@ const DictionaryScreenWrapper = (props: any) => (
   </ScreenWrapper>
 );
 
-// Payment-г шууд modal-аар харуулах
-const PaymentScreenWrapper = () => {
-  return (
-    <ScreenWrapper>
-      <Payment visible={true} onClose={() => {}} />
-    </ScreenWrapper>
-  );
-};
+const ProgressScreenWrapper = (props: any) => (
+  <ScreenWrapper>
+    <Progress {...props} />
+  </ScreenWrapper>
+);
+
+const PaymentScreenWrapper = () => (
+  <ScreenWrapper>
+    <Payment visible={true} onClose={() => {}} />
+  </ScreenWrapper>
+);
 
 const DrawerNavigator = () => {
+  const { isAuthenticated } = useSharedStore();
+
   const screens = [
     <Drawer.Screen key="Home" name="Home" component={HomeScreenWrapper} />,
+    <Drawer.Screen key="Dictionary" name="Dictionary" component={DictionaryScreenWrapper} />,
+    <Drawer.Screen key="About" name="About" component={About} />,
+    <Drawer.Screen key="Contact" name="Contact" component={Contact} />,
     <Drawer.Screen key="Video" name="Video" component={VideoScreenWrapper} />,
     <Drawer.Screen key="Lesson" name="Lesson" component={LessonScreenWrapper} />,
     <Drawer.Screen key="Exam" name="Exam" component={ExamScreenWrapper} />,
-    <Drawer.Screen key="Dictionary" name="Dictionary" component={DictionaryScreenWrapper} />,
-    <Drawer.Screen key="Login" name="Login" component={Login} />,
-    <Drawer.Screen key="Signin" name="Signin" component={Signin} />,
-    <Drawer.Screen key="ForgotPassword" name="ForgotPassword" component={ForgotPassword} />,
-    <Drawer.Screen key="About" name="About" component={About} />,
-    <Drawer.Screen key="Contact" name="Contact" component={Contact} />,
-    <Drawer.Screen key="Progress" name="Progress" component={Progress} />,
+    <Drawer.Screen key="Progress" name="Progress" component={ProgressScreenWrapper} />,
+    ...(!isAuthenticated
+      ? [
+          <Drawer.Screen key="Login" name="Login" component={Login} />,
+          <Drawer.Screen key="Signin" name="Signin" component={Signin} />,
+          <Drawer.Screen key="ForgotPassword" name="ForgotPassword" component={ForgotPassword} />,
+        ]
+      : []),
+    
   ];
 
   return (
-    <Drawer.Navigator 
-      drawerContent={(props) => <CustomDrawerContent {...props} />} 
+    <Drawer.Navigator
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
         drawerType: 'front',

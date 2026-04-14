@@ -1,19 +1,21 @@
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, ScrollView, Alert } from "react-native";
 import Icon from 'react-native-vector-icons/Ionicons';
 import 'react-native-gesture-handler';
-import SectionTitle from "../../shared/components/atoms/sectionTitle";
-import { Card, CardTitle } from "../../shared/components/molecules/card";
-import CustomButtom from "../../shared/components/molecules/button";
-import GoogleIcon from "../../shared/assets/images/googlesvg";
-import AppleIcon from "../../shared/assets/images/applesvg";
+import SectionTitle from "../../../shared/components/atoms/sectionTitle";
+import { Card, CardTitle } from "../../../shared/components/molecules/card";
+import CustomButtom from "../../../shared/components/molecules/button";
+import GoogleIcon from "../../../shared/assets/images/googlesvg";
+import AppleIcon from "../../../shared/assets/images/applesvg";
 import React, { useRef, useState } from "react";
-import { RootStackParamList } from "../../shared/navigation/NavigationTypes";
+import { RootStackParamList } from "../../../shared/navigation/NavigationTypes";
 import { DrawerActions, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAuth } from '../hooks/useAuth';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
  
 const Login = () => {
+  const { login, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
   
   // Form state
@@ -30,11 +32,21 @@ const Login = () => {
     navigation.dispatch(DrawerActions.openDrawer());
   };
 
-  const handleLogin = () => {
-    console.log("Login button pressed");
-    console.log("Email:", email);
-    console.log("Password:", password);
-  };
+const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Алдаа', 'Имэйл, нууц үгээ оруулна уу');
+      return;
+    }
+
+    const success = await login(email, password);
+    if (!success && error) {
+      Alert.alert('Алдаа', error);
+      clearError();
+    }
+        else if (success) {
+          Alert.alert('Амжилттай', 'Нэвтрэлт амжилттай үүслээ', );
+        } 
+      };
 
   const handleForgotPassword = () => {
 

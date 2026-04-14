@@ -12,7 +12,7 @@ import { Card } from "../../shared/components/molecules/card";
 import Button from "../../shared/components/molecules/button";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useProgress } from "../../store/ProgressContext";
-import { useAuth } from "../../store/authStore";
+import { useAuth } from "../../store/sharedStore";
 import { SubscriptionStatus } from "../../shared/components/organisms/SubscriptionStatus";
 import { LineChart } from "react-native-gifted-charts";
 

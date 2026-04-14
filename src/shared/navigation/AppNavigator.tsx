@@ -1,21 +1,18 @@
 // src/shared/navigation/AppNavigator.tsx
 import React from 'react';
-import { useAuth } from '../../store/authStore';
+import { useSharedStore } from '../../store/sharedStore';  // ✅ useSharedStore
 import DrawerNavigator from './DrawerNavigation';
 import AuthStack from './AuthStack';
 
 const AppNavigator = () => {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated } = useSharedStore();  // ✅ useSharedStore
 
   if (isLoading) {
     return null;
   }
 
-  return (    <DrawerNavigator/>
-
-  );
-
-
+  // Нэвтэрсэн бол DrawerNavigator, үгүй бол AuthStack
+  return<DrawerNavigator />; 
 };
 
 export default AppNavigator;

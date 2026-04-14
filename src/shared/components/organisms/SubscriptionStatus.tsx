@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import { Card } from "../molecules/card";
 import Icon from "react-native-vector-icons/Ionicons";
-import { useAuth } from "../../../store/authStore";
+import { useAuth } from "../../../store/sharedStore";
 
 type StatusType = "success" | "caution" | "warning" | "danger";
 
