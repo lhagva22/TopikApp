@@ -8,12 +8,14 @@ import DrawerNavigator from './src/shared/navigation/DrawerNavigation';
 import AppNavigator from './src/shared/navigation/AppNavigator';
 import { useSharedStore } from './src/store/sharedStore';
 import { ProgressProvider } from './src/store/ProgressContext';
+import { loadLevelTestResults } from './src/features/exam/leveltestexam/levelTestStore';
 
 const App = () => {
  const { initAuth, isLoading, user, isGuest, isAuthenticated } = useSharedStore();
 
   useEffect(() => {
     initAuth();
+     loadLevelTestResults();
   }, []);
 
   useEffect(() => {

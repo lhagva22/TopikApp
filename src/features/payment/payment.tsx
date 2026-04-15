@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   Modal as RNModal,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import SectionTitle from "../../shared/components/atoms/sectionTitle";
 import { Card, CardHeader, CardTitle } from "../../shared/components/molecules/card";
 import CustomButton from "../../shared/components/molecules/button";
 import Icon from "react-native-vector-icons/Ionicons";
-
+import { useSharedStore } from '../../store/sharedStore';
 interface PaymentProps {
   visible: boolean;
   onClose: () => void;
@@ -41,17 +42,46 @@ const paymentItems = [
 ];
 
 const Payment = ({ visible, onClose }: PaymentProps) => {
-  const navigation = useNavigation();
 
+  const navigation = useNavigation();
+  const { user, updateUser } = useSharedStore();
+  const [isLoading, setIsLoading] = useState(false);
   const handleClose = () => {
     onClose();
   };
-
-  const handleSelectPlan = () => {
-    // Төлбөр төлөх логик
-    console.log('Plan selected');
-    onClose();
+const handleSelectPlan = (months: number) => {
+    setIsLoading(true);
+    
+    // Хэрэглэгчийн статусыг paid болгох
+    if (user) {
+      const paidUser = {
+        ...user,
+        status: 'premium' as const,  // ✅ 'registered' → 'premium'
+        subscription_start_date: new Date().toISOString(),
+        subscription_end_date: new Date(Date.now() + months * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        subscription_months: months,
+      };
+      updateUser(paidUser);
+    }
+    
+    setTimeout(() => {
+      setIsLoading(false);
+      Alert.alert(
+        "Амжилттай",
+        `${months} сарын багц идэвхжлээ`,
+        [
+          { 
+            text: "OK", 
+            onPress: () => {
+              onClose();
+              navigation.navigate('Home' as never);
+            } 
+          }
+        ]
+      );
+    }, 500);
   };
+
 
   if (!visible) return null;
 
@@ -100,7 +130,8 @@ const Payment = ({ visible, onClose }: PaymentProps) => {
 
               <CustomButton 
                 title="Сонгох" 
-                onPress={handleSelectPlan} 
+                onPress={() => handleSelectPlan(item.id)} 
+                requiredStatus="registered"
                 style={styles.selectButton}
                 textStyle={styles.selectButtonText}
               />

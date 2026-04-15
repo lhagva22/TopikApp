@@ -12,6 +12,7 @@ import HomeScreen from '../../features/home/screens/homescreen';
 import VideoScreen from '../../features/lessons/videolessonscreen/videolesson';
 import LessonScreen from '../../features/lessons/lessonScreen/lessonScreen';
 import ExamScreen from '../../features/exam/examscreen/examscreen';
+import { LevelTestInterface } from '../../features/exam/leveltestexam/LevelTestExam';
 import DictionaryScreen from '../../features/dictionary/Dictionary';
 import Login from '../../features/auth/screens/Login';
 import Payment from '../../features/payment/payment';
@@ -20,7 +21,7 @@ import Contact from '../../features/pages/Contact';
 import Signin from '../../features/auth/screens/Signin';
 import ForgotPassword from '../../features/auth/screens/Forgotpass';
 import { Progress } from '../../features/progress/Progress';
-
+import { ExamInterface } from '../../features/exam/MockTestExam/MockTestExam';
 const Drawer = createDrawerNavigator();
 
 const ScreenWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -58,6 +59,22 @@ const ExamScreenWrapper = (props: any) => (
   </ScreenWrapper>
 );
 
+const LevelTestScreenWrapper = (props: any) => (
+  <ScreenWrapper>
+    <LevelTestInterface 
+      {...props} 
+      onComplete={() => {
+        // LevelTest дууссаны дараа хийх үйлдэл
+        console.log('Level test completed');
+      }} 
+      levelTest={() => {
+        // LevelTest дууссаны дараа хийх үйлдэл
+        console.log('Level test data');
+      }} 
+    />
+  </ScreenWrapper>
+);
+
 const DictionaryScreenWrapper = (props: any) => (
   <ScreenWrapper>
     <DictionaryScreen {...props} />
@@ -75,6 +92,21 @@ const PaymentScreenWrapper = () => (
     <Payment visible={true} onClose={() => {}} />
   </ScreenWrapper>
 );
+const ExamInterfaceWrapper = (props: any) => (
+  <ScreenWrapper>
+    <ExamInterface 
+      {...props}
+      examTitle="TOPIK I - 1-р түвшин"
+      examType="TOPIK I"
+      duration={100}
+      onComplete={() => {
+        console.log('Exam completed');
+        props.navigation?.goBack();
+      }}
+    />
+  </ScreenWrapper>
+);
+
 
 const DrawerNavigator = () => {
   const { isAuthenticated } = useSharedStore();
@@ -88,6 +120,9 @@ const DrawerNavigator = () => {
     <Drawer.Screen key="Lesson" name="Lesson" component={LessonScreenWrapper} />,
     <Drawer.Screen key="Exam" name="Exam" component={ExamScreenWrapper} />,
     <Drawer.Screen key="Progress" name="Progress" component={ProgressScreenWrapper} />,
+    <Drawer.Screen key="LevelTest" name="LevelTest" component={LevelTestScreenWrapper} />,
+    <Drawer.Screen key="Payment" name="Payment" component={PaymentScreenWrapper} />,
+    <Drawer.Screen key="ExamInterface" name="ExamInterface" component={ExamInterfaceWrapper} />,
     ...(!isAuthenticated
       ? [
           <Drawer.Screen key="Login" name="Login" component={Login} />,
@@ -95,7 +130,6 @@ const DrawerNavigator = () => {
           <Drawer.Screen key="ForgotPassword" name="ForgotPassword" component={ForgotPassword} />,
         ]
       : []),
-    
   ];
 
   return (

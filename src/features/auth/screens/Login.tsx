@@ -137,7 +137,7 @@ const handleLogin = async () => {
         </Text>
       </TouchableOpacity>
       
-      <CustomButtom title={'Нэвтрэх'} onPress={handleLogin} />
+      <CustomButtom title={'Нэвтрэх'} requiredStatus="guest" onPress={handleLogin} />
 
       <TouchableOpacity 
         style={{ marginTop: 20, marginBottom: 20, alignItems: 'center' }} 

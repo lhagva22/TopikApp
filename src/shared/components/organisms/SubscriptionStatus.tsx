@@ -6,15 +6,15 @@ import {
 } from "react-native";
 import { Card } from "../molecules/card";
 import Icon from "react-native-vector-icons/Ionicons";
-import { useAuth } from "../../../store/sharedStore";
+import { useSharedStore } from "../../../store/sharedStore";
 
 type StatusType = "success" | "caution" | "warning" | "danger";
 
-// ✅ Өөрийн Progress компонент (алдаа гарахаас сэргийлнэ)
-const CustomProgress = ({ value, color }: { value: number; color: string }) => {
+
+export const CustomProgress = ({ value, color, style }: { value: number; color?: string; style?: any }) => {
   const clampedValue = Math.min(Math.max(value, 0), 100);
   return (
-    <View style={customProgressStyles.container}>
+    <View style={[customProgressStyles.container, style]}>
       <View 
         style={[
           customProgressStyles.fill, 
@@ -39,20 +39,59 @@ const customProgressStyles = StyleSheet.create({
 });
 
 export function SubscriptionStatus() {
-  const { user, getDaysRemaining, getTotalDays, getDaysUsed, getSubscriptionProgress } = useAuth();
+  const { user, isPaidUser } = useSharedStore();
 
-  if (!user || user.status !== "paid") {
+  // Зөвхөн paid хэрэглэгчдэд харуулах
+  if (!isPaidUser() || !user) {
     return null;
   }
+
+  // Subscription мэдээлэл
+  const subscriptionEndDate = user.subscription_end_date 
+    ? new Date(user.subscription_end_date) 
+    : null;
+  const subscriptionStartDate = user.subscription_start_date 
+    ? new Date(user.subscription_start_date) 
+    : null;
+
+  const getDaysRemaining = () => {
+    if (!subscriptionEndDate) return 0;
+    const now = new Date();
+    const diffTime = subscriptionEndDate.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  };
+
+  const getTotalDays = () => {
+    if (!subscriptionStartDate || !subscriptionEndDate) return 0;
+    const diffTime = subscriptionEndDate.getTime() - subscriptionStartDate.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const getDaysUsed = () => {
+    if (!subscriptionStartDate) return 0;
+    const now = new Date();
+    const diffTime = now.getTime() - subscriptionStartDate.getTime();
+    const daysUsed = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    const totalDays = getTotalDays();
+    return Math.min(daysUsed, totalDays);
+  };
+
+  const getSubscriptionProgress = () => {
+    const totalDays = getTotalDays();
+    const daysUsed = getDaysUsed();
+    if (totalDays === 0) return 0;
+    return Math.round((daysUsed / totalDays) * 100);
+  };
 
   const daysRemaining = getDaysRemaining();
   const totalDays = getTotalDays();
   const daysUsed = getDaysUsed();
   const progress = getSubscriptionProgress();
 
-  const formatDate = (date: Date | undefined) => {
+  // ✅ formatDate - Date | null төрлийг хүлээн авах
+  const formatDate = (date: Date | null) => {
     if (!date) return "";
-    return new Date(date).toLocaleDateString("mn-MN", {
+    return date.toLocaleDateString("mn-MN", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -103,10 +142,10 @@ export function SubscriptionStatus() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Багцын хугацаа</Text>
-          <Text style={styles.headerValue}>{user.subscriptionMonths} сар</Text>
+          <Text style={styles.headerValue}>{user.subscription_months || 0} сар</Text>
         </View>
 
-        {/* Progress - ✅ CustomProgress ашигласан */}
+        {/* Progress */}
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressLabel}>Явц</Text>
@@ -142,11 +181,11 @@ export function SubscriptionStatus() {
         <View style={styles.datesContainer}>
           <View style={styles.dateRow}>
             <Text style={styles.dateLabel}>Эхэлсэн:</Text>
-            <Text style={styles.dateValue}>{formatDate(user.subscriptionStartDate)}</Text>
+            <Text style={styles.dateValue}>{formatDate(subscriptionStartDate)}</Text>
           </View>
           <View style={styles.dateRow}>
             <Text style={styles.dateLabel}>Дуусах:</Text>
-            <Text style={styles.dateValue}>{formatDate(user.subscriptionEndDate)}</Text>
+            <Text style={styles.dateValue}>{formatDate(subscriptionEndDate)}</Text>
           </View>
         </View>
       </View>

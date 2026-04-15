@@ -1,3 +1,4 @@
+// shared/components/molecules/button.tsx
 import React from "react";
 import {
   TouchableOpacity,
@@ -8,6 +9,7 @@ import {
   StyleProp
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import { ProtectedTouchable } from './protectedTouchable';
 
 type ButtonProps = {
   icon?: string;
@@ -17,11 +19,29 @@ type ButtonProps = {
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   iconStyle?: StyleProp<ViewStyle | TextStyle>;
+  requiredStatus?: 'guest' | 'registered' | 'paid';
+  onPaymentRequired?: () => void;
 };
 
-const Button = ({ icon, iconSize = 20, title, onPress, style, textStyle, iconStyle }: ButtonProps) => {
+const Button = ({ 
+  icon, 
+  iconSize = 20, 
+  title, 
+  onPress, 
+  style, 
+  textStyle, 
+  iconStyle,
+  requiredStatus = 'paid',
+  onPaymentRequired
+}: ButtonProps) => {
   return (
-    <TouchableOpacity style={[styles.button, style]} onPress={onPress} activeOpacity={0.7}>
+    <ProtectedTouchable 
+      style={[styles.button, style]} 
+      onPress={onPress} 
+      onPaymentRequired={onPaymentRequired}
+      requiredStatus={requiredStatus}
+      activeOpacity={0.7}
+    >
       {icon && (
         <Icon
           name={icon}
@@ -29,8 +49,10 @@ const Button = ({ icon, iconSize = 20, title, onPress, style, textStyle, iconSty
           style={[styles.icon, iconStyle]}
         />
       )}
-      <Text style={[styles.buttonText, textStyle, icon ? { marginLeft: 8 } : {}]}>{title}</Text>
-    </TouchableOpacity>
+      <Text style={[styles.buttonText, textStyle, icon ? { marginLeft: 8 } : {}]}>
+        {title}
+      </Text>
+    </ProtectedTouchable>
   );
 };
 
@@ -50,7 +72,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  icon: {
-    // marginLeft нь Text-д өгөх тул энд хэрэггүй
-  },
+  icon: {},
 });

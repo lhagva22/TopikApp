@@ -25,7 +25,7 @@ export const ProtectedTouchable: React.FC<ProtectedTouchableProps> = ({
   const { isGuestUser, isRegisteredUser, isPaidUser } = useSharedStore();
 
   const handlePress = () => {
-    // 1. requiredStatus шалгалт
+    // requiredStatus шалгалт
     if (requiredStatus === 'paid' && isPaidUser()) {
       onPress?.();
       return;
@@ -41,11 +41,11 @@ export const ProtectedTouchable: React.FC<ProtectedTouchableProps> = ({
       return;
     }
     
-    // 2. Guest хэрэглэгч
+    // Guest хэрэглэгч
     if (isGuestUser()) {
       Alert.alert(
         "Нэвтрэх шаардлагатай",
-        "Энэ контентыг ашиглахын тулд нэвтрэх шаардлагатай",
+        "Энэ үйлдлийг хийхийн тулд нэвтрэх шаардлагатай",
         [
           { text: "Буцах", style: "cancel" },
           { text: "Нэвтрэх", onPress: () => navigation.navigate("Login" as never) }
@@ -54,17 +54,17 @@ export const ProtectedTouchable: React.FC<ProtectedTouchableProps> = ({
       return;
     }
     
-    // 3. Registered хэрэглэгч (төлбөргүй)
+    // Registered хэрэглэгч (төлбөргүй)
     if (isRegisteredUser()) {
       Alert.alert(
         "Төлбөртэй багц шаардлагатай",
-        "Энэ контентыг ашиглахын тулд төлбөртэй багц идэвхжүүлнэ үү",
+        "Энэ үйлдлийг хийхийн тулд төлбөртэй багц идэвхжүүлнэ үү",
         [
           { text: "Буцах", style: "cancel" },
           { 
             text: "Багц авах", 
             onPress: () => {
-              // ✅ onPaymentRequired байгаа эсэх шалгах
+              // ✅ onPaymentRequired callback дуудах (Modal нээх)
               if (onPaymentRequired) {
                 onPaymentRequired();
               }

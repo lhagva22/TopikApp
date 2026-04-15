@@ -6,32 +6,35 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useSharedStore } from '../../../store/sharedStore';
 import Payment from '../../../features/payment/payment';
 import { useAuthStore } from '../../../features/auth/store/authStore';
+import { Card } from '../molecules/card';
 
 const CustomDrawerContent = (props) => {
   const navigation = useNavigation();
   const [showPayment, setShowPayment] = useState(false);
-  const { isAuthenticated, isPaidUser } = useSharedStore();
-   const { logout } = useAuthStore();
+  const { isAuthenticated, isPaidUser, user } = useSharedStore();
+  const { logout } = useAuthStore();
+
+  // Subscription үлдсэн өдрийг тооцоолох
+  const getDaysRemaining = () => {
+    if (!user?.subscription_end_date) return 0;
+    const now = new Date();
+    const endDate = new Date(user.subscription_end_date);
+    const diffTime = endDate.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  };
+
+  const daysRemaining = getDaysRemaining();
+
   const handleLogout = async () => {
-    // Logout logic
     await logout();
     props.navigation.closeDrawer();
   };
 
   const menuItems = [
-    // { name: 'Нүүр', icon: 'home-outline', screen: 'Home' },
-    // { name: 'Толь бичиг', icon: 'search-outline', screen: 'Dictionary' },
     { name: 'Бидний тухай', icon: 'information-circle-outline', screen: 'About' },
     { name: 'Холбоо барих', icon: 'call-outline', screen: 'Contact' },
     { name: 'Ахиц дэвшил', icon: 'trending-up-outline', screen: 'Progress' },
     { name: 'Төлбөр төлөх', icon: 'card-outline', screen: 'Payment', isModal: true },
-  ];
-
-  // Зөвхөн төлбөртэй хэрэглэгчдэд харагдах хэсэг
-  const paidMenuItems = [
-    { name: 'Видео хичээл', icon: 'videocam-outline', screen: 'Video' },
-    { name: 'Хичээлүүд', icon: 'book-outline', screen: 'Lesson' },
-    { name: 'Шалгалт', icon: 'document-text-outline', screen: 'Exam' },
   ];
 
   const handlePress = (item) => {
@@ -52,24 +55,12 @@ const CustomDrawerContent = (props) => {
       </View>
       
       <View style={styles.menuItems}>
+       
+
         {/* Бүх хэрэглэгчдэд харагдах menu */}
         {menuItems.map((item, index) => (
           <TouchableOpacity
             key={index}
-            style={styles.menuItem}
-            onPress={() => handlePress(item)}
-          >
-            <Icon name={item.icon} size={22} color="#333" />
-            <Text style={styles.menuText}>{item.name}</Text>
-          </TouchableOpacity>
-        ))}
-
-        {/* Нэвтэрсэн хэрэглэгчдэд харагдах menu */}
-
-        {/* Төлбөртэй хэрэглэгчдэд харагдах menu */}
-        {isPaidUser() && paidMenuItems.map((item, index) => (
-          <TouchableOpacity
-            key={`paid-${index}`}
             style={styles.menuItem}
             onPress={() => handlePress(item)}
           >
@@ -108,6 +99,51 @@ const CustomDrawerContent = (props) => {
         visible={showPayment} 
         onClose={() => setShowPayment(false)} 
       />
+       {/* Хэрэглэгчийн мэдээллийн карт */}
+        {isAuthenticated && (
+          <Card style={styles.userCard}>
+            <View style={styles.userCardContent}>
+              <View style={styles.userAvatar}>
+                <Text style={styles.userAvatarText}>
+                  {user?.name?.charAt(0) || 'U'}
+                </Text>
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.userName} numberOfLines={1}>
+                  {user?.name || 'Хэрэглэгч'}
+                </Text>
+                <Text style={styles.userEmail} numberOfLines={1}>
+                  {user?.email || ''}
+                </Text>
+                <View style={styles.userStatusContainer}>
+                  <View style={[
+                    styles.userStatusBadge,
+                    isPaidUser() ? styles.paidBadge : styles.freeBadge
+                  ]}>
+                    <Text style={[
+                      styles.userStatusText,
+                      isPaidUser() ? styles.paidStatusText : styles.freeStatusText
+                    ]}>
+                      {isPaidUser() ? "Төлбөртэй хэрэглэгч" : "Үнэгүй хэрэглэгч"}
+                    </Text>
+                  </View>
+                  
+                  {isPaidUser() && daysRemaining > 0 && (
+                    <View style={styles.daysRemainingContainer}>
+                      <Icon name="calendar-outline" size={12} color="#6b7280" />
+                      <Text style={[
+                        styles.daysRemainingText,
+                        daysRemaining <= 7 && styles.daysRemainingWarning
+                      ]}>
+                        {daysRemaining} өдөр үлдсэн
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </Card>
+        )}
     </View>
   );
 };
@@ -142,6 +178,85 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 15,
     color: '#333',
+  },
+  // Хэрэглэгчийн карт стиль
+  userCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#e3edfb',
+    borderRadius: 12,
+  },
+  userCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  userAvatarText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 6,
+  },
+  userStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  userStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  paidBadge: {
+    backgroundColor: '#dcfce7',
+  },
+  freeBadge: {
+    backgroundColor: '#f3f4f6',
+  },
+  userStatusText: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  paidStatusText: {
+    color: '#166534',
+  },
+  freeStatusText: {
+    color: '#4b5563',
+  },
+  daysRemainingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  daysRemainingText: {
+    fontSize: 10,
+    color: '#4b5563',
+  },
+  daysRemainingWarning: {
+    color: '#dc2626',
+    fontWeight: 'bold',
   },
 });
 

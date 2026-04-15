@@ -12,27 +12,19 @@ import { Card } from "../../shared/components/molecules/card";
 import Button from "../../shared/components/molecules/button";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useProgress } from "../../store/ProgressContext";
-import { useAuth } from "../../store/sharedStore";
+import { useSharedStore } from "../../store/sharedStore";
 import { SubscriptionStatus } from "../../shared/components/organisms/SubscriptionStatus";
 import { LineChart } from "react-native-gifted-charts";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-// Тип тодорхойлолт
-type RootStackParamList = {
-  Progress: undefined;
-  Mock: undefined;
-  Practice: undefined;
-  ExamResult: { id: string };
-};
-
 export function Progress() {
   const navigation = useNavigation();
   const { examResults, getAverageScore, getTotalExamsTaken, getRecentResults, getWeakAreas } = useProgress();
-  const { user } = useAuth();
+  const { isPaidUser, isAuthenticated } = useSharedStore();  // ✅ isPaidUser, isAuthenticated авах
   const [viewMode, setViewMode] = useState<"chart" | "list">("chart");
   const [timePeriod, setTimePeriod] = useState<"all" | "week" | "month">("all");
-
+  
   const averageScore = getAverageScore();
   const totalExams = getTotalExamsTaken();
   const weakAreas = getWeakAreas();
@@ -105,7 +97,8 @@ export function Progress() {
 
   const errorFrequency = getErrorFrequency();
 
-  if (!user || user.status !== "paid") {
+  // ✅ Төлбөртэй хэрэглэгч эсэх шалгах
+  if (!isAuthenticated || !isPaidUser()) {
     return (
       <View style={styles.container}>
         <View style={styles.centeredContainer}>
@@ -269,7 +262,6 @@ export function Progress() {
                   <TouchableOpacity
                     key={result.id}
                     style={styles.listItem}
-                    // onPress={() => navigation.navigate("ExamResult" as never, { id: result.id } as never)}
                   >
                     <View style={styles.listItemLeft}>
                       <View style={[
@@ -304,7 +296,6 @@ export function Progress() {
         {/* Performance Analysis Grid */}
         {weakAreas.length > 0 && (
           <View style={styles.analysisGrid}>
-            {/* Section Performance */}
             <Card style={styles.analysisCard}>
               <View style={styles.analysisTitle}>
                 <Icon name="bar-chart" size={20} color="#6b7280" />
@@ -323,7 +314,6 @@ export function Progress() {
               </View>
             </Card>
 
-            {/* Error Frequency */}
             <Card style={styles.analysisCard}>
               <View style={styles.analysisTitle}>
                 <Icon name="alert-circle" size={20} color="#6b7280" />
@@ -404,7 +394,6 @@ export function Progress() {
 
         {/* Smart Recommendations */}
         <View style={styles.recommendationsContainer}>
-          {/* Primary Recommendation */}
           <Card style={[styles.recommendationCard, styles.primaryRecommendation]}>
             <View style={styles.recommendationContent}>
               <View style={styles.recommendationIcon}>
@@ -421,7 +410,6 @@ export function Progress() {
             </View>
           </Card>
 
-          {/* Secondary Recommendation */}
           <Card style={[styles.recommendationCard, styles.secondaryRecommendation]}>
             <View style={styles.recommendationContent}>
               <View style={[styles.recommendationIcon, styles.secondaryIcon]}>
@@ -445,443 +433,99 @@ export function Progress() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f9fafb",
-  },
-  centeredContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  contentContainer: {
-    padding: 16,
-  },
-  paymentCard: {
-    padding: 32,
-    alignItems: "center",
-    maxWidth: 400,
-  },
-  paymentTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  paymentText: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  pageTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#111827",
-    marginBottom: 4,
-  },
-  pageSubtitle: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  filterContainer: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#f3f4f6",
-  },
-  filterButtonActive: {
-    backgroundColor: "#3b82f6",
-  },
-  filterText: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  filterTextActive: {
-    color: "#fff",
-  },
-  subscriptionContainer: {
-    marginBottom: 24,
-  },
-  metricsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 24,
-  },
-  metricCard: {
-    flex: 1,
-    minWidth: "45%",
-    padding: 16,
-  },
-  metricIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginBottom: 4,
-  },
-  metricValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#111827",
-  },
-  metricUnit: {
-    fontSize: 14,
-    fontWeight: "normal",
-    color: "#6b7280",
-  },
-  positiveText: {
-    color: "#16a34a",
-  },
-  negativeText: {
-    color: "#dc2626",
-  },
-  chartCard: {
-    padding: 16,
-    marginBottom: 24,
-  },
-  chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  chartTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  viewModeContainer: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  viewModeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#f3f4f6",
-    gap: 4,
-  },
-  viewModeActive: {
-    backgroundColor: "#3b82f6",
-  },
-  viewModeText: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  viewModeTextActive: {
-    color: "#fff",
-  },
-  chart: {
-    borderRadius: 16,
-  },
-  listContainer: {
-    gap: 8,
-  },
-  listItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#f9fafb",
-    borderRadius: 12,
-  },
-  listItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  listItemScore: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  scoreHigh: {
-    backgroundColor: "#dcfce7",
-  },
-  scoreMedium: {
-    backgroundColor: "#dbeafe",
-  },
-  scoreLow: {
-    backgroundColor: "#fee2e2",
-  },
-  listItemScoreText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  listItemTitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#111827",
-  },
-  listItemDate: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  listItemRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  listItemScoreDetail: {
-    alignItems: "flex-end",
-  },
-  listItemScoreLabel: {
-    fontSize: 10,
-    color: "#6b7280",
-  },
-  listItemScoreValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  analysisGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
-    marginBottom: 24,
-  },
-  analysisCard: {
-    flex: 1,
-    minWidth: "45%",
-    padding: 16,
-  },
-  analysisTitle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
-  analysisTitleText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  barChartContainer: {
-    gap: 12,
-  },
-  barChartItem: {
-    gap: 4,
-  },
-  barChartLabel: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  barChartBarContainer: {
-    height: 8,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  barChartBar: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  barChartValue: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#111827",
-    textAlign: "right",
-  },
-  detailedCard: {
-    padding: 16,
-    marginBottom: 24,
-  },
-  detailedTitle: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
-  detailedTitleText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  detailedList: {
-    gap: 16,
-  },
-  detailedItem: {
-    padding: 16,
-    backgroundColor: "#f9fafb",
-    borderRadius: 12,
-  },
-  detailedItemHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  detailedItemInfo: {
-    flex: 1,
-    gap: 8,
-  },
-  detailedItemCategory: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#111827",
-  },
-  badge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  badgeDanger: {
-    backgroundColor: "#fee2e2",
-  },
-  badgeWarning: {
-    backgroundColor: "#fef3c7",
-  },
-  badgeSuccess: {
-    backgroundColor: "#dcfce7",
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "500",
-  },
-  detailedItemPercentage: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  percentageDanger: {
-    color: "#dc2626",
-  },
-  percentageWarning: {
-    color: "#d97706",
-  },
-  percentageSuccess: {
-    color: "#16a34a",
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: "#f3f4f6",
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 12,
-  },
-  progressBar: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  progressBarDanger: {
-    backgroundColor: "#dc2626",
-  },
-  progressBarWarning: {
-    backgroundColor: "#d97706",
-  },
-  progressBarSuccess: {
-    backgroundColor: "#16a34a",
-  },
-  detailedItemDescription: {
-    fontSize: 12,
-    color: "#6b7280",
-    lineHeight: 18,
-  },
-  recommendationsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
-    marginBottom: 24,
-  },
-  recommendationCard: {
-    flex: 1,
-    minWidth: "45%",
-    padding: 16,
-  },
-  primaryRecommendation: {
-    backgroundColor: "#eff6ff",
-  },
-  secondaryRecommendation: {
-    backgroundColor: "#f0fdf4",
-  },
-  recommendationContent: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  recommendationIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: "#3b82f6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  secondaryIcon: {
-    backgroundColor: "#16a34a",
-  },
-  recommendationText: {
-    flex: 1,
-    gap: 8,
-  },
-  recommendationTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  recommendationDescription: {
-    fontSize: 12,
-    color: "#6b7280",
-    lineHeight: 18,
-  },
-  emptyCard: {
-    padding: 32,
-    alignItems: "center",
-  },
-  emptyIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#f3f4f6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#dbeafe",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
+  container: { flex: 1, backgroundColor: "#f9fafb" },
+  centeredContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 16 },
+  contentContainer: { padding: 16 },
+  paymentCard: { padding: 32, alignItems: "center", maxWidth: 400 },
+  paymentTitle: { fontSize: 20, fontWeight: "600", marginBottom: 8 },
+  paymentText: { fontSize: 14, color: "#6b7280", textAlign: "center", marginBottom: 24 },
+  pageTitle: { fontSize: 24, fontWeight: "bold", color: "#111827", marginBottom: 4 },
+  pageSubtitle: { fontSize: 14, color: "#6b7280" },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  filterContainer: { flexDirection: "row", gap: 8 },
+  filterButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "#f3f4f6" },
+  filterButtonActive: { backgroundColor: "#3b82f6" },
+  filterText: { fontSize: 14, color: "#6b7280" },
+  filterTextActive: { color: "#fff" },
+  subscriptionContainer: { marginBottom: 24 },
+  metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
+  metricCard: { flex: 1, minWidth: "45%", padding: 16 },
+  metricIcon: { width: 40, height: 40, borderRadius: 8, justifyContent: "center", alignItems: "center", marginBottom: 12 },
+  metricLabel: { fontSize: 12, color: "#6b7280", marginBottom: 4 },
+  metricValue: { fontSize: 24, fontWeight: "bold", color: "#111827" },
+  metricUnit: { fontSize: 14, fontWeight: "normal", color: "#6b7280" },
+  positiveText: { color: "#16a34a" },
+  negativeText: { color: "#dc2626" },
+  chartCard: { padding: 16, marginBottom: 24 },
+  chartHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  chartTitleContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
+  chartTitle: { fontSize: 16, fontWeight: "600", color: "#111827" },
+  viewModeContainer: { flexDirection: "row", gap: 8 },
+  viewModeButton: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "#f3f4f6", gap: 4 },
+  viewModeActive: { backgroundColor: "#3b82f6" },
+  viewModeText: { fontSize: 12, color: "#6b7280" },
+  viewModeTextActive: { color: "#fff" },
+  chart: { borderRadius: 16 },
+  listContainer: { gap: 8 },
+  listItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, backgroundColor: "#f9fafb", borderRadius: 12 },
+  listItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  listItemScore: { width: 48, height: 48, borderRadius: 8, justifyContent: "center", alignItems: "center" },
+  scoreHigh: { backgroundColor: "#dcfce7" },
+  scoreMedium: { backgroundColor: "#dbeafe" },
+  scoreLow: { backgroundColor: "#fee2e2" },
+  listItemScoreText: { fontSize: 16, fontWeight: "bold" },
+  listItemTitle: { fontSize: 14, fontWeight: "500", color: "#111827" },
+  listItemDate: { fontSize: 12, color: "#6b7280" },
+  listItemRight: { flexDirection: "row", alignItems: "center", gap: 12 },
+  listItemScoreDetail: { alignItems: "flex-end" },
+  listItemScoreLabel: { fontSize: 10, color: "#6b7280" },
+  listItemScoreValue: { fontSize: 14, fontWeight: "600", color: "#111827" },
+  analysisGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, marginBottom: 24 },
+  analysisCard: { flex: 1, minWidth: "45%", padding: 16 },
+  analysisTitle: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+  analysisTitleText: { fontSize: 16, fontWeight: "600", color: "#111827" },
+  barChartContainer: { gap: 12 },
+  barChartItem: { gap: 4 },
+  barChartLabel: { fontSize: 12, color: "#6b7280" },
+  barChartBarContainer: { height: 8, backgroundColor: "#f3f4f6", borderRadius: 4, overflow: "hidden" },
+  barChartBar: { height: "100%", borderRadius: 4 },
+  barChartValue: { fontSize: 12, fontWeight: "500", color: "#111827", textAlign: "right" },
+  detailedCard: { padding: 16, marginBottom: 24 },
+  detailedTitle: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+  detailedTitleText: { fontSize: 16, fontWeight: "600", color: "#111827" },
+  detailedList: { gap: 16 },
+  detailedItem: { padding: 16, backgroundColor: "#f9fafb", borderRadius: 12 },
+  detailedItemHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
+  detailedItemInfo: { flex: 1, gap: 8 },
+  detailedItemCategory: { fontSize: 14, fontWeight: "500", color: "#111827" },
+  badge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+  badgeDanger: { backgroundColor: "#fee2e2" },
+  badgeWarning: { backgroundColor: "#fef3c7" },
+  badgeSuccess: { backgroundColor: "#dcfce7" },
+  badgeText: { fontSize: 10, fontWeight: "500" },
+  detailedItemPercentage: { fontSize: 24, fontWeight: "bold" },
+  percentageDanger: { color: "#dc2626" },
+  percentageWarning: { color: "#d97706" },
+  percentageSuccess: { color: "#16a34a" },
+  progressBarContainer: { height: 8, backgroundColor: "#f3f4f6", borderRadius: 4, overflow: "hidden", marginBottom: 12 },
+  progressBar: { height: "100%", borderRadius: 4 },
+  progressBarDanger: { backgroundColor: "#dc2626" },
+  progressBarWarning: { backgroundColor: "#d97706" },
+  progressBarSuccess: { backgroundColor: "#16a34a" },
+  detailedItemDescription: { fontSize: 12, color: "#6b7280", lineHeight: 18 },
+  recommendationsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 16, marginBottom: 24 },
+  recommendationCard: { flex: 1, minWidth: "45%", padding: 16 },
+  primaryRecommendation: { backgroundColor: "#eff6ff" },
+  secondaryRecommendation: { backgroundColor: "#f0fdf4" },
+  recommendationContent: { flexDirection: "row", gap: 16 },
+  recommendationIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: "#3b82f6", justifyContent: "center", alignItems: "center" },
+  secondaryIcon: { backgroundColor: "#16a34a" },
+  recommendationText: { flex: 1, gap: 8 },
+  recommendationTitle: { fontSize: 14, fontWeight: "600", color: "#111827" },
+  recommendationDescription: { fontSize: 12, color: "#6b7280", lineHeight: 18 },
+  emptyCard: { padding: 32, alignItems: "center" },
+  emptyIconContainer: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#f3f4f6", justifyContent: "center", alignItems: "center", marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: "600", color: "#111827", marginBottom: 8 },
+  emptyText: { fontSize: 14, color: "#6b7280", textAlign: "center", marginBottom: 24 },
+  iconContainer: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#dbeafe", justifyContent: "center", alignItems: "center", marginBottom: 16 },
 });
