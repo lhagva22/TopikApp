@@ -11,19 +11,20 @@ import { Card } from '../molecules/card';
 const CustomDrawerContent = (props) => {
   const navigation = useNavigation();
   const [showPayment, setShowPayment] = useState(false);
-  const { isAuthenticated, isPaidUser, user } = useSharedStore();
+  const { 
+    isAuthenticated, 
+    isPaidUser, 
+    user, 
+    getSubscriptionStatus,
+    getDaysRemaining,
+    getSubscriptionProgress
+  } = useSharedStore();
   const { logout } = useAuthStore();
 
-  // Subscription үлдсэн өдрийг тооцоолох
-  const getDaysRemaining = () => {
-    if (!user?.subscription_end_date) return 0;
-    const now = new Date();
-    const endDate = new Date(user.subscription_end_date);
-    const diffTime = endDate.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-  };
-
+  // Store-с subscription мэдээлэл авах
+  const subscriptionStatus = getSubscriptionStatus();
   const daysRemaining = getDaysRemaining();
+  const progress = getSubscriptionProgress();
 
   const handleLogout = async () => {
     await logout();
@@ -55,9 +56,6 @@ const CustomDrawerContent = (props) => {
       </View>
       
       <View style={styles.menuItems}>
-       
-
-        {/* Бүх хэрэглэгчдэд харагдах menu */}
         {menuItems.map((item, index) => (
           <TouchableOpacity
             key={index}
@@ -69,7 +67,6 @@ const CustomDrawerContent = (props) => {
           </TouchableOpacity>
         ))}
 
-        {/* Нэвтрээгүй үед Login харуулах */}
         {!isAuthenticated && (
           <TouchableOpacity
             style={styles.menuItem}
@@ -83,7 +80,6 @@ const CustomDrawerContent = (props) => {
           </TouchableOpacity>
         )}
 
-        {/* Нэвтэрсэн үед Logout харуулах */}
         {isAuthenticated && (
           <TouchableOpacity
             style={styles.menuItem}
@@ -99,51 +95,62 @@ const CustomDrawerContent = (props) => {
         visible={showPayment} 
         onClose={() => setShowPayment(false)} 
       />
-       {/* Хэрэглэгчийн мэдээллийн карт */}
-        {isAuthenticated && (
-          <Card style={styles.userCard}>
-            <View style={styles.userCardContent}>
-              <View style={styles.userAvatar}>
-                <Text style={styles.userAvatarText}>
-                  {user?.name?.charAt(0) || 'U'}
-                </Text>
-              </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName} numberOfLines={1}>
-                  {user?.name || 'Хэрэглэгч'}
-                </Text>
-                <Text style={styles.userEmail} numberOfLines={1}>
-                  {user?.email || ''}
-                </Text>
-                <View style={styles.userStatusContainer}>
-                  <View style={[
-                    styles.userStatusBadge,
-                    isPaidUser() ? styles.paidBadge : styles.freeBadge
+      
+      {/* Хэрэглэгчийн мэдээллийн карт */}
+      {isAuthenticated && (
+        <Card style={styles.userCard}>
+          <View style={styles.userCardContent}>
+            <View style={styles.userAvatar}>
+              <Text style={styles.userAvatarText}>
+                {user?.name?.charAt(0) || 'U'}
+              </Text>
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {user?.name || 'Хэрэглэгч'}
+              </Text>
+              <Text style={styles.userEmail} numberOfLines={1}>
+                {user?.email || ''}
+              </Text>
+              <View style={styles.userStatusContainer}>
+                <View style={[
+                  styles.userStatusBadge,
+                  isPaidUser() ? styles.paidBadge : styles.freeBadge
+                ]}>
+                  <Text style={[
+                    styles.userStatusText,
+                    isPaidUser() ? styles.paidStatusText : styles.freeStatusText
                   ]}>
+                    {isPaidUser() ? "Төлбөртэй хэрэглэгч" : "Үнэгүй хэрэглэгч"}
+                  </Text>
+                </View>
+                
+                {isPaidUser() && daysRemaining > 0 && (
+                  <View style={styles.daysRemainingContainer}>
+                    <Icon name="calendar-outline" size={12} color="#6b7280" />
                     <Text style={[
-                      styles.userStatusText,
-                      isPaidUser() ? styles.paidStatusText : styles.freeStatusText
+                      styles.daysRemainingText,
+                      daysRemaining <= 7 && styles.daysRemainingWarning
                     ]}>
-                      {isPaidUser() ? "Төлбөртэй хэрэглэгч" : "Үнэгүй хэрэглэгч"}
+                      {daysRemaining} өдөр үлдсэн
                     </Text>
                   </View>
-                  
-                  {isPaidUser() && daysRemaining > 0 && (
-                    <View style={styles.daysRemainingContainer}>
-                      <Icon name="calendar-outline" size={12} color="#6b7280" />
-                      <Text style={[
-                        styles.daysRemainingText,
-                        daysRemaining <= 7 && styles.daysRemainingWarning
-                      ]}>
-                        {daysRemaining} өдөр үлдсэн
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                )}
               </View>
+              
+              {/* Прогресс бар - төлбөртэй хэрэглэгчдэд */}
+              {isPaidUser() && (
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
+                    <View style={[styles.progressFill, { width: `${progress}%` }]} />
+                  </View>
+                  <Text style={styles.progressText}>{progress}%</Text>
+                </View>
+              )}
             </View>
-          </Card>
-        )}
+          </View>
+        </Card>
+      )}
     </View>
   );
 };
@@ -179,7 +186,6 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     color: '#333',
   },
-  // Хэрэглэгчийн карт стиль
   userCard: {
     marginHorizontal: 16,
     marginBottom: 16,
@@ -223,6 +229,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
   },
   userStatusBadge: {
     paddingHorizontal: 8,
@@ -257,6 +264,29 @@ const styles = StyleSheet.create({
   daysRemainingWarning: {
     color: '#dc2626',
     fontWeight: 'bold',
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  progressBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#22c55e',
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 10,
+    color: '#166534',
+    fontWeight: '500',
   },
 });
 

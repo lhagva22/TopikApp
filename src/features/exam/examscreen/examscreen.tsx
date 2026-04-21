@@ -1,125 +1,436 @@
-import { Text, View, Image, ScrollView, StyleSheet } from "react-native"
+// src/features/exam/screens/ExamScreen.tsx
+import { Text, View, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, Alert } from "react-native"
 import { Card, CardHeader, CardTitle } from "../../../shared/components/molecules/card"
 import Icon from "react-native-vector-icons/Ionicons";
 import SectionTitle from "../../../shared/components/atoms/sectionTitle";
 import CustomButton from '../../../shared/components/molecules/button';
-import { useNavigation } from "@react-navigation/native";
-import React, { useState } from 'react';
-import { ExamInterface } from '../MockTestExam/MockTestExam';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Payment from '../../../features/payment/payment';
+import { useExam } from '../hooks/useExam';
+import { useSharedStore } from '../../../store/sharedStore';
 
-const items = [
-    {
-        id: 1,
-        title: "Өгсөн",
-        value: 0,
-        image: require("../../../shared/assets/images/images-removebg-preview.png") 
-    },
-    {   
-        id: 2,
-        title: "Дундаж оноо",
-        value: 0,
-        image: require("../../../shared/assets/images/stock-removebg-preview.png") 
-    },
-    {
-        id: 3,
-        title: "Нийт",
-        value: 0,
-        image: require("../../../shared/assets/images/stock-removebg-preview.png") 
-    }
-]
- 
+const statsItems = [
+  {
+    id: 1,
+    title: "Өгсөн",
+    value: 0,
+    icon: "checkmark-circle-outline",
+    iconColor: "#22C55E"
+  },
+  {   
+    id: 2,
+    title: "Дундаж оноо",
+    value: 0,
+    icon: "stats-chart-outline",
+    iconColor: "#155DFC"
+  },
+  {
+    id: 3,
+    title: "Нийт",
+    value: 0,
+    icon: "document-text-outline",
+    iconColor: "#800080"
+  }
+];
+
 const ExamScreen = () => {
-    const [showPayment, setShowPayment] = useState(false);
-    const navigation = useNavigation<any>();
-    
-    const handlePaymentRequired = () => {
-        setShowPayment(true);
-    };
+  const navigation = useNavigation<any>();
+  const [showPayment, setShowPayment] = useState(false);
+  const [stats, setStats] = useState({ taken: 0, avgScore: 0, total: 0 });
+  
+  const { user } = useSharedStore();
+  const { 
+    exams, 
+    isLoading, 
+    error, 
+    loadExams, 
+    startExam,
+    canStartExam,
+    getGroupedExams,
+    canTakeExam,
+    isStarting
+  } = useExam();
 
-    // ExamScreen.tsx
-        const handleStartExam = () => {
-        navigation.navigate('ExamInterface', {
-            examTitle: "TOPIK I - 1-р түвшин",
-            examType: "TOPIK I",
-            duration: 100,
-            onComplete: () => {
-            console.log('Exam completed');
-            }
-        });
-        };
+  const groupedExams = getGroupedExams();
 
-    return ( 
-        <ScrollView style={{flex: 1, backgroundColor: "#fff"}}>
-            <View style={{padding: 16}}>
-                <View style={{ justifyContent: 'space-between', flexDirection: 'row'}}>
-                    {items.map((item) => (
-                        <Card key={item.id} style={{flexDirection: 'column', width: '30%', alignItems: 'center', justifyContent: 'center'}}>
-                            <View style={{alignItems:'center', justifyContent: 'flex-start', paddingBottom: 20}}>
-                                {item.id === 3 ? (
-                                    <Icon name="document-text-outline" size={15} color="#800080" />
-                                ) : (
-                                    <Image style={{ width: 15, height: 15 }} source={item.image} />
-                                )}
-                            </View>
-                            <View style={{alignItems:'center', justifyContent: 'center' , paddingBottom: 20 }}>
-                                <Text style={{fontSize: 16, fontWeight: '600'}}>
-                                    {item.value}
-                                </Text>
-                            </View>
-                            <CardTitle style={{ color: '#a9a9a9', fontWeight: '300'}}>
-                                {item.title}
-                            </CardTitle>
-                        </Card>
-                    ))}
-                </View>
-                
-                <SectionTitle viewStyle={{ marginTop: 20, marginBottom: 10}}>
-                    Шалгалтуудын жагсаалт
-                </SectionTitle>
+  const loadData = async () => {
+    await loadExams();
+    await loadStats();
+  };
 
-                <Card style={{ flexDirection: "column"}}>
-                    <CardHeader>
-                        TOPIK I - 1-р түвшин
-                    </CardHeader>
-                    <View style={{ alignSelf: 'flex-start' }}>
-                        <CardTitle containerStyle={{borderRadius: 10, padding: 2, backgroundColor:'#B0FFB0', marginBottom: 10, alignSelf: 'flex-start'}} style={{ color: '#008000', fontWeight: '300'}}>
-                            TOPIK I
-                        </CardTitle>
-                    </View>
-                    <View>
-                        <View style={{flexDirection:'row', alignItems:'center', marginTop: 10}}>
-                            <Icon name="time-outline" size={16} color="#a2a2a2" />
-                            <CardTitle style={{color:'#a2a2a2'}}>
-                                100 минут 70 асуулт
-                            </CardTitle>
-                        </View>
-                        <View style={{flexDirection:'row', marginTop: 10}}>
-                            <CardTitle containerStyle={{ padding:2, borderRadius: 5, backgroundColor: '#d0d0d0', marginRight:10}} style={{fontWeight:300}}>
-                                Сонсгол (30) 
-                            </CardTitle>
-                            <CardTitle containerStyle={{padding:2, borderRadius: 5, backgroundColor: '#d0d0d0'}} style={{fontWeight:300}}>
-                                Уншлага (40) 
-                            </CardTitle>
-                        </View>
-                        <CustomButton 
-                            title='Шалгалт эхлүүлэх' 
-                            textStyle={{color:'#ffffff'}} 
-                            style={{marginTop:20}}
-                            onPress={handleStartExam}
-                            requiredStatus="paid"
-                            onPaymentRequired={handlePaymentRequired}
-                        />
-                    </View>
-                </Card>
-            </View>
-            
-            <Payment 
-                visible={showPayment} 
-                onClose={() => setShowPayment(false)} 
-            />
-        </ScrollView>
-    )
+  const loadStats = async () => {
+    setStats({
+      taken: 0,
+      avgScore: 0,
+      total: exams.length
+    });
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
+
+  const onRefresh = () => {
+    loadData();
+  };
+
+ // src/features/exam/screens/ExamScreen.tsx - handleStartExam функц
+const handleStartExam = async (exam: any) => {
+  // Premium эсэхийг шалгах
+  const check = canStartExam(exam);
+  if (!check.allowed && check.requiresPayment) {
+    setShowPayment(true);
+    return;
+  }
+  
+  // Start exam through hook
+  const result = await startExam(exam.id);
+  
+  // ✅ Type guard ашиглан шалгах
+  if (result && result.success && 'session' in result && result.session) {
+    navigation.navigate('ExamInterface', {
+      examId: exam.id,
+      examTitle: exam.title,
+      examType: exam.exam_type,
+      duration: exam.duration,
+      totalQuestions: exam.total_questions,
+      listeningQuestions: exam.listening_questions,
+      readingQuestions: exam.reading_questions,
+      sessionId: result.session.id,
+      questions: result.questions,
+    });
+  } else if (result && !result.success && 'error' in result) {
+    Alert.alert('Алдаа', result.error || 'Шалгалт эхлүүлэхэд алдаа гарлаа');
+  } else {
+    Alert.alert('Алдаа', 'Шалгалт эхлүүлэхэд алдаа гарлаа');
+  }
 };
+
+  const handlePaymentRequired = () => {
+    setShowPayment(true);
+  };
+
+  const getBadgeStyle = (examType: string) => {
+    if (examType === 'TOPIK_I') {
+      return { backgroundColor: '#B0FFB0', color: '#008000' };
+    }
+    return { backgroundColor: '#FFB0FF', color: '#A700A7' };
+  };
+
+  if (isLoading || isStarting) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#155DFC" />
+        <Text style={styles.loadingText}>
+          {isStarting ? 'Шалгалт бэлтгэж байна...' : 'Шалгалтуудыг ачаалж байна...'}
+        </Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Icon name="alert-circle-outline" size={48} color="#EF4444" />
+        <Text style={styles.errorText}>{error}</Text>
+        <CustomButton 
+          title="Дахин оролдох" 
+          onPress={loadData}
+          style={styles.retryButton}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={isLoading} onRefresh={onRefresh} />
+      }
+    >
+      <View style={styles.content}>
+        {/* Статистик картууд */}
+        <View style={styles.statsRow}>
+          {statsItems.map((item) => (
+            <Card key={item.id} style={styles.statCard}>
+              <View style={styles.statIconContainer}>
+                <Icon name={item.icon} size={20} color={item.iconColor} />
+              </View>
+              <Text style={styles.statValue}>
+                {item.id === 1 ? stats.taken : item.id === 2 ? stats.avgScore : exams.length}
+              </Text>
+              <CardTitle style={styles.statTitle}>
+                {item.title}
+              </CardTitle>
+            </Card>
+          ))}
+        </View>
+        
+        {/* TOPIK I шалгалтууд */}
+        {groupedExams.TOPIK_I.length > 0 && (
+          <>
+            <SectionTitle viewStyle={styles.sectionTitle}>
+              📘 TOPIK I (Анхан шат)
+            </SectionTitle>
+            {groupedExams.TOPIK_I.map((exam) => {
+              const badgeStyle = getBadgeStyle(exam.exam_type);
+              return (
+                <Card key={exam.id} style={styles.examCard}>
+                  <CardHeader>{exam.title}</CardHeader>
+                  
+                  <View style={styles.badgeContainer}>
+                    <CardTitle 
+                      containerStyle={[
+                        styles.badge, 
+                        { backgroundColor: badgeStyle.backgroundColor }
+                      ]} 
+                      style={[styles.badgeText, { color: badgeStyle.color }]}
+                    >
+                      TOPIK I
+                    </CardTitle>
+                  </View>
+                  
+                  <View style={styles.examDetails}>
+                    <View style={styles.detailRow}>
+                      <Icon name="time-outline" size={16} color="#a2a2a2" />
+                      <CardTitle style={styles.detailText}>
+                        {exam.duration} минут {exam.total_questions} асуулт
+                      </CardTitle>
+                    </View>
+                    
+                    <View style={styles.sectionRow}>
+                      <CardTitle 
+                        containerStyle={styles.sectionBadge} 
+                        style={styles.sectionBadgeText}
+                      >
+                        🎧 Сонсгол ({exam.listening_questions})
+                      </CardTitle>
+                      <CardTitle 
+                        containerStyle={styles.sectionBadge} 
+                        style={styles.sectionBadgeText}
+                      >
+                        📖 Уншлага ({exam.reading_questions})
+                      </CardTitle>
+                    </View>
+                    
+                    <CustomButton 
+                      title="Шалгалт эхлүүлэх" 
+                      textStyle={styles.buttonText} 
+                      style={styles.button}
+                      onPress={() => handleStartExam(exam)}
+                    />
+                  </View>
+                </Card>
+              );
+            })}
+          </>
+        )}
+
+        {/* TOPIK II шалгалтууд */}
+        {groupedExams.TOPIK_II.length > 0 && (
+          <>
+            <SectionTitle viewStyle={styles.sectionTitle}>
+              📗 TOPIK II (Дунд/Гүнзгий шат)
+            </SectionTitle>
+            {groupedExams.TOPIK_II.map((exam) => {
+              const badgeStyle = getBadgeStyle(exam.exam_type);
+              return (
+                <Card key={exam.id} style={styles.examCard}>
+                  <CardHeader>{exam.title}</CardHeader>
+                  
+                  <View style={styles.badgeContainer}>
+                    <CardTitle 
+                      containerStyle={[
+                        styles.badge, 
+                        { backgroundColor: badgeStyle.backgroundColor }
+                      ]} 
+                      style={[styles.badgeText, { color: badgeStyle.color }]}
+                    >
+                      TOPIK II
+                    </CardTitle>
+                  </View>
+                  
+                  <View style={styles.examDetails}>
+                    <View style={styles.detailRow}>
+                      <Icon name="time-outline" size={16} color="#a2a2a2" />
+                      <CardTitle style={styles.detailText}>
+                        {exam.duration} минут {exam.total_questions} асуулт
+                      </CardTitle>
+                    </View>
+                    
+                    <View style={styles.sectionRow}>
+                      <CardTitle 
+                        containerStyle={styles.sectionBadge} 
+                        style={styles.sectionBadgeText}
+                      >
+                        🎧 Сонсгол ({exam.listening_questions})
+                      </CardTitle>
+                      <CardTitle 
+                        containerStyle={styles.sectionBadge} 
+                        style={styles.sectionBadgeText}
+                      >
+                        📖 Уншлага ({exam.reading_questions})
+                      </CardTitle>
+                    </View>
+                    
+                    <CustomButton 
+                      title="Шалгалт эхлүүлэх" 
+                      textStyle={styles.buttonText} 
+                      style={styles.button}
+                      onPress={() => handleStartExam(exam)}
+
+                    />
+                  </View>
+                </Card>
+              );
+            })}
+          </>
+        )}
+
+        {/* Шалгалт байхгүй үед */}
+        {exams.length === 0 && !isLoading && (
+          <View style={styles.emptyContainer}>
+            <Icon name="alert-circle-outline" size={48} color="#a2a2a2" />
+            <Text style={styles.emptyText}>Шалгалт олдсонгүй</Text>
+          </View>
+        )}
+      </View>
+      
+      <Payment 
+        visible={showPayment} 
+        onClose={() => setShowPayment(false)} 
+      />
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  content: {
+    padding: 16,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: '#155DFC',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  statIconContainer: {
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  statTitle: {
+    color: '#a9a9a9',
+    fontWeight: '300',
+    fontSize: 12,
+  },
+  sectionTitle: {
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  examCard: {
+    flexDirection: "column",
+    marginBottom: 16,
+  },
+  badgeContainer: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  badge: {
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 10,
+  },
+  badgeText: {
+    fontWeight: '300',
+    fontSize: 12,
+  },
+  examDetails: {
+    marginTop: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 8,
+  },
+  detailText: {
+    color: '#a2a2a2',
+    fontSize: 13,
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    marginTop: 10,
+    gap: 10,
+  },
+  sectionBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 5,
+    backgroundColor: '#f0f0f0',
+  },
+  sectionBadgeText: {
+    fontWeight: '300',
+    fontSize: 12,
+    color: '#666',
+  },
+  button: {
+    marginTop: 16,
+    backgroundColor: '#155DFC',
+  },
+  buttonText: {
+    color: '#ffffff',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#a2a2a2',
+  },
+});
 
 export default ExamScreen;

@@ -1,24 +1,27 @@
 // src/features/auth/hooks/useAuth.ts
 import { useAuthStore } from '../store/authStore';
-import { useSharedStore } from '../../../store/sharedStore';
 import { useNavigation } from '@react-navigation/native';
 
 export const useAuth = () => {
   const navigation = useNavigation();
   
   const { 
-    login: authLogin, 
-    register: authRegister, 
-    logout: authLogout,
-    isLoading,
+    user, 
+    token, 
+    isLoading, 
+    isAuthenticated, 
+    isGuest, 
     error,
+    login,
+    register,
+    logout,
+    loadProfile,
+    setGuestUser,
     clearError,
   } = useAuthStore();
-  
-  const { user, token, isAuthenticated, isGuest } = useSharedStore();
 
   const handleLogin = async (email: string, password: string) => {
-    const success = await authLogin(email, password);
+    const success = await login(email, password);
     if (success) {
       navigation.navigate('Home' as never);
     }
@@ -26,7 +29,7 @@ export const useAuth = () => {
   };
 
   const handleRegister = async (email: string, password: string, name: string) => {
-    const success = await authRegister(email, password, name);
+    const success = await register(email, password, name);
     if (success) {
       navigation.navigate('Login' as never);
     }
@@ -34,20 +37,25 @@ export const useAuth = () => {
   };
 
   const handleLogout = async () => {
-    await authLogout();
+    await logout();
     navigation.navigate('Login' as never);
   };
 
   return {
+    // State
     user,
     token,
+    isLoading,
     isAuthenticated,
     isGuest,
-    isLoading,
     error,
+    
+    // Actions
     login: handleLogin,
     register: handleRegister,
     logout: handleLogout,
+    loadProfile,
+    setGuestUser,
     clearError,
   };
 };

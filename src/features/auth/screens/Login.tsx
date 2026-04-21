@@ -3,7 +3,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import 'react-native-gesture-handler';
 import SectionTitle from "../../../shared/components/atoms/sectionTitle";
 import { Card, CardTitle } from "../../../shared/components/molecules/card";
-import CustomButtom from "../../../shared/components/molecules/button";
+import CustomButton from "../../../shared/components/molecules/button";  // ✅ CustomButtom биш CustomButton
 import GoogleIcon from "../../../shared/assets/images/googlesvg";
 import AppleIcon from "../../../shared/assets/images/applesvg";
 import React, { useRef, useState } from "react";
@@ -23,7 +23,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [activeInput, setActiveInput] = useState<string | null>(null);
   
-  // Refs үүсгэх
+  // Refs
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
@@ -32,7 +32,7 @@ const Login = () => {
     navigation.dispatch(DrawerActions.openDrawer());
   };
 
-const handleLogin = async () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Алдаа', 'Имэйл, нууц үгээ оруулна уу');
       return;
@@ -42,14 +42,14 @@ const handleLogin = async () => {
     if (!success && error) {
       Alert.alert('Алдаа', error);
       clearError();
+    } else if (success) {
+      Alert.alert('Амжилттай', 'Нэвтрэлт амжилттай боллоо');
+      // ✅ Нэвтэрсний дараа Home screen руу шилжих
+      navigation.navigate('Home');
     }
-        else if (success) {
-          Alert.alert('Амжилттай', 'Нэвтрэлт амжилттай үүслээ', );
-        } 
-      };
+  };
 
   const handleForgotPassword = () => {
-
     navigation.navigate('ForgotPassword');
   };
 
@@ -57,7 +57,6 @@ const handleLogin = async () => {
     navigation.navigate('Signin');
   };
 
-  // Input-г focus хийх функц
   const focusEmail = () => emailRef.current?.focus();
   const focusPassword = () => passwordRef.current?.focus();
 
@@ -137,7 +136,12 @@ const handleLogin = async () => {
         </Text>
       </TouchableOpacity>
       
-      <CustomButtom title={'Нэвтрэх'} requiredStatus="guest" onPress={handleLogin} />
+      <CustomButton 
+        title={'Нэвтрэх'} 
+        requiredStatus="guest" 
+        onPress={handleLogin}
+          // ✅ loading state
+      />
 
       <TouchableOpacity 
         style={{ marginTop: 20, marginBottom: 20, alignItems: 'center' }} 
@@ -168,10 +172,9 @@ const styles = StyleSheet.create({
   }, 
   textinput: {
     paddingLeft: 10,
-    color: '#000000',  // ✅ Бичих текстийн өнгө хар
+    color: '#000000',
     flex: 1,
     fontSize: 16,
-
   }, 
   inputWrapper: {
     flexDirection: "row",

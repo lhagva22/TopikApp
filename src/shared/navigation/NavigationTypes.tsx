@@ -13,6 +13,15 @@ export type RootStackParamList = {
   Payment: undefined;
   About: undefined;
   Contact: undefined;
+    ExamInterface: {
+    examId: string;
+    examTitle: string;
+    examType: 'TOPIK_I' | 'TOPIK_II';
+    duration: number;
+    totalQuestions: number;
+    listeningQuestions: number;
+    readingQuestions: number;
+  };
 };
 
 export type NavigationProps = NativeStackScreenProps<RootStackParamList>;

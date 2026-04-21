@@ -161,7 +161,8 @@ const handleSignup = async () => {
       
       <CustomButton 
         style={{ marginTop: 50, marginBottom: 20 }} 
-        title={'Бүртгүүлэх'}  
+        title={'Бүртгүүлэх'} 
+        requiredStatus="guest" 
         onPress={handleSignup}
       />
     </ScrollView>

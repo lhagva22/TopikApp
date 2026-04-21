@@ -1,9 +1,10 @@
 // src/features/auth/types/index.ts
 export interface User {
   id: string;
-  email: string;
+  email: string | null;
   name: string;
   status: 'guest' | 'registered' | 'premium';
+  current_level?: number;
   subscription_start_date?: string | null;
   subscription_end_date?: string | null;
   subscription_months?: number | null;
@@ -28,7 +29,6 @@ export interface AuthResponse {
     refresh_token: string;
   };
   error?: string;
-  message?: string;
 }
 
 export interface ForgotPasswordRequest {
