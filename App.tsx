@@ -3,11 +3,11 @@ import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text} from 'react-native';
 import DrawerNavigator from './src/shared/navigation/DrawerNavigation';
 import { useSharedStore } from './src/store/sharedStore';
 import { ProgressProvider } from './src/store/ProgressContext';
-import { loadLevelTestResults } from './src/features/exam/leveltestexam/levelTestStore';
+
 
 const App = () => {
   const { initAuth, isLoading, user, isGuest, isAuthenticated, isInitialized } = useSharedStore();
@@ -35,6 +35,8 @@ const App = () => {
   }
 
   return (
+
+
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider> 
         <ProgressProvider>

@@ -9,6 +9,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Payment from '../../../features/payment/payment';
 import { useExam } from '../hooks/useExam';
 import { useSharedStore } from '../../../store/sharedStore';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const statsItems = [
   {
@@ -55,6 +56,7 @@ const ExamScreen = () => {
   const groupedExams = getGroupedExams();
 
   const loadData = async () => {
+    console.log('📚 ExamScreen loadData called');
     await loadExams();
     await loadStats();
   };
@@ -67,9 +69,26 @@ const ExamScreen = () => {
     });
   };
 
+  // ✅ Screen фокуслахад өгөгдлийг шинэчлэх
   useFocusEffect(
     useCallback(() => {
+      console.log('📱 ExamScreen focused');
+      
+      // Session-ийг цэвэрлэх (хуучин session-ийн үлдэгдлийг арилгах)
+      const clearSession = async () => {
+        const oldSession = await AsyncStorage.getItem('current_exam_session');
+        if (oldSession) {
+          console.log('🧹 Clearing old session on ExamScreen focus:', oldSession);
+          await AsyncStorage.removeItem('current_exam_session');
+        }
+      };
+      clearSession();
+      
       loadData();
+      
+      return () => {
+        // Screen-ээс гарах үед
+      };
     }, [])
   );
 
@@ -77,37 +96,39 @@ const ExamScreen = () => {
     loadData();
   };
 
- // src/features/exam/screens/ExamScreen.tsx - handleStartExam функц
-const handleStartExam = async (exam: any) => {
-  // Premium эсэхийг шалгах
-  const check = canStartExam(exam);
-  if (!check.allowed && check.requiresPayment) {
-    setShowPayment(true);
-    return;
-  }
-  
-  // Start exam through hook
-  const result = await startExam(exam.id);
-  
-  // ✅ Type guard ашиглан шалгах
-  if (result && result.success && 'session' in result && result.session) {
-    navigation.navigate('ExamInterface', {
-      examId: exam.id,
-      examTitle: exam.title,
-      examType: exam.exam_type,
-      duration: exam.duration,
-      totalQuestions: exam.total_questions,
-      listeningQuestions: exam.listening_questions,
-      readingQuestions: exam.reading_questions,
-      sessionId: result.session.id,
-      questions: result.questions,
-    });
-  } else if (result && !result.success && 'error' in result) {
-    Alert.alert('Алдаа', result.error || 'Шалгалт эхлүүлэхэд алдаа гарлаа');
-  } else {
-    Alert.alert('Алдаа', 'Шалгалт эхлүүлэхэд алдаа гарлаа');
-  }
-};
+  const handleStartExam = async (exam: any) => {
+    console.log('🚀 handleStartExam called for exam:', exam.id);
+    
+    const check = canStartExam(exam);
+    if (!check.allowed && check.requiresPayment) {
+      setShowPayment(true);
+      return;
+    }
+    
+    // ✅ Хуучин session-ийг цэвэрлэх
+    await AsyncStorage.removeItem('current_exam_session');
+    
+    const result = await startExam(exam.id);
+    
+    console.log('📥 Start exam result:', result?.success);
+    
+    if (result && result.success && 'session' in result && result.session) {
+      navigation.navigate('ExamInterface', {
+        examId: exam.id,
+        examTitle: exam.title,
+        examType: exam.exam_type,
+        duration: exam.duration,
+        totalQuestions: exam.total_questions,
+        listeningQuestions: exam.listening_questions,
+        readingQuestions: exam.reading_questions,
+        questions: result.questions,
+      });
+    } else if (result && !result.success && 'error' in result) {
+      Alert.alert('Алдаа', result.error || 'Шалгалт эхлүүлэхэд алдаа гарлаа');
+    } else {
+      Alert.alert('Алдаа', 'Шалгалт эхлүүлэхэд алдаа гарлаа');
+    }
+  };
 
   const handlePaymentRequired = () => {
     setShowPayment(true);
@@ -282,7 +303,6 @@ const handleStartExam = async (exam: any) => {
                       textStyle={styles.buttonText} 
                       style={styles.button}
                       onPress={() => handleStartExam(exam)}
-
                     />
                   </View>
                 </Card>

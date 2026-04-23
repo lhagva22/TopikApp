@@ -30,7 +30,7 @@ export const register = async (req: Request, res: Response) => {
       .single();
 
     if (!existingProfile) {
-      const { error: profileError } = await supabase
+      const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .insert({
           id: data.user.id,

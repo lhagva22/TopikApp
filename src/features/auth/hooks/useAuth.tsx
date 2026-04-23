@@ -29,7 +29,9 @@ export const useAuth = () => {
   };
 
   const handleRegister = async (email: string, password: string, name: string) => {
+    console.log(" useauth",email, password, name)
     const success = await register(email, password, name);
+    console.log(" useauth",success)
     if (success) {
       navigation.navigate('Login' as never);
     }

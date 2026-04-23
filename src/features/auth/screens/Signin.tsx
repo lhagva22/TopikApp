@@ -52,8 +52,9 @@ const handleSignup = async () => {
       Alert.alert('Алдаа', 'Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой');
       return;
     }
-
+    console.log(email, password, name)
     const success = await register(email, password, name);
+    console.log(success)
     if (success) {
       Alert.alert('Амжилттай', 'Бүртгэл амжилттай үүслээ', [
         { text: 'OK', onPress: () => navigation.navigate('Login') }

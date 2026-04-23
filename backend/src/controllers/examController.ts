@@ -4,7 +4,7 @@ import { supabase, supabaseAdmin } from '../config/supabase';
 import { AuthRequest } from '../types';
 
 // ============================================
-// 1. Бүх шалгалтын жагсаалт авах
+// 1. Бүх шалгалтын жагсаалт авах (Public)
 // ============================================
 export const getExams = async (req: AuthRequest, res: Response) => {
   try {
@@ -19,10 +19,22 @@ export const getExams = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: error.message });
     }
 
+    const examsWithQuestions = [];
+    for (const exam of exams || []) {
+      const { count, error: countError } = await supabase
+        .from('mock_test_questions')
+        .select('*', { count: 'exact', head: true })
+        .eq('mock_test_id', exam.id);
+
+      if (!countError && count && count >= exam.total_questions) {
+        examsWithQuestions.push(exam);
+      }
+    }
+
     res.json({
       success: true,
-      exams: exams,
-      total: exams?.length || 0
+      exams: examsWithQuestions,
+      total: examsWithQuestions.length
     });
   } catch (error) {
     console.error('Get exams error:', error);
@@ -31,7 +43,7 @@ export const getExams = async (req: AuthRequest, res: Response) => {
 };
 
 // ============================================
-// 2. Тодорхой шалгалтын мэдээлэл авах
+// 2. Тодорхой шалгалтын мэдээлэл авах (Public)
 // ============================================
 export const getExamById = async (req: AuthRequest, res: Response) => {
   const { examId } = req.params;
@@ -55,7 +67,7 @@ export const getExamById = async (req: AuthRequest, res: Response) => {
 };
 
 // ============================================
-// 3. Шалгалт эхлүүлэх (Premium шаардлагатай)
+// 3. Шалгалт эхлүүлэх (Premium)
 // ============================================
 export const startExam = async (req: AuthRequest, res: Response) => {
   const userId = req.userId;
@@ -63,12 +75,16 @@ export const startExam = async (req: AuthRequest, res: Response) => {
 
   console.log('🚀 Start exam - userId:', userId);
   console.log('🚀 Start exam - examId:', examId);
+
   if (!userId) {
     return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй' });
   }
 
+  if (!examId) {
+    return res.status(400).json({ success: false, error: 'Шалгалтын ID олдсонгүй' });
+  }
+
   try {
-    // 1. Хэрэглэгчийн premium эсэхийг шалгах
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('status, subscription_end_date')
@@ -87,16 +103,6 @@ export const startExam = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Subscription дууссан эсэхийг шалгах
-    if (profile.subscription_end_date && new Date(profile.subscription_end_date) < new Date()) {
-      return res.status(403).json({
-        success: false,
-        error: 'Таны premium хугацаа дууссан байна',
-        expired: true
-      });
-    }
-
-    // 2. Шалгалтын мэдээлэл авах
     const { data: exam, error: examError } = await supabaseAdmin
       .from('mock_test_bank')
       .select('*')
@@ -108,7 +114,28 @@ export const startExam = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Шалгалт олдсонгүй' });
     }
 
-    // 3. Session үүсгэх
+    const { data: questions, error: questionsError } = await supabaseAdmin
+      .from('mock_test_questions')
+      .select('id, section, question_number, question_text, options, audio_url')
+      .eq('mock_test_id', examId)
+      .order('section', { ascending: true })
+      .order('question_number', { ascending: true });
+
+    if (questionsError || !questions || questions.length === 0) {
+      return res.status(404).json({ success: false, error: 'Шалгалтын асуултууд олдсонгүй' });
+    }
+
+    // ✅ Хуучин идэвхтэй session-ийг abandoned болгох
+    await supabaseAdmin
+      .from('level_test_sessions')
+      .update({ 
+        status: 'abandoned', 
+        completed_at: new Date().toISOString() 
+      })
+      .eq('user_id', userId)
+      .eq('status', 'in_progress');
+
+    // ✅ Шинэ session үүсгэх
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('level_test_sessions')
       .insert({
@@ -120,28 +147,17 @@ export const startExam = async (req: AuthRequest, res: Response) => {
       .select()
       .single();
 
-    if (sessionError) {
-      return res.status(500).json({ success: false, error: sessionError.message });
+    if (sessionError || !session) {
+      console.error('Session creation error:', sessionError);
+      return res.status(500).json({ success: false, error: 'Session үүсгэхэд алдаа: ' + sessionError?.message });
     }
 
-    // 4. Асуултуудыг авах
-    const { data: questions, error: questionsError } = await supabaseAdmin
-      .from('mock_test_questions')
-      .select('id, section, question_number, question_text, options, audio_url')
-      .eq('mock_test_id', examId)
-      .order('section', { ascending: true })
-      .order('question_number', { ascending: true });
+    console.log('✅ New session created:', session.id);
 
-    if (questionsError) {
-      return res.status(500).json({ success: false, error: questionsError.message });
-    }
-
-    // 5. Options-ыг random холих
     const shuffledQuestions = questions.map(q => {
       const originalOptions = q.options;
       const indices = originalOptions.map((_: any, i: number) => i);
       
-      // Fisher-Yates shuffle
       for (let i = indices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [indices[i], indices[j]] = [indices[j], indices[i]];
@@ -183,11 +199,88 @@ export const startExam = async (req: AuthRequest, res: Response) => {
 };
 
 // ============================================
-// 4. Шалгалт дуусгах
+// 4. Түвшин тогтоох шалгалт эхлүүлэх (Random exam - Premium)
 // ============================================
+export const startLevelTest = async (req: AuthRequest, res: Response) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй' });
+  }
+
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('status, subscription_end_date')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.status !== 'premium') {
+      return res.status(403).json({
+        success: false,
+        error: 'Түвшин тогтоох шалгалт өгөхийн тулд premium байх шаардлагатай',
+        requiresPremium: true
+      });
+    }
+
+    const { data: mockTests } = await supabase
+      .from('mock_test_bank')
+      .select('*')
+      .eq('is_active', true);
+
+    if (!mockTests || mockTests.length === 0) {
+      return res.status(404).json({ success: false, error: 'Шалгалт олдсонгүй' });
+    }
+
+    const randomTest = mockTests[Math.floor(Math.random() * mockTests.length)];
+
+    const { data: session } = await supabase
+      .from('level_test_sessions')
+      .insert({
+        user_id: userId,
+        exam_id: randomTest.id,
+        status: 'in_progress',
+        started_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    const { data: questions } = await supabase
+      .from('mock_test_questions')
+      .select('id, section, question_number, question_text, options, audio_url')
+      .eq('mock_test_id', randomTest.id)
+      .order('section', { ascending: true })
+      .order('question_number', { ascending: true });
+
+    res.json({
+      success: true,
+      session: { id: session.id, started_at: session.started_at },
+      test: {
+        id: randomTest.id,
+        title: randomTest.title,
+        exam_type: randomTest.exam_type,
+        duration: randomTest.duration,
+        total_questions: randomTest.total_questions,
+        listening_questions: randomTest.listening_questions,
+        reading_questions: randomTest.reading_questions
+      },
+      questions: questions || []
+    });
+  } catch (error) {
+    console.error('Start level test error:', error);
+    res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
+  }
+};
+
+// backend/src/controllers/examController.ts - submitExam функц
+// backend/src/controllers/examController.ts - бүрэн зассан submitExam
 export const submitExam = async (req: AuthRequest, res: Response) => {
   const userId = req.userId;
   const { sessionId, answers, timeSpent } = req.body;
+
+  console.log('📤 Submit exam - userId:', userId);
+  console.log('📤 Submit exam - sessionId:', sessionId);
+  console.log('📤 Submit exam - answers count:', answers?.length);
 
   if (!userId) {
     return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй' });
@@ -198,100 +291,103 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    // 1. Session-ийг шалгах
+    // ✅ supabaseAdmin ашиглах (RLS-ийг тойрох)
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('level_test_sessions')
-      .select('*, mock_test_bank(*)')
+      .select('*')
       .eq('id', sessionId)
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (sessionError || !session) {
-      return res.status(404).json({ success: false, error: 'Session олдсонгүй' });
+    console.log('🔍 Session query result (admin):', session ? 'FOUND' : 'NOT FOUND');
+
+    if (sessionError) {
+      console.error('Session fetch error:', sessionError);
+      return res.status(500).json({ success: false, error: 'Session шалгахад алдаа: ' + sessionError.message });
     }
 
-    // 2. Асуултуудыг авах
+    if (!session) {
+      console.error('Session not found for id:', sessionId);
+      
+      // SQL-ээр шууд шалгах (debug)
+      const { data: directCheck } = await supabaseAdmin
+        .from('level_test_sessions')
+        .select('*')
+        .eq('id', sessionId);
+      console.log('🔍 Direct check:', directCheck);
+      
+      return res.status(404).json({ success: false, error: 'Session олдсонгүй. Шалгалт дахин эхлүүлнэ үү.' });
+    }
+
+    console.log('✅ Session found:', session.id, 'exam_id:', session.exam_id, 'status:', session.status);
+
+    if (session.status !== 'in_progress') {
+      return res.status(400).json({ success: false, error: 'Энэ шалгалт аль хэдийн дууссан байна' });
+    }
+
+    // Асуултуудыг авах
     const { data: questions, error: questionsError } = await supabaseAdmin
       .from('mock_test_questions')
       .select('id, correct_answer_text, section')
       .eq('mock_test_id', session.exam_id);
 
-    if (questionsError) {
-      return res.status(500).json({ success: false, error: questionsError.message });
+    if (questionsError || !questions || questions.length === 0) {
+      console.error('Questions fetch error:', questionsError);
+      return res.status(500).json({ success: false, error: 'Асуултуудыг ачаалахад алдаа' });
     }
 
-    // 3. Оноо тооцоолох
-    let correctCount = 0;
-    let listeningCorrect = 0;
-    let readingCorrect = 0;
+    console.log('📚 Questions count:', questions.length);
 
+    // Оноо тооцоолох
+    let correctCount = 0;
     answers.forEach((answer: any) => {
       const question = questions.find(q => q.id === answer.questionId);
-      if (question) {
-        if (answer.selectedAnswer === question.correct_answer_text) {
-          correctCount++;
-          if (question.section === 'listening') {
-            listeningCorrect++;
-          } else if (question.section === 'reading') {
-            readingCorrect++;
-          }
-        }
+      if (question && answer.selectedAnswer === question.correct_answer_text) {
+        correctCount++;
       }
     });
 
     const totalQuestions = questions.length;
-    const percentage = (correctCount / totalQuestions) * 100;
+    const percentage = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
 
-    // 4. Үр дүнг хадгалах (level_test_results хүснэгтэд тохируулах)
-    const { data: result, error: resultError } = await supabaseAdmin
-      .from('level_test_results')
+    console.log('📊 Score:', correctCount, '/', totalQuestions, '(', percentage, '%)');
+
+    // Үр дүнг хадгалах
+    const { error: insertError } = await supabaseAdmin
+    .from('level_test_results')
       .insert({
         session_id: sessionId,
         user_id: userId,
         mock_test_id: session.exam_id,
-        exam_type: session.mock_test_bank?.exam_type || 'TOPIK_I',
-        total_score: correctCount,  // ✅ total_score ашиглах
-        listening_score: listeningCorrect,
-        reading_score: readingCorrect,
-        listening_answers: answers.filter((a: any) => {
-          const q = questions.find(q => q.id === a.questionId);
-          return q?.section === 'listening';
-        }),
-        reading_answers: answers.filter((a: any) => {
-          const q = questions.find(q => q.id === a.questionId);
-          return q?.section === 'reading';
-        }),
-        time_spent_listening: timeSpent, // Эсвэл тусад нь тооцоолох
-        time_spent_reading: timeSpent,
-        completed_at: new Date().toISOString(),
-        started_at: session.started_at
-      })
-      .select()
-      .single();
+        exam_type: 'TOPIK_I',  // эсвэл session-с авах
+        total_score: correctCount,
+        listening_score: 0,
+        reading_score: 0,
+        completed_at: new Date().toISOString()
+      });
 
-    if (resultError) {
-      console.error('Result insert error:', resultError);
-      return res.status(500).json({ success: false, error: resultError.message });
+    if (insertError) {
+      console.error('Insert error:', insertError);
+      return res.status(500).json({ success: false, error: 'Үр дүнг хадгалахад алдаа: ' + insertError.message });
     }
 
-    // 5. Session-ийг дуусгах
+    // Session-ийг дуусгах
     await supabaseAdmin
       .from('level_test_sessions')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString()
+      .update({ 
+        status: 'completed', 
+        completed_at: new Date().toISOString() 
       })
       .eq('id', sessionId);
 
+    console.log('✅ Exam submitted successfully');
+
     res.json({
       success: true,
-      result: {
-        id: result.id,
-        score: correctCount,
-        totalQuestions: totalQuestions,
-        percentage: percentage,
-        listeningScore: listeningCorrect,
-        readingScore: readingCorrect
+      result: { 
+        score: correctCount, 
+        totalQuestions, 
+        percentage: Math.round(percentage) 
       }
     });
   } catch (error) {
@@ -299,66 +395,92 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
   }
 };
-
-export const getUserExamResults = async (req: AuthRequest, res: Response) => {
+// ============================================
+// 6. Түвшин тогтоох шалгалт дуусгах (current_level өөрчлөгдөнө)
+// ============================================
+export const submitLevelTest = async (req: AuthRequest, res: Response) => {
   const userId = req.userId;
+  const { sessionId, answers, timeSpent } = req.body;
+
+  if (!userId || !sessionId) {
+    return res.status(400).json({ success: false, error: 'Хүсэлт буруу байна' });
+  }
 
   try {
-    const { data: results, error } = await supabaseAdmin
-      .from('level_test_results')
-      .select('*, mock_test_bank:mock_test_id(title, exam_type)')
+    const { data: session, error: sessionError } = await supabase
+      .from('level_test_sessions')
+      .select('*, mock_test_bank:exam_id(*)')
+      .eq('id', sessionId)
       .eq('user_id', userId)
-      .order('completed_at', { ascending: false });
+      .maybeSingle();
 
-    if (error) {
-      return res.status(400).json({ success: false, error: error.message });
+    if (sessionError || !session) {
+      return res.status(404).json({ success: false, error: 'Session олдсонгүй' });
     }
 
-    // results-д total_score байгаа тул percentage тооцоолох
-    const totalExams = results?.length || 0;
-    const averageScore = totalExams > 0 
-      ? results.reduce((acc, r) => acc + (r.total_score || 0), 0) / totalExams 
-      : 0;
+    const { data: questions } = await supabase
+      .from('mock_test_questions')
+      .select('id, correct_answer_text, section')
+      .eq('mock_test_id', session.exam_id);
 
-    // Хамгийн их оноо (200 онооны дээр)
-    const maxPossibleScore = 200; // TOPIK I: 200, TOPIK II: 200 (бичихгүй)
-    
+    let correctCount = 0;
+    answers.forEach((answer: any) => {
+      const question = questions?.find(q => q.id === answer.questionId);
+      if (question && answer.selectedAnswer === question.correct_answer_text) {
+        correctCount++;
+      }
+    });
+
+    const totalQuestions = questions?.length || 0;
+    const percentage = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
+
+    let newLevel = 1;
+    let newLevelName = 'TOPIK I - 1-р түвшин';
+    if (percentage >= 90) { newLevel = 6; newLevelName = 'TOPIK II - 6-р түвшин'; }
+    else if (percentage >= 75) { newLevel = 5; newLevelName = 'TOPIK II - 5-р түвшин'; }
+    else if (percentage >= 60) { newLevel = 4; newLevelName = 'TOPIK II - 4-р түвшин'; }
+    else if (percentage >= 45) { newLevel = 3; newLevelName = 'TOPIK II - 3-р түвшин'; }
+    else if (percentage >= 30) { newLevel = 2; newLevelName = 'TOPIK I - 2-р түвшин'; }
+
+    await supabase
+      .from('level_test_results')
+      .insert({
+        session_id: sessionId,
+        user_id: userId,
+        mock_test_id: session.exam_id,
+        exam_type: session.mock_test_bank?.exam_type,
+        total_score: correctCount,
+        percentage: percentage,
+        completed_at: new Date().toISOString()
+      });
+
+    await supabase
+      .from('profiles')
+      .update({ current_level: newLevel, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+
+    await supabase
+      .from('level_test_sessions')
+      .update({ 
+        status: 'completed', 
+        final_level: newLevel, 
+        final_level_name: newLevelName, 
+        completed_at: new Date().toISOString() 
+      })
+      .eq('id', sessionId);
+
     res.json({
       success: true,
-      results: results.map(r => ({
-        ...r,
-        percentage: (r.total_score / 70) * 100 // 70 асуулттай гэж үзвэл
-      })),
-      stats: {
-        totalExams: totalExams,
-        averageScore: Math.round(averageScore),
-        bestScore: Math.max(...(results?.map(r => r.total_score || 0) || [0]))
+      result: { 
+        score: correctCount, 
+        totalQuestions, 
+        percentage: Math.round(percentage), 
+        level: newLevel, 
+        levelName: newLevelName 
       }
     });
   } catch (error) {
-    console.error('Get user exam results error:', error);
-    res.status(500).json({ success: false, error: 'Серверийн алдаа' });
-  }
-};
-export const getExamResultById = async (req: AuthRequest, res: Response) => {
-  const userId = req.userId;
-  const { resultId } = req.params;
-
-  try {
-    const { data: result, error } = await supabaseAdmin
-      .from('level_test_results')
-      .select('*, mock_test_bank:mock_test_id(*)')
-      .eq('id', resultId)
-      .eq('user_id', userId)
-      .single();
-
-    if (error) {
-      return res.status(404).json({ success: false, error: 'Үр дүн олдсонгүй' });
-    }
-
-    res.json({ success: true, result });
-  } catch (error) {
-    console.error('Get exam result by id error:', error);
-    res.status(500).json({ success: false, error: 'Серверийн алдаа' });
+    console.error('Submit level test error:', error);
+    res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
   }
 };

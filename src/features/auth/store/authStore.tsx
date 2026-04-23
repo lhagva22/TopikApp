@@ -88,43 +88,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // Register
-  register: async (email: string, password: string, name: string) => {
-    set({ isLoading: true, error: null });
+  // src/features/auth/store/authStore.ts
+
+register: async (email: string, password: string, name: string) => {
+  set({ isLoading: true, error: null });
+  
+  try {
+    const response = await authApi.register({ email, password, name });
+    console.log('Register response:', response);
     
-    try {
-      const response = await authApi.register({ email, password, name });
+    if (response.success && response.user && response.session) {
+      const token = response.session.access_token;
       
-      if (response.success) {
-        // Token устгах (guest руу буцаах)
-        await AsyncStorage.removeItem('token');
-        
-        // Guest user үүсгэх
-        const guestUser = createGuestUser();
-        useSharedStore.setState({
-          user: guestUser,
-          token: null,
-          isAuthenticated: false,
-          isGuest: true,
-        });
-        
-        set({ 
-          user: guestUser,
-          token: null,
-          isAuthenticated: false,
-          isGuest: true,
-          isLoading: false 
-        });
-        return true;
-      }
+      // ✅ Token хадгалах (устгах биш!)
+      await AsyncStorage.setItem('token', token);
       
-      set({ error: response.error || 'Бүртгүүлэхэд алдаа гарлаа', isLoading: false });
-      return false;
-    } catch (error) {
-      console.error('Register error:', error);
-      set({ error: 'Серверт холбогдоход алдаа гарлаа', isLoading: false });
-      return false;
+      // ✅ Хэрэглэгчийн мэдээллийг хадгалах
+      useSharedStore.setState({
+        user: response.user,
+        token: token,
+        isAuthenticated: true,
+        isGuest: false,
+      });
+      
+      set({ 
+        user: response.user,
+        token: token,
+        isAuthenticated: true,
+        isGuest: false,
+        isLoading: false 
+      });
+      return true;
     }
-  },
+    
+    set({ error: response.error || 'Бүртгүүлэхэд алдаа гарлаа', isLoading: false });
+    return false;
+  } catch (error) {
+    console.error('Register error:', error);
+    set({ error: 'Серверт холбогдоход алдаа гарлаа', isLoading: false });
+    return false;
+  }
+},
 
   // Logout
   logout: async () => {
