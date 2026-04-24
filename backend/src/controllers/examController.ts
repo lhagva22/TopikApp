@@ -203,18 +203,18 @@ export const startExam = async (req: AuthRequest, res: Response) => {
 // ============================================
 export const startLevelTest = async (req: AuthRequest, res: Response) => {
   const userId = req.userId;
-
+  console.log("userid",userId)
   if (!userId) {
     return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй' });
   }
 
   try {
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('status, subscription_end_date')
       .eq('id', userId)
       .single();
-
+    console.log("examController", profile)
     if (profile?.status !== 'premium') {
       return res.status(403).json({
         success: false,
@@ -223,7 +223,7 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { data: mockTests } = await supabase
+    const { data: mockTests } = await supabaseAdmin
       .from('mock_test_bank')
       .select('*')
       .eq('is_active', true);
@@ -234,7 +234,7 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
 
     const randomTest = mockTests[Math.floor(Math.random() * mockTests.length)];
 
-    const { data: session } = await supabase
+    const { data: session } = await supabaseAdmin
       .from('level_test_sessions')
       .insert({
         user_id: userId,
@@ -245,7 +245,7 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
       .select()
       .single();
 
-    const { data: questions } = await supabase
+    const { data: questions } = await supabaseAdmin
       .from('mock_test_questions')
       .select('id, section, question_number, question_text, options, audio_url')
       .eq('mock_test_id', randomTest.id)
