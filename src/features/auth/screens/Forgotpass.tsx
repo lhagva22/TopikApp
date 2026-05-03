@@ -4,10 +4,7 @@ import Icon from "react-native-vector-icons/Ionicons";
 import SectionTitle from "../../../shared/components/atoms/sectionTitle";
 import CustomButton from "../../../shared/components/molecules/button";
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from "../../../shared/navigation/NavigationTypes";
-
-type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>;
+import type { ForgotPasswordScreenNavigationProp } from './types';
 
 const ForgotPassword = () => {
   const navigation = useNavigation<ForgotPasswordScreenNavigationProp>();

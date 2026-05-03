@@ -1,16 +1,18 @@
-// src/features/auth/hooks/useAuth.ts
-import { useAuthStore } from '../store/authStore';
 import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
+
+import type { RootStackParamList } from '../../../app/navigation/types';
+import { useAuthStore } from '../store/authStore';
 
 export const useAuth = () => {
   const navigation = useNavigation();
-  
-  const { 
-    user, 
-    token, 
-    isLoading, 
-    isAuthenticated, 
-    isGuest, 
+
+  const {
+    user,
+    token,
+    isLoading,
+    isAuthenticated,
+    isGuest,
     error,
     login,
     register,
@@ -20,44 +22,63 @@ export const useAuth = () => {
     clearError,
   } = useAuthStore();
 
+  const getRootNavigation = () =>
+    navigation.getParent<NavigationProp<RootStackParamList>>() ??
+    (navigation as NavigationProp<RootStackParamList>);
+
+  const dismissAuthFlow = () => {
+    const rootNavigation = getRootNavigation();
+
+    if (rootNavigation.canGoBack()) {
+      rootNavigation.goBack();
+      return;
+    }
+
+    rootNavigation.navigate('App', { screen: 'Home' });
+  };
+
+  const goToLogin = () => {
+    getRootNavigation().navigate('Auth', { screen: 'Login' });
+  };
+
   const handleLogin = async (email: string, password: string) => {
     const success = await login(email, password);
+
     if (success) {
-      navigation.navigate('Home' as never);
+      dismissAuthFlow();
     }
+
     return success;
   };
 
   const handleRegister = async (email: string, password: string, name: string) => {
-    console.log(" useauth",email, password, name)
     const success = await register(email, password, name);
-    console.log(" useauth",success)
+
     if (success) {
-      navigation.navigate('Login' as never);
+      dismissAuthFlow();
     }
+
     return success;
   };
 
   const handleLogout = async () => {
     await logout();
-    navigation.navigate('Login' as never);
+    getRootNavigation().navigate('App', { screen: 'Home' });
   };
 
   return {
-    // State
     user,
     token,
     isLoading,
     isAuthenticated,
     isGuest,
     error,
-    
-    // Actions
     login: handleLogin,
     register: handleRegister,
     logout: handleLogout,
     loadProfile,
     setGuestUser,
     clearError,
+    goToLogin,
   };
 };

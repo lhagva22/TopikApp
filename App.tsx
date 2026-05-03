@@ -1,32 +1,20 @@
-// App.tsx
 import React, { useEffect, useRef } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, View, Text} from 'react-native';
-import DrawerNavigator from './src/shared/navigation/DrawerNavigation';
-import { useSharedStore } from './src/store/sharedStore';
-import { ProgressProvider } from './src/store/ProgressContext';
+import { ActivityIndicator, View } from 'react-native';
 
+import { AppProviders, useAppStore } from './src/app';
 
-const App = () => {
-  const { initAuth, isLoading, user, isGuest, isAuthenticated, isInitialized } = useSharedStore();
+function AppBootstrap() {
+  const { initAuth, isInitialized, isLoading } = useAppStore();
   const hasInitialized = useRef(false);
 
   useEffect(() => {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
-      // console.log('🔁 App mounted, calling initAuth');
-      initAuth();
-      // loadLevelTestResults();
+      void initAuth();
     }
-  }, []);
+  }, [initAuth]);
 
-  useEffect(() => {
-    console.log("user: ", user);
-  }, [user, isGuest, isAuthenticated]);
-
-  if (isLoading) {
+  if (isLoading || !isInitialized) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -34,19 +22,9 @@ const App = () => {
     );
   }
 
-  return (
+  return <AppProviders />;
+}
 
-
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider> 
-        <ProgressProvider>
-          <NavigationContainer>
-            <DrawerNavigator />
-          </NavigationContainer>
-        </ProgressProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
-  );
-};
-
-export default App;
+export default function App() {
+  return <AppBootstrap />;
+}

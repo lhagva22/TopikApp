@@ -3,13 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-
-type MenuItemType = {
-  id: number;
-  label: string;
-  icon: string;
-  screenName: string;
-};
+import type { MenuItemType } from './types';
 
 const menuItems: MenuItemType[] = [
   { id: 1, label: 'Үндсэн', icon: 'home-outline', screenName: 'Home' },

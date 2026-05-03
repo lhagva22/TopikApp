@@ -1,27 +1,12 @@
 // shared/components/molecules/button.tsx
 import React from "react";
 import {
-  TouchableOpacity,
-  Text,
   StyleSheet,
-  ViewStyle,
-  TextStyle,
-  StyleProp
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
+import AppText from '../atoms/AppText';
 import { ProtectedTouchable } from './protectedTouchable';
-
-type ButtonProps = {
-  icon?: string;
-  iconSize?: number;
-  title: string;
-  onPress: () => void;
-  style?: StyleProp<ViewStyle>;
-  textStyle?: StyleProp<TextStyle>;
-  iconStyle?: StyleProp<ViewStyle | TextStyle>;
-  requiredStatus?: 'guest' | 'registered' | 'paid';
-  onPaymentRequired?: () => void;
-};
+import type { ButtonProps } from './types';
 
 const Button = ({ 
   icon, 
@@ -49,9 +34,12 @@ const Button = ({
           style={[styles.icon, iconStyle]}
         />
       )}
-      <Text style={[styles.buttonText, textStyle, icon ? { marginLeft: 8 } : {}]}>
+      <AppText
+        variant="button"
+        style={[styles.buttonText, textStyle, icon ? { marginLeft: 8 } : {}]}
+      >
         {title}
-      </Text>
+      </AppText>
     </ProtectedTouchable>
   );
 };
@@ -69,8 +57,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    letterSpacing: -0.2,
   },
   icon: {},
 });

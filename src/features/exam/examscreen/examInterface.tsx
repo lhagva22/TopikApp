@@ -1,71 +1,64 @@
-// src/features/exam/screens/ExamInterface.tsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  ActivityIndicator,
-  Dimensions,
-} from 'react-native';
-import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
+
+import { InlineMessage } from '../../../shared/components/feedback';
+import { getErrorMessage, logError } from '../../../shared/lib/errors';
 import { examApi } from '../api/examApi';
+import type { ExamProgressBarProps, Question } from './types';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-interface Question {
-  id: string;
-  section: string;
-  question_number: number;
-  question_text: string;
-  options: string[];
-  audio_url?: string;
-}
-
-const ProgressBar = ({ progress }: { progress: number }) => (
+const ProgressBar = ({ progress }: ExamProgressBarProps) => (
   <View style={styles.progressContainer}>
     <View style={[styles.progressFill, { width: `${progress}%` }]} />
   </View>
 );
 
 export const ExamInterface = () => {
-  const route = useRoute();
-  const navigation = useNavigation<any>(); // ✅ any ашиглах
-  const params = route.params as any;
-  
-  const examId = params?.examId;
-  const examTitle = params?.examTitle || 'TOPIK Шалгалт';
-  const examType = params?.examType || 'TOPIK_I';
-  const duration = params?.duration || 100;
-  const initialQuestions = params?.questions || [];
-  
+  const route = useRoute<any>();
+  const navigation = useNavigation<any>();
+  const params = route.params ?? {};
+
+  const examId = params.examId;
+  const initialSessionId = params.sessionId ?? null;
+  const examTitle = params.examTitle || 'TOPIK Шалгалт';
+  const duration = params.duration || 100;
+  const initialQuestions = params.questions || [];
+
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<{ [key: string]: string }>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(duration * 60);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Start exam function - шинэ session үүсгэх
   const startExam = useCallback(async () => {
-    console.log('🚀 startExam called, examId:', examId);
-    
     setHasSubmitted(false);
     setAnswers({});
     setCurrentQuestion(0);
-    
+    setSubmissionError(null);
+
     if (!examId) {
-      setError('Шалгалтын ID олдсонгүй');
+      setError('Шалгалтын ID олдсонгүй.');
       setLoading(false);
       return;
     }
@@ -73,87 +66,100 @@ export const ExamInterface = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('📤 Calling API: startExam with ID:', examId);
-      
+
       const response = await examApi.startExam(examId);
-      
-      console.log('📥 Start exam response success:', response.success);
-      
+
       if (response.success && response.session) {
         const newSessionId = response.session.id;
-        console.log('✅ New session created:', newSessionId);
-        
+
         setSessionId(newSessionId);
         await AsyncStorage.setItem('current_exam_session', newSessionId);
-        console.log('💾 Session saved to storage');
-        
+
         if (response.questions && response.questions.length > 0) {
           setQuestions(response.questions);
         }
+
         if (response.test?.duration) {
           setTimeLeft(response.test.duration * 60);
         }
-      } else if (!response.success) {
-        setError(response.error || 'Шалгалт эхлүүлэхэд алдаа гарлаа');
+        return;
       }
+
+      setError(getErrorMessage(response, 'Шалгалт эхлүүлэхэд алдаа гарлаа.'));
     } catch (err) {
-      console.error('Start exam error:', err);
-      setError('Серверт холбогдоход алдаа гарлаа');
+      logError('Start exam error', err);
+      setError(getErrorMessage(err, 'Серверт холбогдоход алдаа гарлаа.'));
     } finally {
       setLoading(false);
     }
   }, [examId]);
 
-  // Component mount үед шинэ session үүсгэх
   useEffect(() => {
     const initExam = async () => {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📱 ExamInterface mounted');
-      console.log('📌 examId:', examId);
-      console.log('📌 initialQuestions length:', initialQuestions.length);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      
+      setAnswers({});
+      setCurrentQuestion(0);
+      setShowSubmitModal(false);
+      setSubmissionError(null);
+      setError(null);
+      setHasSubmitted(false);
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+
       if (!examId) {
-        setError('Шалгалтын ID олдсонгүй');
+        setError('Шалгалтын ID олдсонгүй.');
         setLoading(false);
         return;
       }
-      
-      // Хуучин session-ийг цэвэрлэх
+
       const oldSession = await AsyncStorage.getItem('current_exam_session');
       if (oldSession) {
-        console.log('🧹 Clearing old session:', oldSession);
         await AsyncStorage.removeItem('current_exam_session');
       }
-      
-      // Шинэ session үүсгэх
-      console.log('🚀 Creating new session');
+
+      if (initialSessionId && initialQuestions.length > 0) {
+        setSessionId(initialSessionId);
+        setQuestions(initialQuestions);
+        setTimeLeft(duration * 60);
+        await AsyncStorage.setItem('current_exam_session', initialSessionId);
+        setLoading(false);
+        return;
+      }
+
       await startExam();
     };
-    
-    initExam();
-  }, [examId]);
 
-  // Timer
+    void initExam();
+  }, [duration, examId, initialQuestions, initialSessionId, startExam]);
+
   useEffect(() => {
-    if (!sessionId || questions.length === 0 || loading || hasSubmitted) return;
-    
-    if (timerRef.current) clearInterval(timerRef.current);
-    
+    if (!sessionId || questions.length === 0 || loading || hasSubmitted) {
+      return;
+    }
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+          }
           handleAutoSubmit();
           return 0;
         }
+
         return prev - 1;
       });
     }, 1000);
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     };
   }, [sessionId, questions.length, loading, hasSubmitted]);
 
@@ -172,93 +178,73 @@ export const ExamInterface = () => {
     }));
   };
 
-// src/features/exam/screens/ExamInterface.tsx - handleSubmit функц
+  const handleSubmit = async () => {
+    if (hasSubmitted || isSubmitting) {
+      return;
+    }
 
-const handleSubmit = async () => {
-  console.log('🔍 Submit button pressed');
-  console.log('🔍 Current sessionId state:', sessionId);
-  
-  if (hasSubmitted || isSubmitting) {
-    console.log('⏳ Already submitting, ignoring...');
-    return;
-  }
-  
-  let currentSessionId = sessionId;
-  
-  if (!currentSessionId) {
-    currentSessionId = await AsyncStorage.getItem('current_exam_session');
-    if (currentSessionId) {
-      setSessionId(currentSessionId);
+    let currentSessionId = sessionId;
+    setSubmissionError(null);
+
+    if (!currentSessionId) {
+      currentSessionId = await AsyncStorage.getItem('current_exam_session');
+      if (currentSessionId) {
+        setSessionId(currentSessionId);
+      }
     }
-  }
-  
-  if (!currentSessionId) {
-    Alert.alert('Алдаа', 'Шалгалтын session олдсонгүй. Дахин оролдоно уу.');
-    return;
-  }
-  
-  setHasSubmitted(true);
-  setIsSubmitting(true);
-  
-  try {
-    const answerList = Object.entries(answers).map(([questionId, selectedAnswer]) => ({
-      questionId,
-      selectedAnswer,
-    }));
-    
-    const timeSpent = duration * 60 - timeLeft;
-    
-    const result = await examApi.submitExam(currentSessionId, answerList, timeSpent);
-    
-    console.log('📥 Submit exam response success:', result.success);
-    
-    await AsyncStorage.removeItem('current_exam_session');
-    setSessionId(null);
-    
-    if (result.success && 'result' in result) {
-      Alert.alert(
-        'Шалгалт дууслаа',
-        `Та ${result.result.score}/${result.result.totalQuestions} оноо авлаа.`,
-        [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // ✅ Home screen руу шууд очих
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-              });// replace ашиглах нь илүү цэвэр
-            } 
-          }
-        ]
-      );
-    } else if (!result.success && 'error' in result) {
-      Alert.alert('Алдаа', result.error || 'Шалгалт дуусгахад алдаа гарлаа');
+
+    if (!currentSessionId) {
+      setSubmissionError('Шалгалтын session олдсонгүй. Дахин оролдоно уу.');
+      return;
+    }
+
+    setHasSubmitted(true);
+    setIsSubmitting(true);
+
+    try {
+      const answerList = Object.entries(answers).map(([questionId, selectedAnswer]) => ({
+        questionId,
+        selectedAnswer,
+      }));
+
+      const timeSpent = duration * 60 - timeLeft;
+      const result = await examApi.submitExam(currentSessionId, answerList, timeSpent);
+
+      await AsyncStorage.removeItem('current_exam_session');
+      setSessionId(null);
+
+      if (result.success && 'result' in result) {
+        Alert.alert(
+          'Шалгалт дууслаа',
+          `Та ${result.result.score}/${result.result.totalQuestions} оноо авлаа.`,
+          [{ text: 'OK', onPress: () => navigation.navigate('Exam') }],
+        );
+        return;
+      }
+
+      setSubmissionError(getErrorMessage(result, 'Шалгалт дуусгахад алдаа гарлаа.'));
       setHasSubmitted(false);
+    } catch (err) {
+      logError('Submit exam error', err);
+      setSubmissionError(getErrorMessage(err, 'Серверт холбогдоход алдаа гарлаа.'));
+      setHasSubmitted(false);
+    } finally {
+      setIsSubmitting(false);
+      setShowSubmitModal(false);
     }
-  } catch (err) {
-    console.error('Submit exam error:', err);
-    Alert.alert('Алдаа', 'Серверт холбогдоход алдаа гарлаа');
-    setHasSubmitted(false);
-  } finally {
-    setIsSubmitting(false);
-    setShowSubmitModal(false);
-  }
-};
+  };
+
   const handleAutoSubmit = () => {
     if (hasSubmitted) return;
-    Alert.alert(
-      'Хугацаа дууссан',
-      'Шалгалтын хугацаа дууссан тул автоматаар дуусгаж байна.',
-      [{ text: 'OK', onPress: handleSubmit }]
-    );
+    Alert.alert('Хугацаа дууссан', 'Шалгалтын хугацаа дууссан тул автоматаар дуусгаж байна.', [
+      { text: 'OK', onPress: () => void handleSubmit() },
+    ]);
   };
 
   const answeredCount = Object.keys(answers).length;
   const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
   const currentQ = questions[currentQuestion];
 
-  // Loading state
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -268,13 +254,12 @@ const handleSubmit = async () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <View style={styles.centerContainer}>
         <Icon name="alert-circle-outline" size={48} color="#EF4444" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={startExam}>
+        <TouchableOpacity style={styles.retryButton} onPress={() => void startExam()}>
           <Text style={styles.retryButtonText}>Дахин оролдох</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -284,7 +269,6 @@ const handleSubmit = async () => {
     );
   }
 
-  // No questions
   if (questions.length === 0) {
     return (
       <View style={styles.centerContainer}>
@@ -316,30 +300,30 @@ const handleSubmit = async () => {
 
       <View style={styles.progressWrapper}>
         <ProgressBar progress={progressPercent} />
-        <Text style={styles.progressText}>{answeredCount}/{questions.length} хариулсан</Text>
+        <Text style={styles.progressText}>
+          {answeredCount}/{questions.length} хариулсан
+        </Text>
       </View>
 
       <ScrollView style={styles.content}>
+        <InlineMessage message={submissionError} containerStyle={styles.message} />
+
         <View style={styles.questionCard}>
           <Text style={styles.questionText}>{currentQ?.question_text}</Text>
         </View>
 
         <View style={styles.optionsContainer}>
-          {currentQ?.options.map((option, index) => {
+          {currentQ?.options.map((option) => {
             const isSelected = answers[currentQ.id] === option;
             return (
               <TouchableOpacity
-                key={index}
+                key={option}
                 style={[styles.optionButton, isSelected && styles.optionSelected]}
                 onPress={() => handleAnswerSelect(option)}
                 disabled={hasSubmitted}
               >
-                <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                  {option}
-                </Text>
-                {isSelected && (
-                  <Icon name="checkmark-circle" size={20} color="#fff" />
-                )}
+                <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option}</Text>
+                {isSelected && <Icon name="checkmark-circle" size={20} color="#fff" />}
               </TouchableOpacity>
             );
           })}
@@ -351,6 +335,7 @@ const handleSubmit = async () => {
             {questions.map((q, index) => {
               const isAnswered = answers[q.id] !== undefined;
               const isCurrent = index === currentQuestion;
+
               return (
                 <TouchableOpacity
                   key={q.id}
@@ -415,18 +400,15 @@ const handleSubmit = async () => {
             <Text style={styles.modalTitle}>Шалгалт дуусгах уу?</Text>
             <Text style={styles.modalText}>
               Та {answeredCount}/{questions.length} асуултад хариулсан байна.
-              {'\n'}Шалгалтыг дуусгахдаа итгэлтэй байна уу?
+              {'\n'}Шалгалтыг дуусгахад итгэлтэй байна уу?
             </Text>
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setShowSubmitModal(false)}
-              >
+              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowSubmitModal(false)}>
                 <Text style={styles.modalCancelText}>Үргэлжлүүлэх</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalConfirmButton}
-                onPress={handleSubmit}
+                onPress={() => void handleSubmit()}
                 disabled={isSubmitting || hasSubmitted}
               >
                 {isSubmitting ? (
@@ -464,6 +446,7 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#155DFC', borderRadius: 3 },
   progressText: { fontSize: 12, color: '#6B7280', marginTop: 8, textAlign: 'right' },
   content: { flex: 1, padding: 16 },
+  message: { marginBottom: 16 },
   questionCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   questionText: { fontSize: 18, lineHeight: 28, color: '#333' },
   optionsContainer: { gap: 12, marginBottom: 20 },

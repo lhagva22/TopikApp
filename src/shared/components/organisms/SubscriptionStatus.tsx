@@ -6,12 +6,11 @@ import {
 } from "react-native";
 import { Card } from "../molecules/card";
 import Icon from "react-native-vector-icons/Ionicons";
-import { useSharedStore } from "../../../store/sharedStore";
+import { useAppStore } from "../../../app/store";
+import type { CustomProgressProps, StatusType } from './types';
 
-type StatusType = "success" | "caution" | "warning" | "danger";
 
-
-export const CustomProgress = ({ value, color, style }: { value: number; color?: string; style?: any }) => {
+export const CustomProgress = ({ value, color, style }: CustomProgressProps) => {
   const clampedValue = Math.min(Math.max(value, 0), 100);
   return (
     <View style={[customProgressStyles.container, style]}>
@@ -39,7 +38,7 @@ const customProgressStyles = StyleSheet.create({
 });
 
 export function SubscriptionStatus() {
-  const { user, isPaidUser } = useSharedStore();
+  const { user, isPaidUser } = useAppStore();
 
   // Зөвхөн paid хэрэглэгчдэд харуулах
   if (!isPaidUser() || !user) {

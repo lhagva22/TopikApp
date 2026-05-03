@@ -1,22 +1,19 @@
 import React from "react";
 import {
   View,
-  Text,
   StyleSheet,
-  ViewProps,
-  TextProps,
-  StyleProp,
   ViewStyle,
-  TextStyle,
 } from "react-native";
+import AppText from '../atoms/AppText';
+import type { CardHeaderProps, CardProps, CardTitleProps } from './types';
 
 // ==================== CONSTANTS ====================
 const SHADOW_STYLE: ViewStyle = {
-  shadowColor: "#000",
+  shadowColor: "#0f172a",
   shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-  elevation: 3,
+  shadowOpacity: 0.08,
+  shadowRadius: 10,
+  elevation: 4,
 };
 
 const SPACING = {
@@ -39,24 +36,6 @@ const TYPOGRAPHY = {
   },
 } as const;
 
-// ==================== TYPES ====================
-interface CardProps extends ViewProps {
-  style?: StyleProp<ViewStyle>;
-  children?: React.ReactNode;
-}
-
-interface CardHeaderProps extends TextProps {
-  children: React.ReactNode;
-  variant?: "small" | "medium" | "large";
-  containerStyle?: StyleProp<ViewStyle>;
-}
-
-interface CardTitleProps extends TextProps {
-  children: React.ReactNode;
-  variant?: "small" | "medium" | "large";
-  containerStyle?: StyleProp<ViewStyle>;
-}
-
 // ==================== COMPONENTS ====================
 export const Card = ({ style, children, ...props }: CardProps) => (
   <View style={[styles.card, style]} {...props}>
@@ -75,9 +54,9 @@ export const CardHeader = ({
 
   return (
     <View style={[styles.headerContainer, containerStyle]}>
-      <Text style={[styles.headerText, { fontSize }, style]} {...props}>
+      <AppText variant="section" style={[styles.headerText, { fontSize }, style]} {...props}>
         {children}
-      </Text>
+      </AppText>
     </View>
   );
 };
@@ -93,9 +72,9 @@ export const CardTitle = ({
 
   return (
     <View style={containerStyle}>
-      <Text style={[styles.titleText, { fontSize }, style]} {...props}>
+      <AppText variant="caption" tone="secondary" style={[styles.titleText, { fontSize }, style]} {...props}>
         {children}
-      </Text>
+      </AppText>
     </View>
   );
 };
@@ -104,20 +83,21 @@ export const CardTitle = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
-    borderRadius: 10,
+    borderRadius: 18,
     padding: SPACING.card.padding,
     marginBottom: SPACING.card.marginBottom,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     ...SHADOW_STYLE,
   },
   headerContainer: {
     marginBottom: 8,
   },
   headerText: {
-    fontWeight: "bold",
+    letterSpacing: -0.2,
   },
 
   titleText: {
-    fontWeight: "400",
-
+    letterSpacing: -0.1,
   },
 });

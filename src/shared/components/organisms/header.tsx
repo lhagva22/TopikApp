@@ -4,15 +4,10 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import Icon from 'react-native-vector-icons/Ionicons';
+import type { HeaderProps } from './types';
 
 // Header харуулах дэлгэцүүд
 const SCREENS_WITH_HEADER = ['Home', 'Video', 'Lesson', 'Exam', 'Dictionary'];
-
-type HeaderProps = {
-  title?: string;
-  onMenuPress?: () => void;
-  onSearchPress?: () => void;
-};
 
 const Header = ({ title, onMenuPress, onSearchPress }: HeaderProps) => {
     const navigation = useNavigation<DrawerNavigationProp<any>>();

@@ -1,23 +1,25 @@
-// src/store/sharedStore.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand/react';
-import { User } from './types';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { authApi } from '../features/auth/api/authApi';  // ✅ authApi ашиглах
-import { getToken } from '../core/api/apiClient';
 
-export type UserStatus = 'guest' | 'registered' | 'premium';
+import { getToken } from '../../core/api/apiClient';
+import { authApi } from '../../features/auth/api/authApi';
+import type { User } from '../../features/auth/types';
+import { getErrorMessage, logError } from '../../shared/lib/errors';
+import type { AppState } from './types';
 
-// Constants
 const GUEST_USER = {
   create: () => ({
-    id: 'guest_' + Date.now(),
+    id: `guest_${Date.now()}`,
     email: null,
     name: 'Зочин',
     status: 'guest' as const,
+    current_level: 0,
+    subscription_start_date: null,
+    subscription_end_date: null,
+    subscription_months: null,
   }),
 };
 
-// Helper functions
 const calculateDaysRemaining = (endDate?: string | null): number => {
   if (!endDate) return 0;
   const diffTime = new Date(endDate).getTime() - new Date().getTime();
@@ -49,49 +51,7 @@ const createUserFromProfile = (profile: any, authUser: any): User => ({
   subscription_months: profile?.subscription_months || null,
 });
 
-interface SharedState {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  isGuest: boolean;
-  error: string | null;
-  isInitialized: boolean;
-  
-  initAuth: () => Promise<void>;
-  updateUser: (user: User) => void;
-  updateToken: (token: string | null) => void;
-  resetAuth: () => Promise<void>;
-  
-  getDaysRemaining: () => number;
-  getTotalDays: () => number;
-  getDaysUsed: () => number;
-  getSubscriptionProgress: () => number;
-  getSubscriptionStatus: () => {
-    daysRemaining: number;
-    totalDays: number;
-    daysUsed: number;
-    progress: number;
-    isExpired: boolean;
-    isExpiringSoon: boolean;
-  };
-  
-  getUserStatus: () => UserStatus;
-  isGuestUser: () => boolean;
-  isRegisteredUser: () => boolean;
-  isPaidUser: () => boolean;
-  
-  canViewContent: () => boolean;
-  canStudyLesson: () => boolean;
-  canTakeLevelTest: () => boolean;
-  canTakeMockExam: () => boolean;
-  canViewProgress: () => boolean;
-  canGetRecommendations: () => boolean;
-  
-  clearError: () => void;
-}
-
-export const useSharedStore = create<SharedState>((set, get) => ({  
+export const useAppStore = create<AppState>((set, get) => ({
   user: null,
   token: null,
   isLoading: false,
@@ -101,21 +61,20 @@ export const useSharedStore = create<SharedState>((set, get) => ({
   isInitialized: false,
 
   initAuth: async () => {
-    if (get().isInitialized) {
-      console.log('⏭️ Already initialized, skipping...');
-      return;
-    }
-    
+    if (get().isInitialized) return;
+
     set({ isLoading: true });
+
     try {
-      const token = await getToken();  // ✅ apiClient-с token авах
-      
+      const token = await getToken();
+
       if (token) {
-        const response = await authApi.getProfile();  // ✅ authApi ашиглах
+        const response = await authApi.getProfile();
+
         if (response.success && response.user) {
           set({
             user: createUserFromProfile(response.user, response.user),
-            token: token,
+            token,
             isAuthenticated: true,
             isGuest: false,
             isLoading: false,
@@ -123,17 +82,17 @@ export const useSharedStore = create<SharedState>((set, get) => ({
           });
           return;
         }
+
         await AsyncStorage.removeItem('token');
       }
-      
-      // Guest user
+
       const guestStr = await AsyncStorage.getItem('guestUser');
       const guestUser = guestStr ? JSON.parse(guestStr) : GUEST_USER.create();
-      
+
       if (!guestStr) {
         await AsyncStorage.setItem('guestUser', JSON.stringify(guestUser));
       }
-      
+
       set({
         user: guestUser,
         token: null,
@@ -143,15 +102,15 @@ export const useSharedStore = create<SharedState>((set, get) => ({
         isInitialized: true,
       });
     } catch (error) {
-      console.error('Init auth error:', error);
-      set({ 
-        error: 'Серверт холбогдоход алдаа гарлаа', 
+      logError('Init auth error', error);
+      set({
+        error: getErrorMessage(error, 'Серверт холбогдоход алдаа гарлаа.'),
         isLoading: false,
         isInitialized: true,
       });
     }
   },
- 
+
   resetAuth: async () => {
     set({
       user: null,
@@ -163,16 +122,19 @@ export const useSharedStore = create<SharedState>((set, get) => ({
       isInitialized: false,
     });
   },
-  
+
   updateUser: (user: User) => {
-    set({ user, isAuthenticated: user.status !== 'guest', isGuest: user.status === 'guest' });
+    set({
+      user,
+      isAuthenticated: user.status !== 'guest',
+      isGuest: user.status === 'guest',
+    });
   },
 
   updateToken: (token: string | null) => {
     set({ token });
   },
 
-  // ========== SUBSCRIPTION HELPERS ==========
   getDaysRemaining: () => {
     const { user, isGuest } = get();
     if (isGuest || user?.status !== 'premium') return 0;
@@ -203,7 +165,7 @@ export const useSharedStore = create<SharedState>((set, get) => ({
     const totalDays = get().getTotalDays();
     const daysUsed = get().getDaysUsed();
     const progress = get().getSubscriptionProgress();
-    
+
     return {
       daysRemaining,
       totalDays,
@@ -214,7 +176,6 @@ export const useSharedStore = create<SharedState>((set, get) => ({
     };
   },
 
-  // ========== GETTERS ==========
   getUserStatus: () => {
     const { user, isGuest } = get();
     if (isGuest) return 'guest';
@@ -224,14 +185,11 @@ export const useSharedStore = create<SharedState>((set, get) => ({
   isGuestUser: () => get().isGuest,
   isRegisteredUser: () => !get().isGuest && get().user?.status === 'registered',
   isPaidUser: () => !get().isGuest && get().user?.status === 'premium',
-
-  // ========== PERMISSIONS ==========
   canViewContent: () => true,
   canStudyLesson: () => !get().isGuest,
   canTakeLevelTest: () => get().isPaidUser(),
   canTakeMockExam: () => get().isPaidUser(),
   canViewProgress: () => !get().isGuest,
   canGetRecommendations: () => get().isPaidUser(),
-
   clearError: () => set({ error: null }),
 }));

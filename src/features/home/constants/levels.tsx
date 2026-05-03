@@ -1,12 +1,5 @@
 // src/features/home/constants/levels.ts
-export interface Level {
-  title: string;
-  subtitle: string;
-  badge: string;
-  badgeColor: string;
-  textColor: string;
-  levelValue: number;
-}
+import type { Level } from '../types';
 
 export const LEVELS: Level[] = [
   { title: "TOPIK I - 1-р түвшин", subtitle: "Анхан шат", badge: "TOPIK I", badgeColor: '#B0FFB0', textColor: '#008000', levelValue: 1 },

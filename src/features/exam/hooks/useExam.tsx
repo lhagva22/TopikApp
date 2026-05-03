@@ -1,10 +1,10 @@
 // src/features/exam/hooks/useExam.ts
 import { useExamStore } from '../store/examStore';
-import { useSharedStore } from '../../../store/sharedStore';
+import { useAppStore } from '../../../app/store';
 import { ExamBank } from '../types';
 
 export const useExam = () => {
-  const { user } = useSharedStore();
+  const { user } = useAppStore();
   const store = useExamStore();
 
   const startExam = async (examId: string) => {

@@ -1,28 +1,21 @@
 import React from "react";
-import { Text, StyleSheet, TextProps, StyleProp, TextStyle, View, ViewStyle } from "react-native";
-
-type SectionTitleProps = TextProps & {
-  children: React.ReactNode;
-  textStyle?: StyleProp<TextStyle>;
-  viewStyle?: StyleProp<ViewStyle>;
-
-};
+import { StyleSheet, View } from "react-native";
+import AppText from './AppText';
+import type { SectionTitleProps } from './types';
 
 const SectionTitle = ({ children, viewStyle, textStyle, ...props }: SectionTitleProps) => {
   return (
     <View style={viewStyle} {...props}>
-    <Text style={[styles.title, textStyle]} {...props}>
-      {children}
-    </Text>
+      <AppText variant="section" style={[styles.title, textStyle]} {...props}>
+        {children}
+      </AppText>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   title: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
+    letterSpacing: -0.2,
   },
 });
 

@@ -1,9 +1,6 @@
 import * as React from "react"
-import Svg, { Path, SvgProps } from "react-native-svg"
-
-interface AppleIconProps extends SvgProps {
-
-}
+import Svg, { Path } from "react-native-svg"
+import type { AppleIconProps } from './types';
 
 function SvgComponent(props: AppleIconProps) {
   return (

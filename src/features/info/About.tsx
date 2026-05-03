@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   Text,
 } from "react-native";
-import { DrawerActions, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { Card, CardHeader, CardTitle } from "../../shared/components/molecules/card";
 import Icon from "react-native-vector-icons/Ionicons";
 import LinearGradient from "react-native-linear-gradient";
@@ -66,11 +66,14 @@ const StatsGrid = () => {
 
 const About = () => {
   const navigation = useNavigation<any>();
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <ScrollView style={{ padding: 16 }}>
-        <TouchableOpacity        onPress={() => {navigation.goBack(),  navigation.dispatch(DrawerActions.openDrawer());
-        }}>
+        <TouchableOpacity onPress={handleBack}>
         <Icon name= "arrow-back" size={24} color="#000000"></Icon>
         </TouchableOpacity>
         <View style={styles.schoolCard}>

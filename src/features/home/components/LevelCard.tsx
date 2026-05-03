@@ -3,12 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Card, CardHeader, CardTitle } from '../../../shared/components/molecules/card';
-import { Level } from '../constants/levels';
-
-interface LevelCardProps {
-  level: Level;
-  isActive?: boolean;
-}
+import type { LevelCardProps } from './types';
 
 const cardShadowStyle = {
   shadowColor: '#000',

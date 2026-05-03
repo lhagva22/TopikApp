@@ -1,113 +1,106 @@
-// payment.tsx - бүрэн зассан хувилбар
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Text,
-  View,
-  ScrollView,
-  TouchableOpacity,
   Modal as RNModal,
+  ScrollView,
   StyleSheet,
-  Alert,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import SectionTitle from "../../shared/components/atoms/sectionTitle";
-import { Card, CardHeader, CardTitle } from "../../shared/components/molecules/card";
-import CustomButton from "../../shared/components/molecules/button";
-import Icon from "react-native-vector-icons/Ionicons";
-import { useSharedStore } from '../../store/sharedStore';
-interface PaymentProps {
-  visible: boolean;
-  onClose: () => void;
-}
+import type { NavigationProp } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
+
+import type { RootStackParamList } from '../../app/navigation/types';
+import { useAppStore } from '../../app/store';
+import SectionTitle from '../../shared/components/atoms/sectionTitle';
+import { InlineMessage } from '../../shared/components/feedback';
+import CustomButton from '../../shared/components/molecules/button';
+import { Card, CardHeader, CardTitle } from '../../shared/components/molecules/card';
+import type { PaymentProps } from './types';
 
 const paymentItems = [
   {
     id: 1,
-    title: "1 сар",
-    price: "29,900₮",
-    features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
+    title: '1 сар',
+    price: '29,900₮',
+    features: ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'],
   },
   {
     id: 2,
-    title: "3 сар",
-    price: "79,900₮",
-    features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
+    title: '3 сар',
+    price: '79,900₮',
+    features: ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'],
   },
   {
     id: 3,
-    title: "6 сар",
-    price: "149,900₮",
-    features: ["Бүх видео хичээл", "Mock шалгалтууд", "Толь бичиг", "Хичээлийн материал"]
+    title: '6 сар',
+    price: '149,900₮',
+    features: ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'],
   },
 ];
 
 const Payment = ({ visible, onClose }: PaymentProps) => {
-
   const navigation = useNavigation();
-  const { user, updateUser } = useSharedStore();
+  const { user, updateUser } = useAppStore();
   const [isLoading, setIsLoading] = useState(false);
-  const handleClose = () => {
-    onClose();
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const goToAppHome = () => {
+    const rootNavigation =
+      (navigation.getParent() as NavigationProp<RootStackParamList> | undefined) ??
+      (navigation as NavigationProp<RootStackParamList>);
+
+    rootNavigation.navigate('App', { screen: 'Home' });
   };
-const handleSelectPlan = (months: number) => {
+
+  const handleSelectPlan = (months: number) => {
     setIsLoading(true);
-    
-    // Хэрэглэгчийн статусыг paid болгох
+    setStatusMessage(null);
+
     if (user) {
       const paidUser = {
         ...user,
-        status: 'premium' as const,  // ✅ 'registered' → 'premium'
+        status: 'premium' as const,
         subscription_start_date: new Date().toISOString(),
-        subscription_end_date: new Date(Date.now() + months * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        subscription_end_date: new Date(
+          Date.now() + months * 30 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         subscription_months: months,
       };
+
       updateUser(paidUser);
     }
-    
+
     setTimeout(() => {
       setIsLoading(false);
-      Alert.alert(
-        "Амжилттай",
-        `${months} сарын багц идэвхжлээ`,
-        [
-          { 
-            text: "OK", 
-            onPress: () => {
-              onClose();
-              navigation.navigate('Home' as never);
-            } 
-          }
-        ]
-      );
+      setStatusMessage(`${months} сарын багц амжилттай идэвхжлээ.`);
+
+      setTimeout(() => {
+        onClose();
+        goToAppHome();
+      }, 500);
     }, 500);
   };
 
-
-  if (!visible) return null;
+  if (!visible) {
+    return null;
+  }
 
   return (
-    <RNModal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
+    <RNModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <ScrollView 
-          style={styles.modalContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+        <ScrollView style={styles.modalContainer} showsVerticalScrollIndicator={false}>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Icon name="close" size={24} color="#333" />
           </TouchableOpacity>
-          
+
           <SectionTitle textStyle={styles.sectionTitle}>Багц сонгох</SectionTitle>
-          
-          <CardTitle style={styles.subtitle}>
-            Өөрт тохирсон багцаа сонгоно уу
-          </CardTitle>
-          
-          {paymentItems.map(item => (
+
+          <CardTitle style={styles.subtitle}>Өөрт тохирсон багцаа сонгоно уу</CardTitle>
+          <InlineMessage message={statusMessage} variant="success" containerStyle={styles.message} />
+
+          {paymentItems.map((item) => (
             <Card key={item.id} style={styles.card}>
               <CardHeader>
                 <View>
@@ -118,19 +111,24 @@ const handleSelectPlan = (months: number) => {
                   </View>
                 </View>
               </CardHeader>
-              
+
               <CardTitle>
-                {item.features.map((feature, index) => (
-                  <View key={index} style={styles.featureItem}>
-                    <Icon name="checkmark-circle" size={16} color="#22c55e" style={styles.featureIcon} />
+                {item.features.map((feature) => (
+                  <View key={feature} style={styles.featureItem}>
+                    <Icon
+                      name="checkmark-circle"
+                      size={16}
+                      color="#22c55e"
+                      style={styles.featureIcon}
+                    />
                     <Text style={styles.featureText}>{feature}</Text>
                   </View>
                 ))}
               </CardTitle>
 
-              <CustomButton 
-                title="Сонгох" 
-                onPress={() => handleSelectPlan(item.id)} 
+              <CustomButton
+                title={isLoading ? 'Идэвхжүүлж байна...' : 'Сонгох'}
+                onPress={() => handleSelectPlan(item.id)}
                 requiredStatus="registered"
                 style={styles.selectButton}
                 textStyle={styles.selectButtonText}
@@ -151,22 +149,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: "white",
+    backgroundColor: 'white',
     padding: 20,
     borderRadius: 20,
     margin: 20,
     maxHeight: '90%',
   },
   closeButton: {
-    alignSelf: "flex-end",
+    alignSelf: 'flex-end',
     padding: 5,
   },
   sectionTitle: {
-    textAlign: "center",
+    textAlign: 'center',
   },
   subtitle: {
-    textAlign: "center",
+    textAlign: 'center',
     marginVertical: 10,
+  },
+  message: {
+    marginBottom: 12,
   },
   card: {
     marginHorizontal: 10,
@@ -178,8 +179,8 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   priceContainer: {
-    flexDirection: "row",
-    alignItems: "baseline",
+    flexDirection: 'row',
+    alignItems: 'baseline',
     marginTop: 4,
   },
   price: {

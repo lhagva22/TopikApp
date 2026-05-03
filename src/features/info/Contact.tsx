@@ -3,15 +3,18 @@ import SectionTitle from "../../shared/components/atoms/sectionTitle";
 import { CardTitle, Card, CardHeader } from "../../shared/components/molecules/card";
 import CardTitleWithIcon from "../../shared/components/molecules/cardtitlewithicon";
 import Icon from "react-native-vector-icons/Ionicons";
-import { DrawerActions, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 const Contact = () =>
-{ const navigation = useNavigation();
+{ const navigation = useNavigation<any>();
+    const handleBack = () => {
+        navigation.goBack();
+    };
     return(
 
         <ScrollView>
 
         <View style={{flex:1 ,margin:16, gap:16}}>
-                    <TouchableOpacity        onPress={() => {navigation.goBack(), navigation.dispatch(DrawerActions.openDrawer());}}>
+                    <TouchableOpacity onPress={handleBack}>
                     <Icon name= "arrow-back" size={24} color="#000000"></Icon>
                     </TouchableOpacity>
             <View style={{}}>
