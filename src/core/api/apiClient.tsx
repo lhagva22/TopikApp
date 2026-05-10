@@ -12,6 +12,19 @@ export const getBaseUrl = (): string => {
 };
 
 export const API_URL = getBaseUrl();
+export const API_ORIGIN = API_URL.replace(/\/api$/, '');
+
+export const resolveApiAssetUrl = (assetUrl?: string | null): string | null => {
+  if (!assetUrl) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(assetUrl)) {
+    return assetUrl;
+  }
+
+  return `${API_ORIGIN}${assetUrl.startsWith('/') ? assetUrl : `/${assetUrl}`}`;
+};
 
 export const getToken = async (): Promise<string | null> => {
   try {
@@ -147,9 +160,15 @@ export const ENDPOINTS = {
     SUMMARY: '/progress',
   },
   LESSONS: {
+    CATEGORIES: '/lesson-categories',
     LIST: '/lessons',
+    BY_CATEGORY: (slug: string) => `/lessons/category/${slug}`,
     DETAIL: (id: string) => `/lessons/${id}`,
     PROGRESS: '/lessons/progress',
+  },
+  VIDEO_LESSONS: {
+    CATEGORIES: '/video-categories',
+    LIST: '/video-lessons',
   },
   DICTIONARY: {
     SEARCH: '/dictionary/search',

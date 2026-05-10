@@ -3,6 +3,19 @@ import { Response } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import type { AuthRequest } from '../types';
 
+type QuestionMeta = {
+  section: 'listening' | 'reading';
+  correctAnswerText: string;
+  questionScore: number;
+};
+
+type TestMeta = {
+  totalScore: number;
+  listeningScore: number;
+  readingScore: number;
+  byId: Map<string, QuestionMeta>;
+};
+
 const calculateDurationInSeconds = (
   startedAt?: string | null,
   completedAt?: string | null,
@@ -41,10 +54,13 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
       .select(
         `
           id,
+          mock_test_id,
           exam_type,
           total_score,
           listening_score,
           reading_score,
+          listening_answers,
+          reading_answers,
           time_spent_listening,
           time_spent_reading,
           started_at,
@@ -66,12 +82,68 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: error.message });
     }
 
+    const mockTestIds = [...new Set((results || []).map((result: any) => result.mock_test_id).filter(Boolean))];
+    const questionMetaByTest = new Map<string, TestMeta>();
+
+    if (mockTestIds.length > 0) {
+      const { data: questionRows, error: questionError } = await supabaseAdmin
+        .from('mock_test_questions')
+        .select('id, mock_test_id, section, correct_answer_text, question_score')
+        .in('mock_test_id', mockTestIds);
+
+      if (questionError) {
+        return res.status(400).json({ success: false, error: questionError.message });
+      }
+
+      (questionRows || []).forEach((question: any) => {
+        const current = questionMetaByTest.get(question.mock_test_id) || {
+          totalScore: 0,
+          listeningScore: 0,
+          readingScore: 0,
+          byId: new Map<string, QuestionMeta>(),
+        };
+
+        const questionScore = question.question_score || 1;
+        current.totalScore += questionScore;
+
+        if (question.section === 'listening') {
+          current.listeningScore += questionScore;
+        } else {
+          current.readingScore += questionScore;
+        }
+
+        current.byId.set(question.id, {
+          section: question.section,
+          correctAnswerText: question.correct_answer_text,
+          questionScore,
+        });
+
+        questionMetaByTest.set(question.mock_test_id, current);
+      });
+    }
+
     const examResults = (results || []).map((result: any) => {
       const exam = result.mock_test_bank;
+      const testMeta = questionMetaByTest.get(result.mock_test_id);
       const listeningQuestions = exam?.listening_questions || 0;
       const readingQuestions = exam?.reading_questions || 0;
       const listeningScore = result.listening_score || 0;
       const readingScore = result.reading_score || 0;
+      let listeningCorrectAnswers = 0;
+      let readingCorrectAnswers = 0;
+
+      [...(result.listening_answers || []), ...(result.reading_answers || [])].forEach((answer: any) => {
+        const question = testMeta?.byId.get(answer.questionId);
+        if (!question || answer.selectedAnswer !== question.correctAnswerText) {
+          return;
+        }
+
+        if (question.section === 'listening') {
+          listeningCorrectAnswers += 1;
+        } else {
+          readingCorrectAnswers += 1;
+        }
+      });
 
       return {
         id: result.id,
@@ -79,7 +151,7 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
         examType: result.exam_type === 'TOPIK_II' ? 'TOPIK II' : 'TOPIK I',
         date: result.completed_at || result.created_at,
         totalScore: result.total_score || 0,
-        maxScore: exam?.total_questions || 0,
+        maxScore: testMeta?.totalScore || exam?.total_questions || 0,
         duration: calculateDurationInSeconds(
           result.started_at,
           result.completed_at,
@@ -90,15 +162,15 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
           {
             name: 'Сонсгол',
             score: listeningScore,
-            maxScore: listeningQuestions,
-            correctAnswers: listeningScore,
+            maxScore: testMeta?.listeningScore || listeningQuestions,
+            correctAnswers: listeningCorrectAnswers,
             totalQuestions: listeningQuestions,
           },
           {
             name: 'Уншлага',
             score: readingScore,
-            maxScore: readingQuestions,
-            correctAnswers: readingScore,
+            maxScore: testMeta?.readingScore || readingQuestions,
+            correctAnswers: readingCorrectAnswers,
             totalQuestions: readingQuestions,
           },
         ].filter((section) => section.totalQuestions > 0),

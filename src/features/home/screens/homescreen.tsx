@@ -4,7 +4,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import { useAppStore } from '../../../app/store';
-import Payment from '../../../features/payment/payment';
+import { PaymentScreen as Payment, usePaymentModal } from '../../../features/payment';
 import SectionTitle from '../../../shared/components/atoms/sectionTitle';
 import { InlineMessage } from '../../../shared/components/feedback';
 import CustomButton from '../../../shared/components/molecules/button';
@@ -18,7 +18,7 @@ const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const { user } = useAppStore();
   const { userLevel, loading, loadUserLevel, startLevelTest } = useHome();
-  const [showPayment, setShowPayment] = React.useState(false);
+  const { showPayment, openPayment, closePayment } = usePaymentModal();
   const [actionError, setActionError] = React.useState<string | null>(null);
 
   useFocusEffect(
@@ -31,7 +31,7 @@ const HomeScreen = () => {
     setActionError(null);
 
     if (user?.status !== 'premium') {
-      setShowPayment(true);
+      openPayment();
       return;
     }
 
@@ -84,24 +84,12 @@ const HomeScreen = () => {
             </View>
           )}
 
-          {isGuest && (
-            <Card style={[styles.guestCard, cardShadowStyle]}>
-              <View style={styles.guestHeader}>
-                <Icon name="person-outline" size={22} color="#155DFC" />
-                <Text style={styles.guestTitle}>Зочин горим</Text>
-              </View>
-              <Text style={styles.guestText}>
-                Та аппыг шууд ашиглаж болно. Түвшин тогтоох шалгалт болон ахицын хэсэг нь төлбөртэй
-                багц дээр нээгдэнэ.
-              </Text>
-            </Card>
-          )}
 
           <SchoolCard />
 
           <SectionTitle viewStyle={{ marginTop: 20 }}>Түвшин тогтоох шалгалт</SectionTitle>
           <InlineMessage message={actionError} containerStyle={styles.message} />
-          <LevelTestCard onStart={handleStartLevelTest} onPaymentRequired={() => setShowPayment(true)} />
+          <LevelTestCard onStart={handleStartLevelTest} onPaymentRequired={openPayment} />
 
           <SectionTitle viewStyle={{ marginTop: 20 }}>Түвшнүүд</SectionTitle>
           {LEVELS.map((level) => (
@@ -110,13 +98,13 @@ const HomeScreen = () => {
         </View>
       </ScrollView>
 
-      <Payment visible={showPayment} onClose={() => setShowPayment(false)} />
+      <Payment visible={showPayment} onClose={closePayment} />
     </View>
   );
 };
 
 const SchoolCard = () => (
-  <Card style={[styles.schoolCard, cardShadowStyle]}>
+  <Card style={[styles.schoolCard]}>
     <View style={styles.schoolRow}>
       <View style={styles.schoolIconWrapper}>
         <Icon name="school-outline" size={40} color="#fff" />
@@ -139,12 +127,12 @@ const LevelTestCard = ({
   onStart: () => void;
   onPaymentRequired: () => void;
 }) => (
-  <Card style={[styles.levelTestCard, cardShadowStyle]}>
+  <Card style={[styles.levelTestCard]}>
     <CardHeader style={styles.levelTestHeader}>Өөрийн түвшинг мэдээрэй</CardHeader>
     <CardTitle style={styles.levelTestSubtitle}>
       Богино шалгалтаар өөрийн Солонгос хэлний түвшинг тогтоож, тохирсон хичээлийг сонгоорой
     </CardTitle>
-    <Card style={[styles.levelTestInfoCard, cardShadowStyle]}>
+    <Card style={[styles.levelTestInfoCard]}>
       <View style={styles.levelTestInfoRow}>
         <View style={styles.levelTestInfoColumn}>
           <CardTitle style={styles.levelTestInfoLabel}>Хугацаа</CardTitle>
@@ -168,14 +156,6 @@ const LevelTestCard = ({
     />
   </Card>
 );
-
-const cardShadowStyle = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-  elevation: 5,
-};
 
 const styles = StyleSheet.create({
   screen: {
@@ -269,6 +249,7 @@ const styles = StyleSheet.create({
   },
   levelTestInfoCard: {
     backgroundColor: '#4B83FF',
+    borderColor: '#4B83FF',
     borderRadius: 12,
     padding: 16,
   },

@@ -6,7 +6,14 @@ import { DictionaryScreen } from '../../features/dictionary';
 import { ExamInterfaceScreen, ExamScreen } from '../../features/exam';
 import { HomeScreen } from '../../features/home';
 import { AboutScreen, ContactScreen } from '../../features/info';
-import { LessonScreen, VideoLessonScreen } from '../../features/lessons';
+import {
+  AlphabetNumbersScreen,
+  BooksScreen,
+  GrammarScreen,
+  LessonScreen,
+  VideoLessonScreen,
+  VocabularyScreen,
+} from '../../features/lessons';
 import { PaymentScreen } from '../../features/payment';
 import { Progress } from '../../features/progress';
 import Footer from '../../shared/components/organisms/footer';
@@ -37,6 +44,10 @@ const withShell = <P extends object>(Component: React.ComponentType<P>) =>
 const HomeScreenWrapper = withShell(HomeScreen);
 const VideoScreenWrapper = withShell(VideoLessonScreen);
 const LessonScreenWrapper = withShell(LessonScreen);
+const AlphabetNumbersScreenWrapper = withShell(AlphabetNumbersScreen);
+const GrammarScreenWrapper = withShell(GrammarScreen);
+const VocabularyScreenWrapper = withShell(VocabularyScreen);
+const BooksScreenWrapper = withShell(BooksScreen);
 const ExamScreenWrapper = withShell(ExamScreen);
 const DictionaryScreenWrapper = withShell(DictionaryScreen);
 const ProgressScreenWrapper = withShell(Progress);
@@ -68,6 +79,26 @@ export function DrawerNavigator() {
       <Drawer.Screen name="Contact" component={ContactScreen} />
       <Drawer.Screen name="Video" component={VideoScreenWrapper} />
       <Drawer.Screen name="Lesson" component={LessonScreenWrapper} />
+      <Drawer.Screen
+        name="LessonAlphabetNumbers"
+        component={AlphabetNumbersScreenWrapper}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
+      <Drawer.Screen
+        name="LessonGrammar"
+        component={GrammarScreenWrapper}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
+      <Drawer.Screen
+        name="LessonVocabulary"
+        component={VocabularyScreenWrapper}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
+      <Drawer.Screen
+        name="LessonBooks"
+        component={BooksScreenWrapper}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
       <Drawer.Screen name="Exam" component={ExamScreenWrapper} />
       <Drawer.Screen name="Progress" component={ProgressScreenWrapper} />
       <Drawer.Screen name="Payment" component={PaymentScreenWrapper} />

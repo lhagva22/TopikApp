@@ -8,7 +8,9 @@ type ExamQuestionParam = {
   section: string;
   question_number: number;
   question_text: string;
+  question_image_url?: string;
   options: string[];
+  option_image_urls?: Array<string | null> | null;
   audio_url?: string;
 };
 
@@ -19,6 +21,10 @@ export type RootDrawerParamList = {
   Contact: undefined;
   Video: undefined;
   Lesson: undefined;
+  LessonAlphabetNumbers: undefined;
+  LessonGrammar: undefined;
+  LessonVocabulary: undefined;
+  LessonBooks: undefined;
   Exam: undefined;
   Progress: undefined;
   Payment: undefined;

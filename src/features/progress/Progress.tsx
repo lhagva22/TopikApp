@@ -109,7 +109,7 @@ export function Progress() {
 
   const errorFrequency = getErrorFrequency();
   const showInitialLoading = isLoading && examResults.length === 0 && !error;
-
+  const handleGoBack = () => navigation.goBack();
   if (showInitialLoading) {
     return (
       <ScrollView style={styles.container}>
@@ -146,6 +146,7 @@ export function Progress() {
 
   return (
     <ScrollView
+
       style={styles.container}
       refreshControl={
         <RefreshControl
@@ -155,12 +156,13 @@ export function Progress() {
         />
       }
     >
+
+
       <View style={styles.contentContainer}>
+      <TouchableOpacity style={{margin: 10}}onPress={handleGoBack}>
+        <Icon name="arrow-back-outline" size={24} color="#333" />
+      </TouchableOpacity>
         <View style={styles.header}>
-          <View style={styles.headerTextGroup}>
-            <Text style={styles.pageTitle}>Ахиц дэвшил</Text>
-            <Text style={styles.pageSubtitle}>Таны суралцах явцын статистик</Text>
-          </View>
 
           <View style={styles.filterContainer}>
             <TouchableOpacity

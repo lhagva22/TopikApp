@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,7 @@ import { InlineMessage } from '../../../shared/components/feedback';
 import CustomButton from '../../../shared/components/molecules/button';
 import { Card, CardHeader, CardTitle } from '../../../shared/components/molecules/card';
 import { getErrorMessage } from '../../../shared/lib/errors';
-import Payment from '../../payment/payment';
+import { PaymentScreen as Payment, usePaymentModal } from '../../payment';
 import { useExam } from '../hooks/useExam';
 
 const statsItems = [
@@ -43,18 +44,30 @@ const statsItems = [
   },
 ];
 
+type ExamFilter = 'ALL' | 'TOPIK_I' | 'TOPIK_II';
+
+const filterItems: Array<{ key: ExamFilter; label: string }> = [
+  { key: 'ALL', label: 'Бүгд' },
+  { key: 'TOPIK_I', label: 'TOPIK I' },
+  { key: 'TOPIK_II', label: 'TOPIK II' },
+];
+
 const ExamScreen = () => {
   const navigation = useNavigation<any>();
-  const [showPayment, setShowPayment] = useState(false);
+  const { showPayment, openPayment, closePayment } = usePaymentModal();
   const [stats, setStats] = useState({ taken: 0, avgScore: 0, total: 0 });
   const [actionError, setActionError] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<ExamFilter>('ALL');
 
   const { exams, isLoading, error, loadExams, startExam, canStartExam, getGroupedExams, isStarting } =
     useExam();
 
   const groupedExams = getGroupedExams();
+  const filteredTopikI = selectedFilter === 'TOPIK_II' ? [] : groupedExams.TOPIK_I;
+  const filteredTopikII = selectedFilter === 'TOPIK_I' ? [] : groupedExams.TOPIK_II;
+  const hasVisibleExams = filteredTopikI.length > 0 || filteredTopikII.length > 0;
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setActionError(null);
     await loadExams();
     setStats({
@@ -62,7 +75,7 @@ const ExamScreen = () => {
       avgScore: 0,
       total: exams.length,
     });
-  };
+  }, [exams.length, loadExams]);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,9 +86,9 @@ const ExamScreen = () => {
         }
       };
 
-      void clearSession();
-      void loadData();
-    }, []),
+      clearSession().catch(() => undefined);
+      loadData().catch(() => undefined);
+    }, [loadData]),
   );
 
   const handleStartExam = async (exam: any) => {
@@ -83,7 +96,7 @@ const ExamScreen = () => {
 
     const check = canStartExam(exam);
     if (!check.allowed && check.requiresPayment) {
-      setShowPayment(true);
+      openPayment();
       return;
     }
 
@@ -140,7 +153,7 @@ const ExamScreen = () => {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void loadData()} />}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadData} />}
     >
       <View style={styles.content}>
         <InlineMessage message={actionError} containerStyle={styles.message} />
@@ -159,10 +172,26 @@ const ExamScreen = () => {
           ))}
         </View>
 
-        {groupedExams.TOPIK_I.length > 0 && (
+        <View style={styles.filterContainer}>
+          {filterItems.map((item) => {
+            const isActive = selectedFilter === item.key;
+
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => setSelectedFilter(item.key)}
+                style={[styles.filterButton, isActive && styles.filterButtonActive]}
+              >
+                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>{item.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {filteredTopikI.length > 0 && (
           <>
             <SectionTitle viewStyle={styles.sectionTitle}>TOPIK I (Анхан шат)</SectionTitle>
-            {groupedExams.TOPIK_I.map((exam) => {
+            {filteredTopikI.map((exam) => {
               const badgeStyle = getBadgeStyle(exam.exam_type);
               return (
                 <Card key={exam.id} style={styles.examCard}>
@@ -207,10 +236,10 @@ const ExamScreen = () => {
           </>
         )}
 
-        {groupedExams.TOPIK_II.length > 0 && (
+        {filteredTopikII.length > 0 && (
           <>
             <SectionTitle viewStyle={styles.sectionTitle}>TOPIK II (Дунд/Гүнзгий шат)</SectionTitle>
-            {groupedExams.TOPIK_II.map((exam) => {
+            {filteredTopikII.map((exam) => {
               const badgeStyle = getBadgeStyle(exam.exam_type);
               return (
                 <Card key={exam.id} style={styles.examCard}>
@@ -255,15 +284,17 @@ const ExamScreen = () => {
           </>
         )}
 
-        {exams.length === 0 && !isLoading && (
+        {!hasVisibleExams && !isLoading && (
           <View style={styles.emptyContainer}>
             <Icon name="alert-circle-outline" size={48} color="#a2a2a2" />
-            <Text style={styles.emptyText}>Шалгалт олдсонгүй</Text>
+            <Text style={styles.emptyText}>
+              {exams.length === 0 ? 'Шалгалт олдсонгүй' : 'Энэ шүүлтүүрт таарах шалгалт олдсонгүй'}
+            </Text>
           </View>
         )}
       </View>
 
-      <Payment visible={showPayment} onClose={() => setShowPayment(false)} />
+      <Payment visible={showPayment} onClose={closePayment} />
     </ScrollView>
   );
 };
@@ -329,6 +360,29 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: 20,
     marginBottom: 10,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 18,
+  },
+  filterButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#F3F4F6',
+  },
+  filterButtonActive: {
+    backgroundColor: '#155DFC',
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  filterTextActive: {
+    color: '#FFFFFF',
   },
   examCard: {
     flexDirection: 'column',

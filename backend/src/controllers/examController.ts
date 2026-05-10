@@ -13,7 +13,10 @@ type QuestionRow = {
   section: 'listening' | 'reading';
   question_number: number;
   question_text: string;
+  question_image_url?: string | null;
+  question_score?: number | null;
   options: string[];
+  option_image_urls?: string[] | null;
   audio_url?: string | null;
   correct_answer_text?: string;
 };
@@ -51,11 +54,14 @@ const getPremiumProfile = async (userId: string) => {
 
 const shuffleOptions = (questions: QuestionRow[]) =>
   questions.map((question) => {
-    const options = [...question.options];
+    const optionPairs = question.options.map((option, index) => ({
+      option,
+      imageUrl: question.option_image_urls?.[index] ?? null,
+    }));
 
-    for (let i = options.length - 1; i > 0; i -= 1) {
+    for (let i = optionPairs.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
-      [options[i], options[j]] = [options[j], options[i]];
+      [optionPairs[i], optionPairs[j]] = [optionPairs[j], optionPairs[i]];
     }
 
     return {
@@ -63,36 +69,71 @@ const shuffleOptions = (questions: QuestionRow[]) =>
       section: question.section,
       question_number: question.question_number,
       question_text: question.question_text,
-      options,
+      question_image_url: question.question_image_url,
+      options: optionPairs.map((item) => item.option),
+      option_image_urls: optionPairs.some((item) => item.imageUrl)
+        ? optionPairs.map((item) => item.imageUrl)
+        : null,
       audio_url: question.audio_url,
     };
   });
 
 const scoreAnswers = (questions: QuestionRow[], answers: SubmittedAnswer[]) => {
+  let totalScore = 0;
+  let listeningScore = 0;
+  let readingScore = 0;
   let totalCorrect = 0;
   let listeningCorrect = 0;
   let readingCorrect = 0;
+  let maxScore = 0;
+  let listeningMaxScore = 0;
+  let readingMaxScore = 0;
+
+  const questionMap = new Map(questions.map((question) => [question.id, question]));
+
+  questions.forEach((question) => {
+    const questionScore = question.question_score ?? 1;
+    maxScore += questionScore;
+
+    if (question.section === 'listening') {
+      listeningMaxScore += questionScore;
+      return;
+    }
+
+    readingMaxScore += questionScore;
+  });
 
   answers.forEach((answer) => {
-    const question = questions.find((item) => item.id === answer.questionId);
+    const question = questionMap.get(answer.questionId);
     if (!question || answer.selectedAnswer !== question.correct_answer_text) {
       return;
     }
 
+    const questionScore = question.question_score ?? 1;
+
+    totalScore += questionScore;
     totalCorrect += 1;
 
     if (question.section === 'listening') {
+      listeningScore += questionScore;
       listeningCorrect += 1;
       return;
     }
 
+    readingScore += questionScore;
     readingCorrect += 1;
   });
 
   return {
+    totalScore,
+    listeningScore,
+    readingScore,
     totalCorrect,
     listeningCorrect,
     readingCorrect,
+    maxScore,
+    listeningMaxScore,
+    readingMaxScore,
   };
 };
 
@@ -120,7 +161,7 @@ export const getExams = async (_req: AuthRequest, res: Response) => {
       .select('*')
       .eq('is_active', true)
       .order('exam_type', { ascending: true })
-      .order('year', { ascending: false });
+      .order('test_number', { ascending: false });
 
     if (error) {
       return res.status(400).json({ success: false, error: error.message });
@@ -206,7 +247,7 @@ export const startExam = async (req: AuthRequest, res: Response) => {
 
     const { data: questions, error: questionsError } = await supabaseAdmin
       .from('mock_test_questions')
-      .select('id, section, question_number, question_text, options, audio_url')
+      .select('id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url')
       .eq('mock_test_id', examId)
       .order('section', { ascending: true })
       .order('question_number', { ascending: true });
@@ -319,7 +360,7 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
 
     const { data: questions, error: questionsError } = await supabaseAdmin
       .from('mock_test_questions')
-      .select('id, section, question_number, question_text, options, audio_url')
+      .select('id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url')
       .eq('mock_test_id', randomTest.id)
       .order('section', { ascending: true })
       .order('question_number', { ascending: true });
@@ -399,14 +440,24 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
 
     const { data: questions, error: questionsError } = await supabaseAdmin
       .from('mock_test_questions')
-      .select('id, section, correct_answer_text')
+      .select('id, section, correct_answer_text, question_score')
       .eq('mock_test_id', session.exam_id);
 
     if (questionsError || !questions || questions.length === 0) {
       return res.status(500).json({ success: false, error: 'Асуултуудыг ачаалахад алдаа гарлаа' });
     }
 
-    const { totalCorrect, listeningCorrect, readingCorrect } = scoreAnswers(
+    const {
+      totalScore,
+      listeningScore,
+      readingScore,
+      totalCorrect,
+      listeningCorrect,
+      readingCorrect,
+      maxScore,
+      listeningMaxScore,
+      readingMaxScore,
+    } = scoreAnswers(
       questions as QuestionRow[],
       answers || [],
     );
@@ -424,9 +475,9 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
       user_id: userId,
       mock_test_id: session.exam_id,
       exam_type: exam.exam_type,
-      total_score: totalCorrect,
-      listening_score: listeningCorrect,
-      reading_score: readingCorrect,
+      total_score: totalScore,
+      listening_score: listeningScore,
+      reading_score: readingScore,
       listening_answers: listeningAnswers,
       reading_answers: readingAnswers,
       time_spent_listening: exam.listening_questions > 0 ? timeSpent || 0 : 0,
@@ -450,16 +501,22 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
       })
       .eq('id', sessionId);
 
-    const percentage = exam.total_questions > 0 ? (totalCorrect / exam.total_questions) * 100 : 0;
+    const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
     return res.json({
       success: true,
       result: {
-        score: totalCorrect,
+        score: totalScore,
+        maxScore,
         totalQuestions: exam.total_questions,
+        correctAnswers: totalCorrect,
         percentage: Math.round(percentage),
-        listeningScore: listeningCorrect,
-        readingScore: readingCorrect,
+        listeningScore,
+        listeningMaxScore,
+        listeningCorrectAnswers: listeningCorrect,
+        readingScore,
+        readingMaxScore,
+        readingCorrectAnswers: readingCorrect,
       },
     });
   } catch (error) {
@@ -504,30 +561,40 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
 
     const { data: questions, error: questionsError } = await supabaseAdmin
       .from('mock_test_questions')
-      .select('id, section, correct_answer_text')
+      .select('id, section, correct_answer_text, question_score')
       .eq('mock_test_id', session.exam_id);
 
     if (questionsError || !questions || questions.length === 0) {
       return res.status(500).json({ success: false, error: 'Асуултуудыг ачаалахад алдаа гарлаа' });
     }
 
-    const { totalCorrect, listeningCorrect, readingCorrect } = scoreAnswers(
+    const {
+      totalScore,
+      listeningScore,
+      readingScore,
+      totalCorrect,
+      listeningCorrect,
+      readingCorrect,
+      maxScore,
+      listeningMaxScore,
+      readingMaxScore,
+    } = scoreAnswers(
       questions as QuestionRow[],
       answers || [],
     );
 
     const completedAt = new Date().toISOString();
-    const levelRule = await determineLevelFromRules(exam.exam_type, totalCorrect);
+    const levelRule = await determineLevelFromRules(exam.exam_type, totalScore);
 
     const { error: resultInsertError } = await supabaseAdmin.from('level_test_results').insert({
       session_id: sessionId,
       user_id: userId,
       mock_test_id: session.exam_id,
       exam_type: exam.exam_type,
-      total_score: totalCorrect,
-      adjusted_score: totalCorrect,
-      listening_score: listeningCorrect,
-      reading_score: readingCorrect,
+      total_score: totalScore,
+      adjusted_score: totalScore,
+      listening_score: listeningScore,
+      reading_score: readingScore,
       listening_answers: (answers || []).filter((answer) =>
         questions.some((question) => question.id === answer.questionId && question.section === 'listening'),
       ),
@@ -568,18 +635,24 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
       })
       .eq('id', sessionId);
 
-    const percentage = exam.total_questions > 0 ? (totalCorrect / exam.total_questions) * 100 : 0;
+    const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
     return res.json({
       success: true,
       result: {
-        score: totalCorrect,
+        score: totalScore,
+        maxScore,
         totalQuestions: exam.total_questions,
+        correctAnswers: totalCorrect,
         percentage: Math.round(percentage),
         level: finalLevel,
         levelName: finalLevelName,
-        listeningScore: listeningCorrect,
-        readingScore: readingCorrect,
+        listeningScore,
+        listeningMaxScore,
+        listeningCorrectAnswers: listeningCorrect,
+        readingScore,
+        readingMaxScore,
+        readingCorrectAnswers: readingCorrect,
       },
     });
   } catch (error) {

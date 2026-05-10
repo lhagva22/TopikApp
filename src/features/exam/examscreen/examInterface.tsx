@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -13,7 +14,9 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Video from 'react-native-video/lib/index';
 
+import { resolveApiAssetUrl } from '../../../core/api/apiClient';
 import { InlineMessage } from '../../../shared/components/feedback';
 import { getErrorMessage, logError } from '../../../shared/lib/errors';
 import { examApi } from '../api/examApi';
@@ -48,6 +51,8 @@ export const ExamInterface = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [audioPaused, setAudioPaused] = useState(true);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -183,6 +188,7 @@ export const ExamInterface = () => {
       return;
     }
 
+    setAudioPaused(true);
     let currentSessionId = sessionId;
     setSubmissionError(null);
 
@@ -214,9 +220,13 @@ export const ExamInterface = () => {
       setSessionId(null);
 
       if (result.success && 'result' in result) {
+        const correctAnswersText =
+          typeof result.result.correctAnswers === 'number'
+            ? `\nЗөв хариулт: ${result.result.correctAnswers}/${result.result.totalQuestions}`
+            : '';
         Alert.alert(
           'Шалгалт дууслаа',
-          `Та ${result.result.score}/${result.result.totalQuestions} оноо авлаа.`,
+          `Та ${result.result.score}/${result.result.maxScore} оноо авлаа.${correctAnswersText}`,
           [{ text: 'OK', onPress: () => navigation.navigate('Exam') }],
         );
         return;
@@ -236,6 +246,7 @@ export const ExamInterface = () => {
 
   const handleAutoSubmit = () => {
     if (hasSubmitted) return;
+    setAudioPaused(true);
     Alert.alert('Хугацаа дууссан', 'Шалгалтын хугацаа дууссан тул автоматаар дуусгаж байна.', [
       { text: 'OK', onPress: () => void handleSubmit() },
     ]);
@@ -244,6 +255,23 @@ export const ExamInterface = () => {
   const answeredCount = Object.keys(answers).length;
   const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
   const currentQ = questions[currentQuestion];
+  const currentAudioUrl = resolveApiAssetUrl(currentQ?.audio_url);
+  const currentQuestionImageUrl = resolveApiAssetUrl(currentQ?.question_image_url);
+
+  useEffect(() => {
+    setAudioPaused(true);
+    setAudioError(null);
+  }, [currentQ?.id]);
+
+  useEffect(() => {
+    if (showSubmitModal || hasSubmitted) {
+      setAudioPaused(true);
+    }
+  }, [showSubmitModal, hasSubmitted]);
+
+  useEffect(() => () => {
+    setAudioPaused(true);
+  }, []);
 
   if (loading) {
     return (
@@ -308,13 +336,59 @@ export const ExamInterface = () => {
       <ScrollView style={styles.content}>
         <InlineMessage message={submissionError} containerStyle={styles.message} />
 
+        {currentAudioUrl ? (
+          <View style={styles.audioCard}>
+            <View style={styles.audioHeaderRow}>
+              <View style={styles.audioTextWrap}>
+                <Text style={styles.audioTitle}>Сонсголын аудио</Text>
+                <Text style={styles.audioSubtitle}>Play дарж дуугаа эхлүүлээд, шаардлагатай бол seek хийнэ.</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.audioToggleButton}
+                onPress={() => {
+                  setAudioPaused((prev) => !prev);
+                  setAudioError(null);
+                }}
+              >
+                <Icon name={audioPaused ? 'play' : 'pause'} size={18} color="#fff" />
+                <Text style={styles.audioToggleText}>{audioPaused ? 'Play' : 'Pause'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.audioPlayerWrap}>
+              <Video
+                source={{ uri: currentAudioUrl }}
+                style={styles.audioPlayer}
+                controls={true}
+                paused={audioPaused}
+                playInBackground={false}
+                onError={() => {
+                  setAudioError('Аудио ачааллах үед алдаа гарлаа.');
+                  setAudioPaused(true);
+                }}
+              />
+            </View>
+
+            {audioError ? <Text style={styles.audioErrorText}>{audioError}</Text> : null}
+          </View>
+        ) : null}
+
         <View style={styles.questionCard}>
+          {currentQuestionImageUrl ? (
+            <Image
+              source={{ uri: currentQuestionImageUrl }}
+              style={styles.questionImage}
+              resizeMode="contain"
+            />
+          ) : null}
           <Text style={styles.questionText}>{currentQ?.question_text}</Text>
         </View>
 
         <View style={styles.optionsContainer}>
-          {currentQ?.options.map((option) => {
+          {currentQ?.options.map((option, index) => {
             const isSelected = answers[currentQ.id] === option;
+            const optionImageUrl = resolveApiAssetUrl(currentQ?.option_image_urls?.[index] ?? null);
             return (
               <TouchableOpacity
                 key={option}
@@ -322,8 +396,17 @@ export const ExamInterface = () => {
                 onPress={() => handleAnswerSelect(option)}
                 disabled={hasSubmitted}
               >
-                <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option}</Text>
-                {isSelected && <Icon name="checkmark-circle" size={20} color="#fff" />}
+                <View style={styles.optionContent}>
+                  {optionImageUrl ? (
+                    <Image
+                      source={{ uri: optionImageUrl }}
+                      style={styles.optionImage}
+                      resizeMode="cover"
+                    />
+                  ) : null}
+                  <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option}</Text>
+                </View>
+                {isSelected && <Icon name="checkmark-circle" size={20} color="#155DFC" />}
               </TouchableOpacity>
             );
           })}
@@ -447,11 +530,24 @@ const styles = StyleSheet.create({
   progressText: { fontSize: 12, color: '#6B7280', marginTop: 8, textAlign: 'right' },
   content: { flex: 1, padding: 16 },
   message: { marginBottom: 16 },
+  audioCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  audioHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
+  audioTextWrap: { flex: 1 },
+  audioTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  audioSubtitle: { marginTop: 4, fontSize: 12, lineHeight: 18, color: '#6B7280' },
+  audioToggleButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#155DFC', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
+  audioToggleText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  audioPlayerWrap: { height: 56, borderRadius: 12, overflow: 'hidden', backgroundColor: '#0F172A' },
+  audioPlayer: { width: '100%', height: '100%' },
+  audioErrorText: { marginTop: 10, fontSize: 13, color: '#EF4444' },
   questionCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  questionImage: { width: '100%', height: 240, marginBottom: 16, borderRadius: 12, backgroundColor: '#F8FAFC' },
   questionText: { fontSize: 18, lineHeight: 28, color: '#333' },
   optionsContainer: { gap: 12, marginBottom: 20 },
-  optionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 2, borderColor: '#E5E7EB' },
+  optionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 2, borderColor: '#E5E7EB', gap: 12 },
   optionSelected: { borderColor: '#155DFC', backgroundColor: '#EFF6FF' },
+  optionContent: { flex: 1 },
+  optionImage: { width: '100%', aspectRatio: 1.5, borderRadius: 10, marginBottom: 12, backgroundColor: '#E5E7EB' },
   optionText: { flex: 1, fontSize: 16, color: '#374151' },
   optionTextSelected: { color: '#155DFC', fontWeight: '500' },
   gridCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 20 },

@@ -1,38 +1,38 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import AppText from '../../shared/components/atoms/AppText';
-import { Card } from '../../shared/components/molecules/card';
-import { getErrorMessage } from '../../shared/lib/errors';
-import { dictionaryApi, type DictionaryWord } from './api/dictionaryApi';
+import AppText from '../../../shared/components/atoms/AppText';
+import { Card } from '../../../shared/components/molecules/card';
+import { getErrorMessage } from '../../../shared/lib/errors';
+import { lessonApi, type LessonContent } from '../api/lessonApi';
 
-const Dictionary = () => {
+const GrammarScreen = () => {
   const [query, setQuery] = useState('');
-  const [words, setWords] = useState<DictionaryWord[]>([]);
+  const [lessons, setLessons] = useState<LessonContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadWords = async () => {
+    const loadGrammarLessons = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const response = await dictionaryApi.searchWords(query);
+        const response = await lessonApi.getLessonsByCategory('grammar');
 
         if (!response.success) {
-          throw new Error(response.error || 'Үгийн сан ачаалах боломжгүй байна.');
+          throw new Error(response.error || 'Дүрмийн өгөгдөл ачаалах боломжгүй байна.');
         }
 
         if (isMounted) {
-          setWords(response.words || []);
+          setLessons(response.lessons || []);
         }
       } catch (loadError) {
         if (isMounted) {
-          setError(getErrorMessage(loadError, 'Үгийн сан ачаалах үед алдаа гарлаа.'));
+          setError(getErrorMessage(loadError, 'Дүрмийн өгөгдөл ачаалах үед алдаа гарлаа.'));
         }
       } finally {
         if (isMounted) {
@@ -41,23 +41,35 @@ const Dictionary = () => {
       }
     };
 
-    const timeoutId = setTimeout(() => {
-      void loadWords();
-    }, 250);
+    void loadGrammarLessons();
 
     return () => {
       isMounted = false;
-      clearTimeout(timeoutId);
     };
-  }, [query]);
+  }, []);
 
-  const headerText = useMemo(() => {
-    if (query.trim()) {
-      return `"${query}" хайлтад ${words.length} үг`;
+  const filteredLessons = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+
+    if (!normalized) {
+      return lessons;
     }
 
-    return `${words.length} үг`;
-  }, [query, words.length]);
+    return lessons.filter((lesson) =>
+      `${lesson.title} ${lesson.description}`.toLowerCase().includes(normalized),
+    );
+  }, [lessons, query]);
+
+  const handleOpenLesson = async (lesson: LessonContent) => {
+    if (!lesson.contentUrl) {
+      return;
+    }
+
+    const supported = await Linking.canOpenURL(lesson.contentUrl);
+    if (supported) {
+      await Linking.openURL(lesson.contentUrl);
+    }
+  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -66,7 +78,7 @@ const Dictionary = () => {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Хайх үг"
+          placeholder="Хайх дүрэм"
           placeholderTextColor="#94a3b8"
           style={styles.searchInput}
         />
@@ -74,14 +86,14 @@ const Dictionary = () => {
 
       <View style={styles.headerStrip}>
         <AppText variant="section" style={styles.headerText}>
-          {headerText}
+          Бүх шат - {lessons.length} дүрэм
         </AppText>
       </View>
 
       <Card style={styles.listCard}>
         {isLoading ? (
           <AppText tone="secondary" style={styles.stateText}>
-            Үгс ачаалж байна...
+            Дүрмүүд ачаалж байна...
           </AppText>
         ) : null}
 
@@ -91,31 +103,30 @@ const Dictionary = () => {
           </AppText>
         ) : null}
 
-        {!isLoading && !error && words.length === 0 ? (
+        {!isLoading && !error && filteredLessons.length === 0 ? (
           <AppText tone="secondary" style={styles.stateText}>
-            Тохирох үг олдсонгүй.
+            Хайлтанд тохирох дүрэм олдсонгүй.
           </AppText>
         ) : null}
 
         {!isLoading &&
           !error &&
-          words.map((word) => (
-            <View key={word.id} style={styles.wordRow}>
-              <Icon name="library-outline" size={20} color="#cbd5e1" style={styles.rowIcon} />
+          filteredLessons.map((lesson) => (
+            <Pressable
+              key={lesson.id}
+              onPress={() => void handleOpenLesson(lesson)}
+              style={styles.grammarRow}
+            >
+              <Icon name="search-outline" size={20} color="#cbd5e1" style={styles.rowIcon} />
               <View style={styles.rowContent}>
-                <AppText style={styles.wordTitle}>{word.koreanWord}</AppText>
-                {word.mongolianMeaning ? (
-                  <AppText tone="secondary" style={styles.wordMeaning}>
-                    {word.mongolianMeaning}
-                  </AppText>
-                ) : null}
-                {word.exampleSentence ? (
-                  <AppText tone="secondary" style={styles.wordExample}>
-                    {word.exampleSentence}
-                  </AppText>
-                ) : null}
+                <AppText style={styles.rowTitle}>
+                  {lesson.title}
+                  {lesson.description ? (
+                    <AppText style={styles.rowDescription}> - {lesson.description}</AppText>
+                  ) : null}
+                </AppText>
               </View>
-            </View>
+            </Pressable>
           ))}
       </Card>
     </ScrollView>
@@ -169,7 +180,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 18,
   },
-  wordRow: {
+  grammarRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingHorizontal: 16,
@@ -184,23 +195,17 @@ const styles = StyleSheet.create({
   rowContent: {
     flex: 1,
   },
-  wordTitle: {
+  rowTitle: {
     color: '#111827',
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 26,
   },
-  wordMeaning: {
-    marginTop: 4,
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#475569',
-  },
-  wordExample: {
-    marginTop: 6,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#64748b',
+  rowDescription: {
+    color: '#111827',
+    fontSize: 17,
+    lineHeight: 26,
+    fontWeight: '400',
   },
 });
 
-export default Dictionary;
+export default GrammarScreen;

@@ -1,9 +1,9 @@
 // shared/components/organisms/CustomDrawerContent.js
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import Payment from '../../../features/payment/payment';
+import { PaymentScreen as Payment, usePaymentModal } from '../../../features/payment';
 import { useAuthStore } from '../../../features/auth/store/authStore';
 import { useAppStore } from '../../../app/store';
 import { Card } from '../molecules/card';
@@ -16,7 +16,7 @@ const menuItems = [
 ];
 
 const CustomDrawerContent = (props) => {
-  const [showPayment, setShowPayment] = useState(false);
+  const { showPayment, openPayment, closePayment } = usePaymentModal();
   const { isAuthenticated, isPaidUser, user, getDaysRemaining, getSubscriptionProgress } = useAppStore();
   const { logout } = useAuthStore();
 
@@ -30,7 +30,7 @@ const CustomDrawerContent = (props) => {
 
   const handlePress = (item) => {
     if (item.screen === 'Payment') {
-      setShowPayment(true);
+      openPayment();
       return;
     }
 
@@ -82,7 +82,7 @@ const CustomDrawerContent = (props) => {
         )}
       </View>
 
-      <Payment visible={showPayment} onClose={() => setShowPayment(false)} />
+      <Payment visible={showPayment} onClose={closePayment} />
 
       {user && (
         <Card style={styles.userCard}>
@@ -131,7 +131,7 @@ const CustomDrawerContent = (props) => {
               {!isPaidUser() && (
                 <TouchableOpacity
                   style={styles.upgradeButton}
-                  onPress={() => setShowPayment(true)}
+                  onPress={openPayment}
                 >
                   <Text style={styles.upgradeButtonText}>Багц идэвхжүүлэх</Text>
                 </TouchableOpacity>
