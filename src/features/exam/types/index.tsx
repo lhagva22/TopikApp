@@ -42,7 +42,24 @@ export interface ExamResult {
   readingCorrectAnswers?: number;
 }
 
+export interface ExamResultSummary {
+  id: string;
+  exam_id: string;
+  exam_title: string;
+  exam_type: 'TOPIK_I' | 'TOPIK_II';
+  total_score: number;
+  max_score: number;
+  listening_score: number;
+  reading_score: number;
+  percentage: number;
+  completed_at: string;
+}
+
 // API Response types
+export type GetExamResultsResponse =
+  | { success: true; results: ExamResultSummary[]; total: number }
+  | { success: false; error: string };
+
 export type GetExamBankResponse =
   | { success: true; exams: ExamBank[]; total: number }
   | { success: false; error: string };

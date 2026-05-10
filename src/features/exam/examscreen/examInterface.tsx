@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Video from 'react-native-video/lib/index';
 
@@ -33,6 +33,7 @@ const ProgressBar = ({ progress }: ExamProgressBarProps) => (
 export const ExamInterface = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const params = route.params ?? {};
 
   const examId = params.examId;
@@ -220,15 +221,10 @@ export const ExamInterface = () => {
       setSessionId(null);
 
       if (result.success && 'result' in result) {
-        const correctAnswersText =
-          typeof result.result.correctAnswers === 'number'
-            ? `\nЗөв хариулт: ${result.result.correctAnswers}/${result.result.totalQuestions}`
-            : '';
-        Alert.alert(
-          'Шалгалт дууслаа',
-          `Та ${result.result.score}/${result.result.maxScore} оноо авлаа.${correctAnswersText}`,
-          [{ text: 'OK', onPress: () => navigation.navigate('Exam') }],
-        );
+        navigation.navigate('ExamResultScreen', {
+          ...result.result,
+          examTitle,
+        });
         return;
       }
 
@@ -272,6 +268,14 @@ export const ExamInterface = () => {
   useEffect(() => () => {
     setAudioPaused(true);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setAudioPaused(true);
+      };
+    }, []),
+  );
 
   if (loading) {
     return (
@@ -357,17 +361,19 @@ export const ExamInterface = () => {
             </View>
 
             <View style={styles.audioPlayerWrap}>
-              <Video
-                source={{ uri: currentAudioUrl }}
-                style={styles.audioPlayer}
-                controls={true}
-                paused={audioPaused}
-                playInBackground={false}
-                onError={() => {
-                  setAudioError('Аудио ачааллах үед алдаа гарлаа.');
-                  setAudioPaused(true);
-                }}
-              />
+              {isFocused && !hasSubmitted ? (
+                <Video
+                  source={{ uri: currentAudioUrl }}
+                  style={styles.audioPlayer}
+                  controls={true}
+                  paused={audioPaused}
+                  playInBackground={false}
+                  onError={() => {
+                    setAudioError('Аудио ачааллах үед алдаа гарлаа.');
+                    setAudioPaused(true);
+                  }}
+                />
+              ) : null}
             </View>
 
             {audioError ? <Text style={styles.audioErrorText}>{audioError}</Text> : null}
@@ -391,7 +397,7 @@ export const ExamInterface = () => {
             const optionImageUrl = resolveApiAssetUrl(currentQ?.option_image_urls?.[index] ?? null);
             return (
               <TouchableOpacity
-                key={option}
+                key={`${currentQ.id}-${index}`}
                 style={[styles.optionButton, isSelected && styles.optionSelected]}
                 onPress={() => handleAnswerSelect(option)}
                 disabled={hasSubmitted}

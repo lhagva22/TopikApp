@@ -40,6 +40,18 @@ export type RootDrawerParamList = {
     questions?: ExamQuestionParam[];
     isLevelTest?: boolean;
   };
+  ExamResultScreen: {
+    score: number;
+    maxScore: number;
+    percentage: number;
+    correctAnswers?: number;
+    totalQuestions: number;
+    listeningScore: number;
+    listeningMaxScore?: number;
+    readingScore: number;
+    readingMaxScore?: number;
+    examTitle: string;
+  };
 };
 
 export type RootStackParamList = {

@@ -18,6 +18,7 @@ import CustomButton from '../../../shared/components/molecules/button';
 import { Card, CardHeader, CardTitle } from '../../../shared/components/molecules/card';
 import { getErrorMessage } from '../../../shared/lib/errors';
 import { PaymentScreen as Payment, usePaymentModal } from '../../payment';
+import { examApi } from '../api/examApi';
 import { useExam } from '../hooks/useExam';
 
 const statsItems = [
@@ -70,11 +71,15 @@ const ExamScreen = () => {
   const loadData = useCallback(async () => {
     setActionError(null);
     await loadExams();
-    setStats({
-      taken: 0,
-      avgScore: 0,
-      total: exams.length,
-    });
+    const resultsResponse = await examApi.getResults();
+    if (resultsResponse.success) {
+      const results = resultsResponse.results;
+      const avgScore =
+        results.length > 0
+          ? Math.round(results.reduce((sum, r) => sum + r.percentage, 0) / results.length)
+          : 0;
+      setStats({ taken: results.length, avgScore, total: exams.length });
+    }
   }, [exams.length, loadExams]);
 
   useFocusEffect(
@@ -165,7 +170,7 @@ const ExamScreen = () => {
                 <Icon name={item.icon} size={20} color={item.iconColor} />
               </View>
               <Text style={styles.statValue}>
-                {item.id === 1 ? stats.taken : item.id === 2 ? stats.avgScore : exams.length}
+                {item.id === 1 ? stats.taken : item.id === 2 ? `${stats.avgScore}%` : exams.length}
               </Text>
               <CardTitle style={styles.statTitle}>{item.title}</CardTitle>
             </Card>

@@ -3,7 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { StyleSheet, View } from 'react-native';
 
 import { DictionaryScreen } from '../../features/dictionary';
-import { ExamInterfaceScreen, ExamScreen } from '../../features/exam';
+import { ExamInterfaceScreen, ExamResultScreen, ExamScreen } from '../../features/exam';
 import { HomeScreen } from '../../features/home';
 import { AboutScreen, ContactScreen } from '../../features/info';
 import {
@@ -105,6 +105,11 @@ export function DrawerNavigator() {
       <Drawer.Screen
         name="ExamInterface"
         component={ExamInterfaceScreen}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
+      <Drawer.Screen
+        name="ExamResultScreen"
+        component={ExamResultScreen}
         options={{ drawerItemStyle: { display: 'none' } }}
       />
     </Drawer.Navigator>
