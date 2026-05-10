@@ -7,7 +7,16 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "generate:topik64-sql": "node scripts/generate_topik_64_sql.mjs",
+    "generate:topik83-sql": "node scripts/generate_topik_83_sql.mjs",
+    "generate:topik91-sql": "node scripts/generate_topik_91_sql.mjs",
+    "generate:topik102-sql": "node scripts/generate_topik_102_sql.mjs",
+    "upload:topik64-assets": "node scripts/upload_topik_96_assets.cjs --manifest backend/sql/mock_tests/topik_64_asset_manifest.json",
+    "upload:topik83-assets": "node scripts/upload_topik_96_assets.cjs --manifest backend/sql/mock_tests/topik_83_asset_manifest.json",
+    "upload:topik96-assets": "node scripts/upload_topik_96_assets.cjs",
+    "upload:topik102-assets": "node scripts/upload_topik_96_assets.cjs --manifest backend/sql/mock_tests/topik_102_asset_manifest.json",
+    "upload:topik91-assets": "node scripts/upload_topik_96_assets.cjs --manifest backend/sql/mock_tests/topik_91_asset_manifest.json"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.2",

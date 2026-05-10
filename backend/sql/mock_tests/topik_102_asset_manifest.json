@@ -1,0 +1,293 @@
+{
+  "generated_at": "2026-05-10T22:46:26.480Z",
+  "exams": [
+    {
+      "exam_type": "TOPIK_I",
+      "test_number": 102,
+      "folder": "topik-i-102",
+      "audio_file_name": "102-TOPIK-I-Listening-Audio-File.mp3",
+      "assets": [
+        {
+          "kind": "audio",
+          "exam_type": "TOPIK_I",
+          "target_path": "topik-i-102/audio/102-TOPIK-I-Listening-Audio-File.mp3",
+          "source": "local-audio-file"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_I",
+          "section": "listening",
+          "question_number": 15,
+          "option_number": 1,
+          "target_path": "topik-i-102/listening/q15_option_1.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102L15-1.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_I",
+          "section": "listening",
+          "question_number": 15,
+          "option_number": 2,
+          "target_path": "topik-i-102/listening/q15_option_2.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102L15-2.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_I",
+          "section": "listening",
+          "question_number": 15,
+          "option_number": 3,
+          "target_path": "topik-i-102/listening/q15_option_3.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102L15-3.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_I",
+          "section": "listening",
+          "question_number": 15,
+          "option_number": 4,
+          "target_path": "topik-i-102/listening/q15_option_4.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102L15-4.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_I",
+          "section": "listening",
+          "question_number": 16,
+          "option_number": 1,
+          "target_path": "topik-i-102/listening/q16_option_1.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102L16-1.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_I",
+          "section": "listening",
+          "question_number": 16,
+          "option_number": 2,
+          "target_path": "topik-i-102/listening/q16_option_2.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102L16-2.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_I",
+          "section": "listening",
+          "question_number": 16,
+          "option_number": 3,
+          "target_path": "topik-i-102/listening/q16_option_3.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102L16-3.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_I",
+          "section": "listening",
+          "question_number": 16,
+          "option_number": 4,
+          "target_path": "topik-i-102/listening/q16_option_4.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102L16-4.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_I",
+          "section": "reading",
+          "question_number": 10,
+          "target_path": "topik-i-102/reading/q10.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102R10.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_I",
+          "section": "reading",
+          "question_number": 11,
+          "target_path": "topik-i-102/reading/q11.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102R11.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_I",
+          "section": "reading",
+          "question_number": 12,
+          "target_path": "topik-i-102/reading/q12.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102R12.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_I",
+          "section": "reading",
+          "question_number": 33,
+          "target_path": "topik-i-102/reading/q33.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T1102R33.png"
+        }
+      ]
+    },
+    {
+      "exam_type": "TOPIK_II",
+      "test_number": 102,
+      "folder": "topik-ii-102",
+      "audio_file_name": "102-TOPIK-II-Listening-Audio-File.mp3",
+      "assets": [
+        {
+          "kind": "audio",
+          "exam_type": "TOPIK_II",
+          "target_path": "topik-ii-102/audio/102-TOPIK-II-Listening-Audio-File.mp3",
+          "source": "local-audio-file"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 1,
+          "option_number": 1,
+          "target_path": "topik-ii-102/listening/q1_option_1.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L1-1.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 1,
+          "option_number": 2,
+          "target_path": "topik-ii-102/listening/q1_option_2.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L1-2.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 1,
+          "option_number": 3,
+          "target_path": "topik-ii-102/listening/q1_option_3.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L1-3.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 1,
+          "option_number": 4,
+          "target_path": "topik-ii-102/listening/q1_option_4.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L1-4.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 2,
+          "option_number": 1,
+          "target_path": "topik-ii-102/listening/q2_option_1.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L2-1.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 2,
+          "option_number": 2,
+          "target_path": "topik-ii-102/listening/q2_option_2.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L2-2.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 2,
+          "option_number": 3,
+          "target_path": "topik-ii-102/listening/q2_option_3.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L2-3.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 2,
+          "option_number": 4,
+          "target_path": "topik-ii-102/listening/q2_option_4.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L2-4.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 3,
+          "option_number": 1,
+          "target_path": "topik-ii-102/listening/q3_option_1.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L3-1.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 3,
+          "option_number": 2,
+          "target_path": "topik-ii-102/listening/q3_option_2.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L3-2.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 3,
+          "option_number": 3,
+          "target_path": "topik-ii-102/listening/q3_option_3.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L3-3.png"
+        },
+        {
+          "kind": "option_image",
+          "exam_type": "TOPIK_II",
+          "section": "listening",
+          "question_number": 3,
+          "option_number": 4,
+          "target_path": "topik-ii-102/listening/q3_option_4.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102L3-4.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_II",
+          "section": "reading",
+          "question_number": 5,
+          "target_path": "topik-ii-102/reading/q5.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102R5.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_II",
+          "section": "reading",
+          "question_number": 6,
+          "target_path": "topik-ii-102/reading/q6.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102R6.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_II",
+          "section": "reading",
+          "question_number": 7,
+          "target_path": "topik-ii-102/reading/q7.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102R7.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_II",
+          "section": "reading",
+          "question_number": 8,
+          "target_path": "topik-ii-102/reading/q8.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102R8.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_II",
+          "section": "reading",
+          "question_number": 9,
+          "target_path": "topik-ii-102/reading/q9.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102R9.png"
+        },
+        {
+          "kind": "question_image",
+          "exam_type": "TOPIK_II",
+          "section": "reading",
+          "question_number": 10,
+          "target_path": "topik-ii-102/reading/q10.png",
+          "source_url": "https://www.topikguide.com/wp-content/uploads/2025/09/T2102R10.png"
+        }
+      ]
+    }
+  ]
+}

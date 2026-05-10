@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,9 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Video from 'react-native-video/lib/index';
+import type { VideoRef } from 'react-native-video';
 
 import { resolveApiAssetUrl } from '../../../core/api/apiClient';
 import { InlineMessage } from '../../../shared/components/feedback';
@@ -33,14 +34,13 @@ const ProgressBar = ({ progress }: ExamProgressBarProps) => (
 export const ExamInterface = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const isFocused = useIsFocused();
   const params = route.params ?? {};
 
   const examId = params.examId;
   const initialSessionId = params.sessionId ?? null;
   const examTitle = params.examTitle || 'TOPIK Шалгалт';
   const duration = params.duration || 100;
-  const initialQuestions = params.questions || [];
+  const initialQuestions = useMemo(() => params.questions ?? [], [params.questions]);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
@@ -56,12 +56,93 @@ export const ExamInterface = () => {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioPlayerRef = useRef<VideoRef | null>(null);
+  const allowExitRef = useRef(false);
+
+  const stopAudioPlayback = useCallback((resetPosition = false, syncState = true) => {
+    if (syncState) {
+      setAudioPaused(true);
+      setAudioError(null);
+    }
+
+    const player = audioPlayerRef.current;
+
+    if (!player) {
+      return;
+    }
+
+    try {
+      player.pause();
+    } catch {
+      return;
+    }
+
+    try {
+      player.dismissFullscreenPlayer();
+    } catch {
+      // Fullscreen audio controls may not be active.
+    }
+
+    if (resetPosition) {
+      try {
+        player.seek(0);
+      } catch {
+        // Ignore seek failures during cleanup.
+      }
+    }
+  }, []);
+
+  const exitExam = useCallback(
+    async (action?: any) => {
+      allowExitRef.current = true;
+      stopAudioPlayback(true);
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+
+      await AsyncStorage.removeItem('current_exam_session');
+      setSessionId(null);
+
+      if (action) {
+        navigation.dispatch(action);
+        return;
+      }
+
+      navigation.goBack();
+    },
+    [navigation, stopAudioPlayback],
+  );
+
+  const requestExitExam = useCallback(
+    (action?: any) => {
+      const shouldConfirm = !loading && !hasSubmitted && !isSubmitting && Boolean(sessionId);
+
+      if (!shouldConfirm) {
+        exitExam(action).catch(() => undefined);
+        return;
+      }
+
+      Alert.alert('Шалгалтаас гарах уу?', 'Гарвал энэ оролдлого дуусч, буцаад үргэлжлүүлэхгүй.', [
+        { text: 'Үлдэх', style: 'cancel' },
+        {
+          text: 'Гарах',
+          style: 'destructive',
+          onPress: () => {
+            exitExam(action).catch(() => undefined);
+          },
+        },
+      ]);
+    },
+    [exitExam, hasSubmitted, isSubmitting, loading, sessionId],
+  );
 
   const startExam = useCallback(async () => {
     setHasSubmitted(false);
     setAnswers({});
     setCurrentQuestion(0);
     setSubmissionError(null);
+    stopAudioPlayback(true);
 
     if (!examId) {
       setError('Шалгалтын ID олдсонгүй.');
@@ -98,7 +179,7 @@ export const ExamInterface = () => {
     } finally {
       setLoading(false);
     }
-  }, [examId]);
+  }, [examId, stopAudioPlayback]);
 
   useEffect(() => {
     const initExam = async () => {
@@ -108,6 +189,7 @@ export const ExamInterface = () => {
       setSubmissionError(null);
       setError(null);
       setHasSubmitted(false);
+      stopAudioPlayback(true);
 
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -137,7 +219,7 @@ export const ExamInterface = () => {
     };
 
     void initExam();
-  }, [duration, examId, initialQuestions, initialSessionId, startExam]);
+  }, [duration, examId, initialQuestions, initialSessionId, startExam, stopAudioPlayback]);
 
   useEffect(() => {
     if (!sessionId || questions.length === 0 || loading || hasSubmitted) {
@@ -167,7 +249,7 @@ export const ExamInterface = () => {
         clearInterval(timerRef.current);
       }
     };
-  }, [sessionId, questions.length, loading, hasSubmitted]);
+  }, [sessionId, questions.length, loading, hasSubmitted, handleAutoSubmit]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -184,12 +266,12 @@ export const ExamInterface = () => {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (hasSubmitted || isSubmitting) {
       return;
     }
 
-    setAudioPaused(true);
+    stopAudioPlayback(true);
     let currentSessionId = sessionId;
     setSubmissionError(null);
 
@@ -238,15 +320,25 @@ export const ExamInterface = () => {
       setIsSubmitting(false);
       setShowSubmitModal(false);
     }
-  };
+  }, [
+    answers,
+    duration,
+    examTitle,
+    hasSubmitted,
+    isSubmitting,
+    navigation,
+    sessionId,
+    stopAudioPlayback,
+    timeLeft,
+  ]);
 
-  const handleAutoSubmit = () => {
+  const handleAutoSubmit = useCallback(() => {
     if (hasSubmitted) return;
-    setAudioPaused(true);
+    stopAudioPlayback(true);
     Alert.alert('Хугацаа дууссан', 'Шалгалтын хугацаа дууссан тул автоматаар дуусгаж байна.', [
       { text: 'OK', onPress: () => void handleSubmit() },
     ]);
-  };
+  }, [handleSubmit, hasSubmitted, stopAudioPlayback]);
 
   const answeredCount = Object.keys(answers).length;
   const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
@@ -255,27 +347,46 @@ export const ExamInterface = () => {
   const currentQuestionImageUrl = resolveApiAssetUrl(currentQ?.question_image_url);
 
   useEffect(() => {
-    setAudioPaused(true);
-    setAudioError(null);
-  }, [currentQ?.id]);
+    stopAudioPlayback(false);
+  }, [currentQ?.id, stopAudioPlayback]);
 
   useEffect(() => {
     if (showSubmitModal || hasSubmitted) {
-      setAudioPaused(true);
+      stopAudioPlayback(hasSubmitted);
     }
-  }, [showSubmitModal, hasSubmitted]);
+  }, [showSubmitModal, hasSubmitted, stopAudioPlayback]);
 
   useEffect(() => () => {
-    setAudioPaused(true);
-  }, []);
+    stopAudioPlayback(true, false);
+  }, [stopAudioPlayback]);
 
   useFocusEffect(
     useCallback(() => {
       return () => {
-        setAudioPaused(true);
+        stopAudioPlayback(true);
       };
-    }, []),
+    }, [stopAudioPlayback]),
   );
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (event: any) => {
+      if (allowExitRef.current) {
+        allowExitRef.current = false;
+        return;
+      }
+
+      const shouldConfirm = !loading && !hasSubmitted && !isSubmitting && Boolean(sessionId);
+      if (!shouldConfirm) {
+        stopAudioPlayback(true);
+        return;
+      }
+
+      event.preventDefault();
+      requestExitExam(event.data.action);
+    });
+
+    return unsubscribe;
+  }, [navigation, hasSubmitted, isSubmitting, loading, requestExitExam, sessionId, stopAudioPlayback]);
 
   if (loading) {
     return (
@@ -294,7 +405,12 @@ export const ExamInterface = () => {
         <TouchableOpacity style={styles.retryButton} onPress={() => void startExam()}>
           <Text style={styles.retryButtonText}>Дахин оролдох</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            requestExitExam();
+          }}
+        >
           <Text style={styles.backButtonText}>Буцах</Text>
         </TouchableOpacity>
       </View>
@@ -313,7 +429,12 @@ export const ExamInterface = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonHeader}>
+        <TouchableOpacity
+          onPress={() => {
+            requestExitExam();
+          }}
+          style={styles.backButtonHeader}
+        >
           <Icon name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -361,13 +482,15 @@ export const ExamInterface = () => {
             </View>
 
             <View style={styles.audioPlayerWrap}>
-              {isFocused && !hasSubmitted ? (
+              {!hasSubmitted ? (
                 <Video
+                  ref={audioPlayerRef}
                   source={{ uri: currentAudioUrl }}
                   style={styles.audioPlayer}
                   controls={true}
                   paused={audioPaused}
                   playInBackground={false}
+                  onEnd={() => stopAudioPlayback(true)}
                   onError={() => {
                     setAudioError('Аудио ачааллах үед алдаа гарлаа.');
                     setAudioPaused(true);
