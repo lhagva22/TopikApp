@@ -53,7 +53,9 @@ export const removeToken = async (): Promise<void> => {
 
 export const isTokenExpired = async (): Promise<boolean> => {
   const token = await getToken();
-  if (!token) return true;
+  if (!token) {
+    return true;
+  }
 
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
@@ -152,8 +154,11 @@ export const ENDPOINTS = {
   },
   PAYMENT: {
     CREATE: '/payments',
+    QPAY_CREATE: '/payments/qpay/create',
     HISTORY: '/payments',
     DETAIL: (id: string) => `/payments/${id}`,
+    CHECK: (id: string) => `/payments/${id}/check`,
+    DEV_COMPLETE: (id: string) => `/payments/${id}/dev-complete`,
     WEBHOOK: '/payments/webhook',
   },
   PROGRESS: {

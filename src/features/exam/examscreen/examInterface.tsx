@@ -221,36 +221,6 @@ export const ExamInterface = () => {
     void initExam();
   }, [duration, examId, initialQuestions, initialSessionId, startExam, stopAudioPlayback]);
 
-  useEffect(() => {
-    if (!sessionId || questions.length === 0 || loading || hasSubmitted) {
-      return;
-    }
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          if (timerRef.current) {
-            clearInterval(timerRef.current);
-          }
-          handleAutoSubmit();
-          return 0;
-        }
-
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [sessionId, questions.length, loading, hasSubmitted, handleAutoSubmit]);
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -339,6 +309,36 @@ export const ExamInterface = () => {
       { text: 'OK', onPress: () => void handleSubmit() },
     ]);
   }, [handleSubmit, hasSubmitted, stopAudioPlayback]);
+
+  useEffect(() => {
+    if (!sessionId || questions.length === 0 || loading || hasSubmitted) {
+      return;
+    }
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+          }
+          handleAutoSubmit();
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [sessionId, questions.length, loading, hasSubmitted, handleAutoSubmit]);
 
   const answeredCount = Object.keys(answers).length;
   const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;

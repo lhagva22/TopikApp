@@ -24,7 +24,7 @@ const HomeScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadUserLevel();
-    }, [loadUserLevel, user?.id, user?.status]),
+    }, [loadUserLevel]),
   );
 
   const handleStartLevelTest = async () => {
@@ -63,8 +63,6 @@ const HomeScreen = () => {
 
   const currentLevel =
     userLevel && userLevel > 0 ? LEVELS.find((level) => level.levelValue === userLevel) : undefined;
-  const isGuest = user?.status === 'guest';
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -98,7 +96,18 @@ const HomeScreen = () => {
         </View>
       </ScrollView>
 
-      <Payment visible={showPayment} onClose={closePayment} />
+      <Payment
+        visible={showPayment}
+        onClose={closePayment}
+        onSelectPlan={(item) => {
+          navigation.navigate('PaymentCheckout', {
+            planId: item.id,
+            planTitle: item.title,
+            planPrice: item.price,
+            planMonths: item.months,
+          });
+        }}
+      />
     </View>
   );
 };

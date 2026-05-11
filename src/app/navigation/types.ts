@@ -28,6 +28,12 @@ export type RootDrawerParamList = {
   Exam: undefined;
   Progress: undefined;
   Payment: undefined;
+  PaymentCheckout: {
+    planId: number;
+    planTitle: string;
+    planPrice: string;
+    planMonths: number;
+  };
   ExamInterface: {
     examId: string;
     examTitle: string;

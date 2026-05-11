@@ -87,7 +87,14 @@ CREATE TABLE IF NOT EXISTS payments (
   payment_method TEXT CHECK (payment_method IN ('card', 'mobile', 'bank')),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed')),
   transaction_id TEXT,
+  qpay_invoice_id TEXT,
+  sender_invoice_no TEXT,
+  invoice_code TEXT,
+  invoice_description TEXT,
+  callback_received_at TIMESTAMPTZ,
+  raw_response JSONB,
   paid_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -135,6 +142,8 @@ CREATE INDEX IF NOT EXISTS idx_level_test_results_session_id ON level_test_resul
 CREATE INDEX IF NOT EXISTS idx_level_test_results_user_id ON level_test_results(user_id);
 CREATE INDEX IF NOT EXISTS idx_level_test_results_mock_test_id ON level_test_results(mock_test_id);
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_qpay_invoice_id ON payments(qpay_invoice_id);
+CREATE INDEX IF NOT EXISTS idx_payments_sender_invoice_no ON payments(sender_invoice_no);
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

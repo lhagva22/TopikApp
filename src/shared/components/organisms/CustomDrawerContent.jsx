@@ -82,7 +82,22 @@ const CustomDrawerContent = (props) => {
         )}
       </View>
 
-      <Payment visible={showPayment} onClose={closePayment} />
+      <Payment
+        visible={showPayment}
+        onClose={closePayment}
+        onSelectPlan={(item) => {
+          closePayment();
+          props.navigation.closeDrawer();
+          requestAnimationFrame(() => {
+            props.navigation.navigate('PaymentCheckout', {
+              planId: item.id,
+              planTitle: item.title,
+              planPrice: item.price,
+              planMonths: item.months,
+            });
+          });
+        }}
+      />
 
       {user && (
         <Card style={styles.userCard}>

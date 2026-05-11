@@ -7,80 +7,50 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import type { RootStackParamList } from '../../app/navigation/types';
-import { useAppStore } from '../../app/store';
 import SectionTitle from '../../shared/components/atoms/sectionTitle';
 import { InlineMessage } from '../../shared/components/feedback';
 import CustomButton from '../../shared/components/molecules/button';
 import { Card, CardHeader, CardTitle } from '../../shared/components/molecules/card';
-import type { PaymentProps } from './types';
+import type { PaymentPlanItem, PaymentProps } from './types';
 
-const paymentItems = [
+const FEATURES = ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'];
+
+const paymentItems: PaymentPlanItem[] = [
   {
     id: 1,
     title: '1 сар',
     price: '29,900₮',
-    features: ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'],
+    months: 1,
+    amount: 29900,
+    features: FEATURES,
   },
   {
     id: 2,
     title: '3 сар',
     price: '79,900₮',
-    features: ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'],
+    months: 3,
+    amount: 79900,
+    features: FEATURES,
   },
   {
     id: 3,
     title: '6 сар',
     price: '149,900₮',
-    features: ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'],
+    months: 6,
+    amount: 149900,
+    features: FEATURES,
   },
 ];
 
-const Payment = ({ visible, onClose }: PaymentProps) => {
-  const navigation = useNavigation();
-  const { user, updateUser } = useAppStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+const Payment = ({ visible, onClose, onSelectPlan }: PaymentProps) => {
+  const [isLoading] = useState(false);
+  const [statusMessage] = useState<string | null>(null);
 
-  const goToAppHome = () => {
-    const rootNavigation =
-      (navigation.getParent() as NavigationProp<RootStackParamList> | undefined) ??
-      (navigation as NavigationProp<RootStackParamList>);
-
-    rootNavigation.navigate('App', { screen: 'Home' });
-  };
-
-  const handleSelectPlan = (months: number) => {
-    setIsLoading(true);
-    setStatusMessage(null);
-
-    if (user) {
-      const paidUser = {
-        ...user,
-        status: 'premium' as const,
-        subscription_start_date: new Date().toISOString(),
-        subscription_end_date: new Date(
-          Date.now() + months * 30 * 24 * 60 * 60 * 1000,
-        ).toISOString(),
-        subscription_months: months,
-      };
-
-      updateUser(paidUser);
-    }
-
-    setTimeout(() => {
-      setIsLoading(false);
-      setStatusMessage(`${months} сарын багц амжилттай идэвхжлээ.`);
-
-      setTimeout(() => {
-        onClose();
-        goToAppHome();
-      }, 500);
-    }, 500);
+  const handleSelectPlan = (item: PaymentPlanItem) => {
+    onClose();
+    onSelectPlan?.(item);
   };
 
   if (!visible) {
@@ -128,7 +98,7 @@ const Payment = ({ visible, onClose }: PaymentProps) => {
 
               <CustomButton
                 title={isLoading ? 'Идэвхжүүлж байна...' : 'Сонгох'}
-                onPress={() => handleSelectPlan(item.id)}
+                onPress={() => handleSelectPlan(item)}
                 requiredStatus="registered"
                 style={styles.selectButton}
                 textStyle={styles.selectButtonText}
@@ -149,7 +119,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     padding: 20,
     borderRadius: 20,
     margin: 20,

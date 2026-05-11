@@ -1,5 +1,7 @@
 import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import { useNavigation } from '@react-navigation/native';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { StyleSheet, View } from 'react-native';
 
 import { DictionaryScreen } from '../../features/dictionary';
@@ -14,7 +16,7 @@ import {
   VideoLessonScreen,
   VocabularyScreen,
 } from '../../features/lessons';
-import { PaymentScreen } from '../../features/payment';
+import { PaymentCheckoutScreen, PaymentScreen } from '../../features/payment';
 import { Progress } from '../../features/progress';
 import Footer from '../../shared/components/organisms/footer';
 import Header from '../../shared/components/organisms/header';
@@ -52,11 +54,27 @@ const ExamScreenWrapper = withShell(ExamScreen);
 const DictionaryScreenWrapper = withShell(DictionaryScreen);
 const ProgressScreenWrapper = withShell(Progress);
 
-const PaymentScreenWrapper = () => (
-  <ScreenWrapper>
-    <PaymentScreen visible={true} onClose={() => undefined} />
-  </ScreenWrapper>
-);
+const PaymentScreenWrapper = () => {
+  const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
+  return (
+    <ScreenWrapper>
+      <PaymentScreen
+        visible={true}
+        onClose={() => undefined}
+        onSelectPlan={(item) =>
+          navigation.navigate('PaymentCheckout', {
+            planId: item.id,
+            planTitle: item.title,
+            planPrice: item.price,
+            planMonths: item.months,
+          })
+        }
+      />
+    </ScreenWrapper>
+  );
+};
+
+const PaymentCheckoutScreenWrapper = PaymentCheckoutScreen;
 
 export function DrawerNavigator() {
   return (
@@ -102,6 +120,11 @@ export function DrawerNavigator() {
       <Drawer.Screen name="Exam" component={ExamScreenWrapper} />
       <Drawer.Screen name="Progress" component={ProgressScreenWrapper} />
       <Drawer.Screen name="Payment" component={PaymentScreenWrapper} />
+      <Drawer.Screen
+        name="PaymentCheckout"
+        component={PaymentCheckoutScreenWrapper}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
       <Drawer.Screen
         name="ExamInterface"
         component={ExamInterfaceScreen}

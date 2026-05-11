@@ -7,9 +7,10 @@ import authRoutes from './routes/authRoutes';
 import dictionaryRoutes from './routes/dictionaryRoutes';
 import examRoutes from './routes/examRoutes';
 import lessonRoutes from './routes/lessonRoutes';
+import paymentRoutes from './routes/paymentRoutes';
 import progressRoutes from './routes/progressRoutes';
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const app = express();
 const portValue = process.env.PORT ?? process.env.port ?? '5000';
@@ -24,6 +25,7 @@ app.use('/api', examRoutes);
 app.use('/api', lessonRoutes);
 app.use('/api', progressRoutes);
 app.use('/api', dictionaryRoutes);
+app.use('/api', paymentRoutes);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
@@ -47,6 +49,9 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('   GET  /api/exams');
   console.log('   GET  /api/lessons');
   console.log('   GET  /api/dictionary/search');
+  console.log('   POST /api/payments/qpay/create');
+  console.log('   POST /api/payments/:paymentId/check');
+  console.log('   GET  /api/payments/webhook');
   console.log('   POST /api/exam/:id/start');
   console.log('   POST /api/exam/submit');
   console.log('   POST /api/level-test/start');

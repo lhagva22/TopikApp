@@ -300,7 +300,18 @@ const ExamScreen = () => {
         )}
       </View>
 
-      <Payment visible={showPayment} onClose={closePayment} />
+      <Payment
+        visible={showPayment}
+        onClose={closePayment}
+        onSelectPlan={(item) => {
+          navigation.navigate('PaymentCheckout', {
+            planId: item.id,
+            planTitle: item.title,
+            planPrice: item.price,
+            planMonths: item.months,
+          });
+        }}
+      />
     </ScrollView>
   );
 };

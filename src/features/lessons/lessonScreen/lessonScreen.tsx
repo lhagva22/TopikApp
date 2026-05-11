@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import type { RootDrawerParamList } from '../../../app/navigation/types';
 import { PaymentScreen as Payment, usePaymentModal } from '../../../features/payment';
 import AppText from '../../../shared/components/atoms/AppText';
 import { Card, CardHeader, CardTitle } from '../../../shared/components/molecules/card';
@@ -70,7 +69,7 @@ const LessonScreen = () => {
       }
     };
 
-    void loadCategories();
+    loadCategories().catch(() => undefined);
 
     return () => {
       isMounted = false;
@@ -127,7 +126,18 @@ const LessonScreen = () => {
         ))}
       </ScrollView>
 
-      <Payment visible={showPayment} onClose={closePayment} />
+      <Payment
+        visible={showPayment}
+        onClose={closePayment}
+        onSelectPlan={(item) => {
+          navigation.navigate('PaymentCheckout', {
+            planId: item.id,
+            planTitle: item.title,
+            planPrice: item.price,
+            planMonths: item.months,
+          });
+        }}
+      />
     </>
   );
 };

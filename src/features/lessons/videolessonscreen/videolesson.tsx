@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Video from 'react-native-video/lib/index';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -44,6 +45,7 @@ const getBadgeLabel = (lesson: VideoLesson) => {
 };
 
 const Videolesson = () => {
+  const navigation = useNavigation<any>();
   const { isPaidUser } = useAppStore();
   const { showPayment, openPayment, closePayment } = usePaymentModal();
   const [selectedVideo, setSelectedVideo] = useState<VideoLesson | null>(null);
@@ -90,7 +92,7 @@ const Videolesson = () => {
       }
     };
 
-    void loadVideoData();
+    loadVideoData().catch(() => undefined);
 
     return () => {
       isMounted = false;
@@ -304,7 +306,18 @@ const Videolesson = () => {
         </View>
       </Modal>
 
-      <Payment visible={showPayment} onClose={closePayment} />
+      <Payment
+        visible={showPayment}
+        onClose={closePayment}
+        onSelectPlan={(item) => {
+          navigation.navigate('PaymentCheckout', {
+            planId: item.id,
+            planTitle: item.title,
+            planPrice: item.price,
+            planMonths: item.months,
+          });
+        }}
+      />
     </>
   );
 };
