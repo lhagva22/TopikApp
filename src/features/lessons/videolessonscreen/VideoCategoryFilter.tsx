@@ -1,7 +1,6 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import AppText from '../../../shared/components/atoms/AppText';
 import type { VideoCategorySummary } from '../api/lessonApi';
 
 type VideoCategoryFilterProps = {
@@ -10,73 +9,51 @@ type VideoCategoryFilterProps = {
   onSelect: (slug: string) => void;
 };
 
-const VideoCategoryFilter = ({
-  categories,
-  selectedSlug,
-  onSelect,
-}: VideoCategoryFilterProps) => {
-  return (
-    <View style={styles.wrapper}>
-      <ScrollView
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
-        <Pressable
-          onPress={() => onSelect('all')}
-          style={[styles.chip, selectedSlug === 'all' && styles.chipActive]}
-        >
-          <AppText style={[styles.chipText, selectedSlug === 'all' && styles.chipTextActive]}>
-            Бүгд
-          </AppText>
-        </Pressable>
-
-        {categories.map((category) => {
-          const isActive = selectedSlug === category.slug;
-
-          return (
-            <Pressable
-              key={category.id}
-              onPress={() => onSelect(category.slug)}
-              style={[styles.chip, isActive && styles.chipActive]}
-            >
-              <AppText style={[styles.chipText, isActive && styles.chipTextActive]}>
-                {category.title}
-              </AppText>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-};
+const VideoCategoryFilter = ({ categories, selectedSlug, onSelect }: VideoCategoryFilterProps) => (
+  <View style={styles.wrapper}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.content}
+    >
+      {[{ id: 'all', slug: 'all', title: 'Бүгд' }, ...categories].map((cat) => {
+        const active = selectedSlug === cat.slug;
+        return (
+          <Pressable
+            key={cat.id}
+            onPress={() => onSelect(cat.slug)}
+            style={[styles.chip, active && styles.chipActive]}
+          >
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>{cat.title}</Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  </View>
+);
 
 const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 16,
-  },
-  content: {
-    paddingRight: 8,
-    gap: 10,
-  },
+  wrapper: { marginBottom: 16 },
+  content: { gap: 8, paddingRight: 4 },
   chip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: '#e2e8f0',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   chipActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#155DFC',
+    borderColor: '#155DFC',
   },
   chipText: {
-    color: '#334155',
     fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
   },
   chipTextActive: {
-    color: '#ffffff',
+    color: '#fff',
   },
 });
 

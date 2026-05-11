@@ -3,7 +3,6 @@ import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-n
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import AppText from '../../../shared/components/atoms/AppText';
-import { Card, CardTitle } from '../../../shared/components/molecules/card';
 import type { LessonContent } from '../api/lessonApi';
 
 type LessonDetailTemplateProps = {
@@ -17,20 +16,15 @@ type LessonDetailTemplateProps = {
   error: string | null;
 };
 
-const getTypeLabel = (contentType: string) => {
-  switch (contentType) {
-    case 'article':
-      return 'Article';
-    case 'book':
-      return 'Book';
-    case 'pdf':
-      return 'PDF';
-    case 'quiz':
-      return 'Quiz';
-    default:
-      return contentType;
-  }
+const TYPE_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  article: { label: 'Нийтлэл', icon: 'document-text-outline', color: '#155DFC', bg: '#EFF6FF' },
+  book:    { label: 'Ном',     icon: 'book-outline',          color: '#059669', bg: '#ECFDF5' },
+  pdf:     { label: 'PDF',     icon: 'document-outline',      color: '#EA580C', bg: '#FFF7ED' },
+  quiz:    { label: 'Quiz',    icon: 'help-circle-outline',   color: '#8B5CF6', bg: '#F5F3FF' },
 };
+
+const getTypeMeta = (contentType: string) =>
+  TYPE_META[contentType] ?? { label: contentType, icon: 'ellipse-outline', color: '#6B7280', bg: '#F3F4F6' };
 
 const LessonDetailTemplate = ({
   title,
@@ -54,92 +48,124 @@ const LessonDetailTemplate = ({
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Card style={styles.heroCard}>
-        <View style={styles.heroRow}>
-          <View style={styles.heroTextWrap}>
-            <AppText variant="section" style={styles.title}>
-              {title}
-            </AppText>
-            <AppText tone="secondary" style={styles.subtitle}>
-              {subtitle}
-            </AppText>
-            <View style={styles.levelBadge}>
-              <CardTitle variant="small" style={styles.levelText}>
-                {level}
-              </CardTitle>
-            </View>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Hero */}
+      <View style={styles.hero}>
+        <View style={styles.heroText}>
+          <View style={styles.levelPill}>
+            <View style={styles.levelDot} />
+            <AppText style={styles.levelLabel}>{level}</AppText>
           </View>
-
-          <Image source={image} style={styles.heroImage} resizeMode="contain" />
+          <AppText style={styles.heroTitle}>{title}</AppText>
+          <AppText style={styles.heroSubtitle}>{subtitle}</AppText>
         </View>
-      </Card>
+        <Image source={image} style={styles.heroImage} resizeMode="contain" />
+      </View>
 
-      <Card style={styles.sectionCard}>
-        <AppText variant="section" style={styles.sectionTitle}>
-          Энэ хэсэгт үзэх зүйлс
-        </AppText>
-        {points.map((point) => (
+      {/* Points */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionDot} />
+          <AppText style={styles.sectionTitle}>Энэ хэсэгт үзэх зүйлс</AppText>
+        </View>
+        {points.map((point, index) => (
           <View key={point} style={styles.pointRow}>
-            <View style={styles.pointDot} />
+            <View style={styles.pointNum}>
+              <AppText style={styles.pointNumText}>{index + 1}</AppText>
+            </View>
             <AppText style={styles.pointText}>{point}</AppText>
           </View>
         ))}
-      </Card>
+      </View>
 
-      <Card style={styles.sectionCard}>
-        <AppText variant="section" style={styles.sectionTitle}>
-          Хичээлийн агуулга
-        </AppText>
+      {/* Lessons */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionDot} />
+          <AppText style={styles.sectionTitle}>Хичээлийн агуулга</AppText>
+        </View>
 
         {isLoading ? (
-          <AppText tone="secondary">Хичээлүүд ачаалж байна...</AppText>
+          <View style={styles.stateRow}>
+            <Icon name="hourglass-outline" size={20} color="#94A3B8" />
+            <AppText tone="secondary" style={styles.stateText}>
+              Хичээлүүд ачаалж байна...
+            </AppText>
+          </View>
         ) : null}
 
-        {!isLoading && error ? <AppText tone="danger">{error}</AppText> : null}
+        {!isLoading && error ? (
+          <View style={styles.stateRow}>
+            <Icon name="alert-circle-outline" size={20} color="#EF4444" />
+            <AppText tone="danger" style={styles.stateText}>
+              {error}
+            </AppText>
+          </View>
+        ) : null}
 
         {!isLoading && !error && lessons.length === 0 ? (
-          <AppText tone="secondary">Энэ ангилалд хичээлийн өгөгдөл алга байна.</AppText>
+          <View style={styles.stateRow}>
+            <Icon name="folder-open-outline" size={20} color="#94A3B8" />
+            <AppText tone="secondary" style={styles.stateText}>
+              Энэ ангилалд хичээлийн өгөгдөл алга байна.
+            </AppText>
+          </View>
         ) : null}
 
         {!isLoading &&
           !error &&
-          lessons.map((lesson) => (
-            <Pressable
-              key={lesson.id}
-              onPress={() => void handleOpenContent(lesson.contentUrl)}
-              disabled={!lesson.contentUrl}
-              style={[styles.lessonItem, !lesson.contentUrl && styles.lessonItemDisabled]}
-            >
-              <View style={styles.lessonHeader}>
-                <AppText style={styles.lessonTitle}>{lesson.title}</AppText>
-                <View style={styles.lessonBadge}>
-                  <CardTitle variant="small" style={styles.lessonBadgeText}>
-                    {getTypeLabel(lesson.contentType)}
-                  </CardTitle>
+          lessons.map((lesson, index) => {
+            const meta = getTypeMeta(lesson.contentType);
+            const canOpen = !!lesson.contentUrl;
+
+            return (
+              <Pressable
+                key={lesson.id}
+                onPress={() => void handleOpenContent(lesson.contentUrl)}
+                disabled={!canOpen}
+                style={({ pressed }) => [
+                  styles.lessonCard,
+                  !canOpen && styles.lessonCardDisabled,
+                  pressed && canOpen && styles.lessonCardPressed,
+                ]}
+              >
+                <View style={styles.lessonNum}>
+                  <AppText style={styles.lessonNumText}>{index + 1}</AppText>
                 </View>
-              </View>
 
-              {lesson.description ? (
-                <AppText tone="secondary" style={styles.lessonDescription}>
-                  {lesson.description}
-                </AppText>
-              ) : null}
-
-              <View style={styles.lessonMetaRow}>
-                <AppText tone="secondary" style={styles.lessonMeta}>
-                  {lesson.level || level}
-                </AppText>
-                {lesson.contentUrl ? (
-                  <View style={styles.openRow}>
-                    <AppText style={styles.openText}>Нээх</AppText>
-                    <Icon name="open-outline" size={14} color="#2563eb" />
+                <View style={styles.lessonBody}>
+                  <AppText style={styles.lessonTitle}>{lesson.title}</AppText>
+                  {lesson.description ? (
+                    <AppText tone="secondary" style={styles.lessonDesc}>
+                      {lesson.description}
+                    </AppText>
+                  ) : null}
+                  <View style={styles.lessonMeta}>
+                    <View style={[styles.typeBadge, { backgroundColor: meta.bg }]}>
+                      <Icon name={meta.icon} size={11} color={meta.color} />
+                      <AppText style={[styles.typeText, { color: meta.color }]}>
+                        {meta.label}
+                      </AppText>
+                    </View>
+                    <AppText style={styles.lessonLevel}>{lesson.level || level}</AppText>
                   </View>
-                ) : null}
-              </View>
-            </Pressable>
-          ))}
-      </Card>
+                </View>
+
+                {canOpen ? (
+                  <View style={styles.openBtn}>
+                    <Icon name="arrow-forward" size={16} color="#155DFC" />
+                  </View>
+                ) : (
+                  <Icon name="lock-closed-outline" size={16} color="#CBD5E1" style={styles.lockIcon} />
+                )}
+              </Pressable>
+            );
+          })}
+      </View>
     </ScrollView>
   );
 };
@@ -147,120 +173,217 @@ const LessonDetailTemplate = ({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
   },
   content: {
     padding: 16,
-    paddingBottom: 28,
+    paddingBottom: 36,
   },
-  heroCard: {
-    marginBottom: 16,
-    backgroundColor: '#eff6ff',
-  },
-  heroRow: {
+
+  /* Hero */
+  hero: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 16,
+    overflow: 'hidden',
   },
-  heroTextWrap: {
+  heroText: {
     flex: 1,
     paddingRight: 12,
   },
-  title: {
-    color: '#0f172a',
-    marginBottom: 8,
-  },
-  subtitle: {
-    lineHeight: 20,
-  },
-  levelBadge: {
+  levelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     alignSelf: 'flex-start',
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#dbeafe',
-  },
-  levelText: {
-    color: '#1d4ed8',
-  },
-  heroImage: {
-    width: 84,
-    height: 84,
-  },
-  sectionCard: {
-    paddingVertical: 8,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    marginBottom: 10,
-    color: '#0f172a',
-  },
-  pointRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 10,
-  },
-  pointDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#2563eb',
-    marginTop: 7,
-    marginRight: 10,
-  },
-  pointText: {
-    flex: 1,
-    lineHeight: 22,
-    color: '#334155',
-  },
-  lessonItem: {
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingTop: 12,
-    paddingBottom: 10,
-  },
-  lessonItemDisabled: {
-    opacity: 0.8,
-  },
-  lessonHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  lessonTitle: {
-    flex: 1,
-    color: '#0f172a',
-  },
-  lessonBadge: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    marginBottom: 10,
   },
-  lessonBadgeText: {
-    color: '#1d4ed8',
+  levelDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#60A5FA',
   },
-  lessonDescription: {
-    marginTop: 6,
+  levelLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#93C5FD',
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    letterSpacing: -0.4,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    fontSize: 12,
+    color: '#94A3B8',
+    lineHeight: 18,
+  },
+  heroImage: {
+    width: 88,
+    height: 88,
+  },
+
+  /* Section */
+  section: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  sectionDot: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: '#155DFC',
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.2,
+  },
+
+  /* Points */
+  pointRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 10,
+  },
+  pointNum: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  pointNumText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#155DFC',
+  },
+  pointText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 22,
+  },
+
+  /* State */
+  stateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  stateText: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+
+  /* Lesson cards */
+  lessonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginBottom: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  lessonCardDisabled: {
+    opacity: 0.6,
+  },
+  lessonCardPressed: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  lessonNum: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lessonNumText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#155DFC',
+  },
+  lessonBody: {
+    flex: 1,
+    gap: 4,
+  },
+  lessonTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
     lineHeight: 20,
   },
-  lessonMetaRow: {
-    marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  lessonDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 18,
   },
   lessonMeta: {
-    color: '#64748b',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
   },
-  openRow: {
+  typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  openText: {
-    color: '#2563eb',
+  typeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  lessonLevel: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  openBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockIcon: {
+    marginRight: 6,
   },
 });
 

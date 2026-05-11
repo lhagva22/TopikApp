@@ -1,74 +1,57 @@
-// src/shared/components/organisms/footer.tsx
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+
 import type { MenuItemType } from './types';
 
 const menuItems: MenuItemType[] = [
-  { id: 1, label: 'Үндсэн', icon: 'home-outline', screenName: 'Home' },
-  { id: 2, label: 'Видео', icon: 'videocam-outline', screenName: 'Video' },
-  { id: 3, label: 'Хичээл', icon: 'book-outline', screenName: 'Lesson' },
-  { id: 4, label: 'Шалгалт', icon: 'document-text-outline', screenName: 'Exam' },
-  { id: 5, label: 'Үгийн сан', icon: 'library-outline', screenName: 'Dictionary' },
+  { id: 1, label: 'Үндсэн',   icon: 'home-outline',          screenName: 'Home' },
+  { id: 2, label: 'Видео',    icon: 'videocam-outline',       screenName: 'Video' },
+  { id: 3, label: 'Хичээл',   icon: 'book-outline',           screenName: 'Lesson' },
+  { id: 4, label: 'Шалгалт',  icon: 'document-text-outline',  screenName: 'Exam' },
+  { id: 5, label: 'Үгийн сан', icon: 'library-outline',       screenName: 'Dictionary' },
 ];
 
-// Footer харуулах дэлгэцүүд
 const SCREENS_WITH_FOOTER = ['Home', 'Video', 'Lesson', 'Exam', 'Dictionary'];
 
+const ACTIVE_ICONS: Record<string, string> = {
+  'home-outline':          'home',
+  'videocam-outline':      'videocam',
+  'book-outline':          'book',
+  'document-text-outline': 'document-text',
+  'library-outline':       'library',
+};
+
 const Footer = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute();
 
-  // Тухайн дэлгэц дээр Footer харуулах эсэх
-  const shouldShowFooter = SCREENS_WITH_FOOTER.includes(route.name);
+  if (!SCREENS_WITH_FOOTER.includes(route.name)) return null;
 
-  if (!shouldShowFooter) {
-    return null;
-  }
-
-  // ✅ Одоогийн route.name-ээр идэвхтэй ID-г тодорхойлох
-  const getActiveId = () => {
-    switch (route.name) {
-      case 'Home': return 1;
-      case 'Video': return 2;
-      case 'Lesson': return 3;
-      case 'Exam': return 4;
-      case 'Dictionary': return 5;
-      default: return 1;
-    }
-  };
-
-  const activeId = getActiveId();
-
-  const handlePress = (item: MenuItemType) => {
-    // @ts-ignore
-    navigation.navigate(item.screenName);
-  };
+  const activeId = menuItems.find((m) => m.screenName === route.name)?.id ?? 1;
 
   return (
     <View style={styles.container}>
       {menuItems.map((item) => {
         const isActive = activeId === item.id;
+        const iconName = isActive ? (ACTIVE_ICONS[item.icon] ?? item.icon) : item.icon;
+
         return (
           <TouchableOpacity
             key={item.id}
-            style={styles.menuItem}
-            onPress={() => handlePress(item)}
+            style={styles.tab}
+            onPress={() => navigation.navigate(item.screenName)}
             activeOpacity={0.7}
           >
-            {isActive && <View style={styles.activeLine} />}
-            <Icon
-              name={item.icon}
-              size={22}
-              color={isActive ? '#007AFF' : '#9CA3AF'}
-            />
-            <Text
-              style={[
-                styles.menuText,
-                { color: isActive ? '#007AFF' : '#9CA3AF' },
-              ]}
-            >
+            <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+              <Icon
+                name={iconName}
+                size={20}
+                color={isActive ? '#155DFC' : '#94A3B8'}
+              />
+            </View>
+            <Text style={[styles.label, isActive && styles.labelActive]}>
               {item.label}
             </Text>
           </TouchableOpacity>
@@ -81,33 +64,43 @@ const Footer = () => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    width: '100%',
-    height: 70,
-    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    height: 72,
     alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     elevation: 8,
   },
-  menuItem: {
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  iconWrap: {
+    width: 44,
+    height: 30,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuText: {
-    fontSize: 12,
-    marginTop: 4,
-    fontWeight: '500',
+  iconWrapActive: {
+    backgroundColor: '#EFF6FF',
   },
-  activeLine: {
-    position: 'absolute',
-    top: -10,
-    width: 40,
-    height: 3,
-    backgroundColor: '#007AFF',
-    borderRadius: 2,
+  label: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  labelActive: {
+    color: '#155DFC',
+    fontWeight: '700',
   },
 });
 

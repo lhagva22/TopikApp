@@ -17,9 +17,11 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import Video from 'react-native-video/lib/index';
 import type { VideoRef } from 'react-native-video';
 
+import { useAppStore } from '../../../app/store';
 import { resolveApiAssetUrl } from '../../../core/api/apiClient';
 import { InlineMessage } from '../../../shared/components/feedback';
 import { getErrorMessage, logError } from '../../../shared/lib/errors';
+import { authApi } from '../../auth/api/authApi';
 import { examApi } from '../api/examApi';
 import type { ExamProgressBarProps, Question } from './types';
 
@@ -41,6 +43,8 @@ export const ExamInterface = () => {
   const examTitle = params.examTitle || 'TOPIK Шалгалт';
   const duration = params.duration || 100;
   const initialQuestions = useMemo(() => params.questions ?? [], [params.questions]);
+  const isLevelTest = Boolean(params.isLevelTest);
+  const { updateUser } = useAppStore();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
@@ -91,6 +95,14 @@ export const ExamInterface = () => {
       }
     }
   }, []);
+
+  const syncProfile = useCallback(async () => {
+    const response = await authApi.getProfile();
+
+    if (response.success && response.user) {
+      updateUser(response.user);
+    }
+  }, [updateUser]);
 
   const exitExam = useCallback(
     async (action?: any) => {
@@ -267,15 +279,24 @@ export const ExamInterface = () => {
       }));
 
       const timeSpent = duration * 60 - timeLeft;
-      const result = await examApi.submitExam(currentSessionId, answerList, timeSpent);
+      const result = isLevelTest
+        ? await examApi.submitLevelTest(currentSessionId, answerList, timeSpent)
+        : await examApi.submitExam(currentSessionId, answerList, timeSpent);
 
       await AsyncStorage.removeItem('current_exam_session');
       setSessionId(null);
 
       if (result.success && 'result' in result) {
+        if (isLevelTest) {
+          await syncProfile();
+        }
+
         navigation.navigate('ExamResultScreen', {
           ...result.result,
           examTitle,
+          isLevelTest,
+          currentExamType: params.examType,
+          nextLevelTest: 'nextLevelTest' in result ? result.nextLevelTest : undefined,
         });
         return;
       }
@@ -296,8 +317,11 @@ export const ExamInterface = () => {
     examTitle,
     hasSubmitted,
     isSubmitting,
+    isLevelTest,
     navigation,
+    params.examType,
     sessionId,
+    syncProfile,
     stopAudioPlayback,
     timeLeft,
   ]);
@@ -638,72 +662,89 @@ export const ExamInterface = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F4F6' },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', padding: 20 },
-  loadingText: { marginTop: 12, fontSize: 14, color: '#666' },
-  errorText: { marginTop: 12, fontSize: 16, color: '#EF4444', textAlign: 'center' },
-  retryButton: { marginTop: 20, backgroundColor: '#155DFC', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
-  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  backButton: { marginTop: 12, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
-  backButtonText: { color: '#666', fontSize: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backButtonHeader: { padding: 4 },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  headerSubtitle: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  timerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, gap: 4 },
-  timerText: { fontSize: 14, fontWeight: '600', color: '#EF4444' },
-  progressWrapper: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  progressContainer: { height: 6, backgroundColor: '#E5E7EB', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#155DFC', borderRadius: 3 },
-  progressText: { fontSize: 12, color: '#6B7280', marginTop: 8, textAlign: 'right' },
-  content: { flex: 1, padding: 16 },
-  message: { marginBottom: 16 },
-  audioCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 24, gap: 12 },
+  loadingText: { fontSize: 14, color: '#64748B' },
+  errorText: { fontSize: 15, color: '#EF4444', textAlign: 'center' },
+  retryButton: { backgroundColor: '#155DFC', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+  retryButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  backButton: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: '#F1F5F9' },
+  backButtonText: { color: '#64748B', fontSize: 15, fontWeight: '600' },
+
+  /* Header */
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  backButtonHeader: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+  headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+  headerTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', letterSpacing: -0.2 },
+  headerSubtitle: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  timerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12, gap: 4 },
+  timerText: { fontSize: 14, fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
+
+  /* Progress */
+  progressWrapper: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  progressContainer: { height: 7, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#155DFC', borderRadius: 4 },
+  progressText: { fontSize: 11, color: '#94A3B8', marginTop: 6, textAlign: 'right', fontWeight: '500' },
+
+  content: { flex: 1, padding: 14 },
+  message: { marginBottom: 12 },
+
+  /* Audio */
+  audioCard: { backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
   audioHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
   audioTextWrap: { flex: 1 },
-  audioTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  audioSubtitle: { marginTop: 4, fontSize: 12, lineHeight: 18, color: '#6B7280' },
-  audioToggleButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#155DFC', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
-  audioToggleText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  audioPlayerWrap: { height: 56, borderRadius: 12, overflow: 'hidden', backgroundColor: '#0F172A' },
+  audioTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  audioSubtitle: { marginTop: 3, fontSize: 11, lineHeight: 16, color: '#94A3B8' },
+  audioToggleButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#155DFC', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10 },
+  audioToggleText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  audioPlayerWrap: { height: 52, borderRadius: 12, overflow: 'hidden', backgroundColor: '#0F172A' },
   audioPlayer: { width: '100%', height: '100%' },
-  audioErrorText: { marginTop: 10, fontSize: 13, color: '#EF4444' },
-  questionCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  questionImage: { width: '100%', height: 240, marginBottom: 16, borderRadius: 12, backgroundColor: '#F8FAFC' },
-  questionText: { fontSize: 18, lineHeight: 28, color: '#333' },
-  optionsContainer: { gap: 12, marginBottom: 20 },
-  optionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 2, borderColor: '#E5E7EB', gap: 12 },
+  audioErrorText: { marginTop: 8, fontSize: 12, color: '#EF4444' },
+
+  /* Question */
+  questionCard: { backgroundColor: '#fff', borderRadius: 18, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
+  questionImage: { width: '100%', height: 220, marginBottom: 16, borderRadius: 12, backgroundColor: '#F8FAFC' },
+  questionText: { fontSize: 17, lineHeight: 28, color: '#1E293B', fontWeight: '500' },
+
+  /* Options */
+  optionsContainer: { gap: 10, marginBottom: 16 },
+  optionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 2, borderColor: '#E2E8F0', gap: 12 },
   optionSelected: { borderColor: '#155DFC', backgroundColor: '#EFF6FF' },
   optionContent: { flex: 1 },
-  optionImage: { width: '100%', aspectRatio: 1.5, borderRadius: 10, marginBottom: 12, backgroundColor: '#E5E7EB' },
-  optionText: { flex: 1, fontSize: 16, color: '#374151' },
-  optionTextSelected: { color: '#155DFC', fontWeight: '500' },
-  gridCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 20 },
-  gridTitle: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 12 },
+  optionImage: { width: '100%', aspectRatio: 1.5, borderRadius: 10, marginBottom: 12, backgroundColor: '#E2E8F0' },
+  optionText: { flex: 1, fontSize: 15, color: '#374151', lineHeight: 22 },
+  optionTextSelected: { color: '#155DFC', fontWeight: '600' },
+
+  /* Grid */
+  gridCard: { backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+  gridTitle: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 12 },
   questionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  gridButton: { width: 40, height: 40, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+  gridButton: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
   gridButtonCurrent: { backgroundColor: '#155DFC', borderColor: '#155DFC' },
   gridButtonAnswered: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
-  gridButtonUnanswered: { backgroundColor: '#fff', borderColor: '#E5E7EB' },
-  gridButtonText: { fontSize: 14, fontWeight: '500', color: '#6B7280' },
+  gridButtonUnanswered: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' },
+  gridButtonText: { fontSize: 13, fontWeight: '600', color: '#94A3B8' },
   gridButtonTextCurrent: { color: '#fff' },
   gridButtonTextAnswered: { color: '#fff' },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 12 },
-  navButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#155DFC', paddingVertical: 12, borderRadius: 8, gap: 4 },
-  navButtonText: { color: '#fff', fontSize: 16, fontWeight: '500' },
-  disabledButton: { backgroundColor: '#9CA3AF', opacity: 0.5 },
-  submitButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EF4444', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, gap: 6 },
-  submitButtonText: { color: '#fff', fontSize: 14, fontWeight: '500' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContainer: { backgroundColor: '#fff', borderRadius: 20, padding: 24, alignItems: 'center', width: screenWidth - 48 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827', marginTop: 16, marginBottom: 8 },
-  modalText: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
-  modalButtons: { flexDirection: 'row', gap: 12, width: '100%' },
-  modalCancelButton: { flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  modalCancelText: { color: '#6B7280', fontSize: 16, fontWeight: '500' },
-  modalConfirmButton: { flex: 1, backgroundColor: '#EF4444', paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  modalConfirmText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+  /* Footer */
+  footer: { flexDirection: 'row', justifyContent: 'space-between', padding: 14, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F1F5F9', gap: 10 },
+  navButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF6FF', paddingVertical: 13, borderRadius: 12, gap: 4 },
+  navButtonText: { color: '#155DFC', fontSize: 15, fontWeight: '700' },
+  disabledButton: { backgroundColor: '#F1F5F9', opacity: 0.6 },
+  submitButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#EF4444', paddingVertical: 13, paddingHorizontal: 18, borderRadius: 12, gap: 6 },
+  submitButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  /* Modal */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
+  modalContainer: { backgroundColor: '#fff', borderRadius: 24, padding: 28, alignItems: 'center', width: screenWidth - 48 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginTop: 14, marginBottom: 8, letterSpacing: -0.3 },
+  modalText: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 24, lineHeight: 22 },
+  modalButtons: { flexDirection: 'row', gap: 10, width: '100%' },
+  modalCancelButton: { flex: 1, backgroundColor: '#F1F5F9', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  modalCancelText: { color: '#64748B', fontSize: 15, fontWeight: '700' },
+  modalConfirmButton: { flex: 1, backgroundColor: '#EF4444', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  modalConfirmText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
 
 export default ExamInterface;

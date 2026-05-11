@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Video from 'react-native-video/lib/index';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -7,7 +7,6 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppStore } from '../../../app/store';
 import { PaymentScreen as Payment, usePaymentModal } from '../../../features/payment';
 import AppText from '../../../shared/components/atoms/AppText';
-import { Card, CardTitle } from '../../../shared/components/molecules/card';
 import { ProtectedTouchable } from '../../../shared/components/molecules/protectedTouchable';
 import { getErrorMessage } from '../../../shared/lib/errors';
 import { lessonApi, type VideoCategorySummary, type VideoLesson } from '../api/lessonApi';
@@ -20,27 +19,14 @@ type VideoLessonGroup = {
 
 const getLessonLevel = (lesson: VideoLesson) => {
   const normalized = `${lesson.level || ''} ${lesson.title} ${lesson.description}`.toLowerCase();
-
-  if (normalized.includes('topik ii')) {
-    return 'Дунд шат';
-  }
-
-  if (normalized.includes('grammar') || normalized.includes('дүрэм')) {
-    return 'Бүх шат';
-  }
-
+  if (normalized.includes('topik ii')) return 'Дунд шат';
+  if (normalized.includes('grammar') || normalized.includes('дүрэм')) return 'Бүх шат';
   return 'Анхан шат';
 };
 
 const getBadgeLabel = (lesson: VideoLesson) => {
-  if (lesson.category?.title) {
-    return lesson.category.title;
-  }
-
-  if ((lesson.level || '').toUpperCase().includes('TOPIK II')) {
-    return 'TOPIK II';
-  }
-
+  if (lesson.category?.title) return lesson.category.title;
+  if ((lesson.level || '').toUpperCase().includes('TOPIK II')) return 'TOPIK II';
   return 'TOPIK I';
 };
 
@@ -69,75 +55,45 @@ const Videolesson = () => {
           lessonApi.getVideoLessons(),
         ]);
 
-        if (!categoriesResponse.success) {
-          throw new Error(categoriesResponse.error || 'Видео ангилал ачаалах боломжгүй байна.');
-        }
-
-        if (!lessonsResponse.success) {
-          throw new Error(lessonsResponse.error || 'Видео хичээл ачааллах боломжгүй байна.');
-        }
+        if (!categoriesResponse.success) throw new Error(categoriesResponse.error || 'Видео ангилал ачаалах боломжгүй байна.');
+        if (!lessonsResponse.success) throw new Error(lessonsResponse.error || 'Видео хичээл ачааллах боломжгүй байна.');
 
         if (isMounted) {
           setCategories(categoriesResponse.categories || []);
           setLessons((lessonsResponse.lessons || []).filter((item) => Boolean(item.contentUrl)));
         }
       } catch (error) {
-        if (isMounted) {
-          setLoadError(getErrorMessage(error, 'Видео хичээл ачааллах үед алдаа гарлаа.'));
-        }
+        if (isMounted) setLoadError(getErrorMessage(error, 'Видео хичээл ачааллах үед алдаа гарлаа.'));
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     };
 
     loadVideoData().catch(() => undefined);
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   const filteredLessons = useMemo(() => {
-    if (selectedCategorySlug === 'all') {
-      return lessons;
-    }
-
+    if (selectedCategorySlug === 'all') return lessons;
     return lessons.filter((lesson) => lesson.category?.slug === selectedCategorySlug);
   }, [lessons, selectedCategorySlug]);
 
   const groupedLessons = useMemo<VideoLessonGroup[]>(() => {
     const categoryMap = new Map<string, VideoLessonGroup>(
-      categories.map((category) => [category.id, { category, lessons: [] as VideoLesson[] }]),
+      categories.map((cat) => [cat.id, { category: cat, lessons: [] as VideoLesson[] }]),
     );
     const uncategorized: VideoLesson[] = [];
 
     filteredLessons.forEach((lesson) => {
-      const categoryId = lesson.category?.id;
-      if (categoryId && categoryMap.has(categoryId)) {
-        categoryMap.get(categoryId)?.lessons.push(lesson);
-        return;
-      }
-
+      const catId = lesson.category?.id;
+      if (catId && categoryMap.has(catId)) { categoryMap.get(catId)?.lessons.push(lesson); return; }
       uncategorized.push(lesson);
     });
 
-    const groups: VideoLessonGroup[] = Array.from(categoryMap.values()).filter(
-      (group) => group.lessons.length > 0,
-    );
-
-    if (uncategorized.length > 0) {
-      groups.push({
-        category: null,
-        lessons: uncategorized,
-      });
-    }
-
+    const groups = Array.from(categoryMap.values()).filter((g) => g.lessons.length > 0);
+    if (uncategorized.length > 0) groups.push({ category: null, lessons: uncategorized });
     return groups;
   }, [categories, filteredLessons]);
-
-  const hasVideos = useMemo(() => filteredLessons.length > 0, [filteredLessons]);
 
   const handleVideoPress = (video: VideoLesson) => {
     setVideoError(null);
@@ -151,20 +107,23 @@ const Videolesson = () => {
 
   return (
     <>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.contentContainer}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {isLoading ? (
-          <Card style={styles.stateCard}>
-            <ActivityIndicator size="small" color="#2563eb" />
-            <AppText tone="secondary" style={styles.stateText}>
-              Видео хичээл ачаалж байна...
-            </AppText>
-          </Card>
+          <View style={styles.stateBox}>
+            <ActivityIndicator size="small" color="#155DFC" />
+            <AppText tone="secondary" style={styles.stateText}>Видео хичээл ачаалж байна...</AppText>
+          </View>
         ) : null}
 
         {!isLoading && loadError ? (
-          <Card style={styles.errorCard}>
-            <AppText tone="danger">{loadError}</AppText>
-          </Card>
+          <View style={styles.errorBox}>
+            <Icon name="alert-circle-outline" size={24} color="#EF4444" />
+            <AppText tone="danger" style={styles.stateText}>{loadError}</AppText>
+          </View>
         ) : null}
 
         {!isLoading && !loadError && categories.length > 0 ? (
@@ -175,133 +134,119 @@ const Videolesson = () => {
           />
         ) : null}
 
-        {!isLoading && !loadError && !hasVideos ? (
-          <Card style={styles.emptyCard}>
-            <AppText variant="section">Видео хичээл олдсонгүй</AppText>
-            <AppText tone="secondary" style={styles.emptyText}>
-              {selectedCategorySlug === 'all'
-                ? '`video_lessons` болон `video_categories` хүснэгтэд өгөгдөл нэмсний дараа энд харагдана.'
-                : 'Энэ ангилалд видео хичээл олдсонгүй.'}
+        {!isLoading && !loadError && filteredLessons.length === 0 ? (
+          <View style={styles.stateBox}>
+            <Icon name="videocam-off-outline" size={36} color="#CBD5E1" />
+            <AppText tone="secondary" style={styles.stateText}>
+              {selectedCategorySlug === 'all' ? 'Видео хичээл олдсонгүй' : 'Энэ ангилалд видео хичээл олдсонгүй.'}
             </AppText>
-          </Card>
+          </View>
         ) : null}
 
-        {!isLoading &&
-          !loadError &&
-          groupedLessons.map((group) => (
-            <View key={group.category?.id || 'uncategorized'} style={styles.groupSection}>
-              <View style={styles.groupHeader}>
-                <AppText variant="section" style={styles.groupTitle}>
-                  {group.category?.title || 'Бусад видео'}
-                </AppText>
+        {!isLoading && !loadError && groupedLessons.map((group) => (
+          <View key={group.category?.id || 'uncategorized'} style={styles.group}>
+            <View style={styles.groupHeader}>
+              <View style={styles.groupAccent} />
+              <View style={styles.groupHeaderText}>
+                <Text style={styles.groupTitle}>{group.category?.title || 'Бусад видео'}</Text>
                 {group.category?.description ? (
-                  <AppText tone="secondary" style={styles.groupDescription}>
-                    {group.category.description}
-                  </AppText>
+                  <Text style={styles.groupDesc}>{group.category.description}</Text>
                 ) : null}
               </View>
+              <View style={styles.groupCount}>
+                <Text style={styles.groupCountText}>{group.lessons.length}</Text>
+              </View>
+            </View>
 
-              {group.lessons.map((video) => (
-                <ProtectedTouchable
-                  key={video.id}
-                  requiredStatus="paid"
-                  onPress={() => handleVideoPress(video)}
-                  onPaymentRequired={openPayment}
-                >
-                  <Card style={styles.card}>
-                    <View style={styles.cardContent}>
-                      <View style={styles.thumbnail}>
-                        <Video
-                          source={{ uri: video.contentUrl }}
-                          style={styles.thumbnailVideo}
-                          paused={true}
-                          muted={true}
-                          resizeMode="cover"
-                        />
-                        {(!isPaidUser() || video.isPremium) && (
-                          <Icon
-                            name="lock-closed-outline"
-                            size={16}
-                            color="#0f172a"
-                            style={styles.lockIcon}
-                          />
-                        )}
-                        <View style={styles.playOverlay}>
-                          <View style={styles.playCircle}>
-                            <Icon name="play" size={30} color="#fff" />
-                          </View>
-                        </View>
-                      </View>
-
-                      <View style={styles.infoContainer}>
-                        <CardTitle variant="large" style={styles.videoTitle}>
-                          {video.title}
-                        </CardTitle>
-                        <AppText tone="secondary" style={styles.videoDescription}>
-                          {video.description}
-                        </AppText>
-
-                        <View style={styles.metaRow}>
-                          <View style={styles.metaItem}>
-                            <Icon name="school-outline" size={16} color="#2563eb" />
-                            <CardTitle variant="small" style={styles.metaText}>
-                              {' '}
-                              {getLessonLevel(video)}
-                            </CardTitle>
-                          </View>
-                          <View style={styles.levelBadge}>
-                            <CardTitle variant="small" style={styles.levelText}>
-                              {getBadgeLabel(video)}
-                            </CardTitle>
-                          </View>
-                        </View>
+            {group.lessons.map((video) => (
+              <ProtectedTouchable
+                key={video.id}
+                requiredStatus="paid"
+                onPress={() => handleVideoPress(video)}
+                onPaymentRequired={openPayment}
+                activeOpacity={0.82}
+                style={styles.cardWrapper}
+              >
+                <View style={styles.card}>
+                  <View style={styles.thumbnail}>
+                    <Video
+                      source={{ uri: video.contentUrl }}
+                      style={StyleSheet.absoluteFillObject}
+                      paused={true}
+                      muted={true}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.playOverlay}>
+                      <View style={styles.playCircle}>
+                        <Icon name="play" size={20} color="#fff" />
                       </View>
                     </View>
-                  </Card>
-                </ProtectedTouchable>
-              ))}
-            </View>
-          ))}
+                    {!isPaidUser() && (
+                      <View style={styles.lockBadge}>
+                        <Icon name="lock-closed" size={10} color="#fff" />
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
+                    {video.description ? (
+                      <Text style={styles.videoDesc} numberOfLines={2}>{video.description}</Text>
+                    ) : null}
+                    <View style={styles.metaRow}>
+                      <View style={styles.levelChip}>
+                        <Icon name="school-outline" size={11} color="#155DFC" />
+                        <Text style={styles.levelChipText}>{getLessonLevel(video)}</Text>
+                      </View>
+                      <View style={styles.badgePill}>
+                        <Text style={styles.badgePillText}>{getBadgeLabel(video)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </ProtectedTouchable>
+            ))}
+          </View>
+        ))}
       </ScrollView>
 
+      {/* Video player modal */}
       <Modal animationType="slide" visible={Boolean(selectedVideo)} onRequestClose={closePlayer}>
-        <View style={styles.modalContainer}>
+        <View style={styles.modal}>
           <View style={styles.modalHeader}>
-            <View style={styles.modalTitleWrap}>
-              <AppText variant="section" style={styles.modalTitle}>
+            <View style={styles.modalMeta}>
+              <Text style={styles.modalTitle} numberOfLines={2}>
                 {selectedVideo?.title ?? 'Видео'}
-              </AppText>
+              </Text>
               {selectedVideo?.description ? (
-                <AppText tone="secondary" style={styles.modalSubtitle}>
+                <Text style={styles.modalSubtitle} numberOfLines={2}>
                   {selectedVideo.description}
-                </AppText>
+                </Text>
               ) : null}
             </View>
-
-            <Pressable onPress={closePlayer} style={styles.closeButton}>
-              <Icon name="close" size={24} color="#0f172a" />
-            </Pressable>
+            <TouchableOpacity style={styles.closeBtn} onPress={closePlayer} activeOpacity={0.7}>
+              <Icon name="close" size={18} color="#64748B" />
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.playerCard}>
+          <View style={styles.playerWrap}>
             {selectedVideo ? (
               <Video
                 source={{ uri: selectedVideo.contentUrl }}
-                style={styles.videoPlayer}
+                style={styles.player}
                 controls={true}
                 resizeMode="contain"
                 paused={false}
-                onError={() => {
-                  setVideoError('Видео ачааллах үед алдаа гарлаа. Link хугацаа дууссан эсэхийг шалгана уу.');
-                }}
+                onError={() => setVideoError('Видео ачааллах үед алдаа гарлаа. Link хугацаа дууссан эсэхийг шалгана уу.')}
               />
             ) : null}
           </View>
 
           {videoError ? (
-            <Card style={styles.errorCard}>
-              <AppText tone="danger">{videoError}</AppText>
-            </Card>
+            <View style={styles.videoErrorBox}>
+              <Icon name="alert-circle-outline" size={18} color="#EF4444" />
+              <Text style={styles.videoErrorText}>{videoError}</Text>
+            </View>
           ) : null}
         </View>
       </Modal>
@@ -311,10 +256,7 @@ const Videolesson = () => {
         onClose={closePayment}
         onSelectPlan={(item) => {
           navigation.navigate('PaymentCheckout', {
-            planId: item.id,
-            planTitle: item.title,
-            planPrice: item.price,
-            planMonths: item.months,
+            planId: item.id, planTitle: item.title, planPrice: item.price, planMonths: item.months,
           });
         }}
       />
@@ -323,163 +265,185 @@ const Videolesson = () => {
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 28,
-  },
-  groupSection: {
-    marginBottom: 22,
-  },
+  screen: { flex: 1, backgroundColor: '#F8FAFC' },
+  content: { padding: 16, paddingBottom: 32 },
+
+  /* States */
+  stateBox: { alignItems: 'center', paddingVertical: 40, gap: 10 },
+  stateText: { fontSize: 13, color: '#94A3B8', textAlign: 'center' },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 12, padding: 14, marginBottom: 12 },
+
+  /* Group */
+  group: { marginBottom: 24 },
   groupHeader: {
-    marginBottom: 12,
-  },
-  groupTitle: {
-    color: '#0f172a',
-  },
-  groupDescription: {
-    marginTop: 4,
-  },
-  emptyCard: {
-    paddingVertical: 24,
-  },
-  stateCard: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  stateText: {
-    marginTop: 10,
-  },
-  emptyText: {
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  card: {
-    marginBottom: 14,
-  },
-  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  groupAccent: { width: 4, height: 36, borderRadius: 2, backgroundColor: '#155DFC' },
+  groupHeaderText: { flex: 1 },
+  groupTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', letterSpacing: -0.2 },
+  groupDesc: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  groupCount: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  groupCountText: { fontSize: 12, fontWeight: '700', color: '#155DFC' },
+
+  /* Video card */
+  cardWrapper: {
+    marginBottom: 10,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  card: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   thumbnail: {
-    width: 108,
-    height: 92,
-    borderRadius: 18,
-    marginRight: 14,
-    backgroundColor: '#1d4ed8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  thumbnailVideo: {
-    ...StyleSheet.absoluteFillObject,
+    width: 110,
+    height: 96,
+    backgroundColor: '#0F172A',
   },
   playOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.18)',
+    backgroundColor: 'rgba(15,23,42,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   playCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingLeft: 4,
+    paddingLeft: 3,
   },
-  lockIcon: {
+  lockBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 4,
+    top: 8,
+    right: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  infoContainer: {
+  cardInfo: {
     flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
   },
   videoTitle: {
-    color: '#0f172a',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    lineHeight: 19,
+    letterSpacing: -0.1,
   },
-  videoDescription: {
-    marginTop: 6,
-    lineHeight: 20,
+  videoDesc: {
+    fontSize: 11,
+    color: '#94A3B8',
+    lineHeight: 16,
+    marginTop: 3,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
-    gap: 8,
+    marginTop: 8,
+    gap: 6,
   },
-  metaItem: {
+  levelChip: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  metaText: {
-    color: '#2563eb',
-  },
-  levelBadge: {
-    backgroundColor: '#dbeafe',
+    gap: 4,
+    backgroundColor: '#EFF6FF',
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  levelText: {
-    color: '#1d4ed8',
+  levelChipText: { fontSize: 11, fontWeight: '600', color: '#155DFC' },
+  badgePill: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  modalContainer: {
+  badgePillText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
+
+  /* Modal */
+  modal: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-    paddingTop: 22,
-    paddingHorizontal: 16,
+    backgroundColor: '#F8FAFC',
+    paddingTop: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
   },
-  modalTitleWrap: {
-    flex: 1,
-    paddingRight: 12,
-  },
+  modalMeta: { flex: 1 },
   modalTitle: {
-    color: '#0f172a',
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+    marginBottom: 4,
   },
-  modalSubtitle: {
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#e2e8f0',
-    justifyContent: 'center',
+  modalSubtitle: { fontSize: 13, color: '#94A3B8', lineHeight: 18 },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  playerCard: {
+  playerWrap: {
     backgroundColor: '#000',
-    borderRadius: 20,
+    marginHorizontal: 16,
+    borderRadius: 18,
     overflow: 'hidden',
   },
-  videoPlayer: {
+  player: {
     width: '100%',
     aspectRatio: 16 / 9,
     backgroundColor: '#000',
   },
-  errorCard: {
-    marginTop: 16,
-    borderColor: '#fecaca',
-    backgroundColor: '#fef2f2',
+  videoErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 14,
+    margin: 16,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
+  videoErrorText: { fontSize: 13, color: '#EF4444', flex: 1 },
 });
 
 export default Videolesson;
