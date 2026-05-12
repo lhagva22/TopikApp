@@ -27,6 +27,9 @@ export type RootDrawerParamList = {
   LessonBooks: undefined;
   Exam: undefined;
   Progress: undefined;
+  ExamReview: {
+    resultId: string;
+  };
   Payment: undefined;
   PaymentCheckout: {
     planId: number;

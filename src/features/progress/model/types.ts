@@ -18,6 +18,43 @@ export interface ExamResult {
   level?: string;
 }
 
+export interface ReviewOption {
+  text: string;
+  imageUrl?: string | null;
+  isCorrect: boolean;
+  isSelected: boolean;
+}
+
+export interface ReviewQuestion {
+  id: string;
+  section: 'listening' | 'reading';
+  sectionLabel: string;
+  questionNumber: number;
+  questionText: string;
+  questionImageUrl?: string | null;
+  audioUrl?: string | null;
+  score: number;
+  selectedAnswer: string | null;
+  correctAnswer: string;
+  isCorrect: boolean;
+  explanation: string;
+  options: ReviewOption[];
+}
+
+export interface ExamWeakSection extends ProgressSection {
+  incorrectAnswers: number;
+  accuracy: number;
+}
+
+export interface ExamResultDetail {
+  result: ExamResult;
+  weakSections: ExamWeakSection[];
+  reviewQuestions: ReviewQuestion[];
+  incorrectQuestions: number;
+  answeredQuestions: number;
+  unansweredQuestions: number;
+}
+
 export interface LessonProgress {
   categoryId: string;
   lessonId: string;

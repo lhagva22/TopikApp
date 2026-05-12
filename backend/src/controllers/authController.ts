@@ -73,6 +73,7 @@ export const register = async (req: Request, res: Response) => {
       email: data.user?.email,
       name: name,
       status: 'registered',
+      current_level: 0,
     }
   });
 };
@@ -135,6 +136,7 @@ export const login = async (req: Request, res: Response) => {
       email: data.user?.email,
       name: profile?.name || data.user?.user_metadata?.name,
       status: profile?.status || 'registered',
+      current_level: profile?.current_level || 0,
       subscription_start_date: profile?.subscription_start_date,
       subscription_end_date: profile?.subscription_end_date,
       subscription_months: profile?.subscription_months,
@@ -197,6 +199,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
       email: profile.email,
       name: profile.name,
       status: profile.status,
+      current_level: profile.current_level || 0,
       subscription_start_date: profile.subscription_start_date,
       subscription_end_date: profile.subscription_end_date,
       subscription_months: profile.subscription_months,
@@ -259,6 +262,7 @@ export const upgradeToPaid = async (req: AuthRequest, res: Response) => {
       email: authUser?.email,  // email-ийг auth-аас авсан
       name: data.name,
       status: data.status,
+      current_level: 0,
       subscription_start_date: data.subscription_start_date,
       subscription_end_date: data.subscription_end_date,
       subscription_months: data.subscription_months,

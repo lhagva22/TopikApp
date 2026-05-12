@@ -17,7 +17,7 @@ import {
   VocabularyScreen,
 } from '../../features/lessons';
 import { PaymentCheckoutScreen, PaymentScreen } from '../../features/payment';
-import { Progress } from '../../features/progress';
+import { ExamReviewScreen, Progress } from '../../features/progress';
 import Footer from '../../shared/components/organisms/footer';
 import Header from '../../shared/components/organisms/header';
 import CustomDrawerContent from '../../shared/components/organisms/CustomDrawerContent';
@@ -53,6 +53,7 @@ const BooksScreenWrapper = withShell(BooksScreen);
 const ExamScreenWrapper = withShell(ExamScreen);
 const DictionaryScreenWrapper = withShell(DictionaryScreen);
 const ProgressScreenWrapper = withShell(Progress);
+const ExamReviewScreenWrapper = withShell(ExamReviewScreen);
 
 const PaymentScreenWrapper = () => {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
@@ -119,6 +120,11 @@ export function DrawerNavigator() {
       />
       <Drawer.Screen name="Exam" component={ExamScreenWrapper} />
       <Drawer.Screen name="Progress" component={ProgressScreenWrapper} />
+      <Drawer.Screen
+        name="ExamReview"
+        component={ExamReviewScreenWrapper}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
       <Drawer.Screen name="Payment" component={PaymentScreenWrapper} />
       <Drawer.Screen
         name="PaymentCheckout"

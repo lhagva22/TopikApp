@@ -5,7 +5,7 @@ import {
   getExams,
   getExamById,
   startExam,
-  startLevelTest,
+  startLevelTestMockTest,
   submitExam,
   submitLevelTest
 } from '../controllers/examController';
@@ -19,7 +19,7 @@ router.get('/exams/:examId', getExamById);
 // Protected routes
 router.post('/exam/:examId/start', protect, startExam);
 router.post('/exam/submit', protect, submitExam);
-router.post('/level-test/start', protect, startLevelTest);
+router.post('/level-test/start', protect, startLevelTestMockTest);
 router.post('/level-test/submit', protect, submitLevelTest);
 
 export default router;

@@ -31,6 +31,12 @@ type MockTestRow = {
   reading_questions: number;
 };
 
+type LevelTestExamType = 'TOPIK_I' | 'TOPIK_II';
+
+type LevelTestStartBody = {
+  examType?: LevelTestExamType;
+};
+
 const getPremiumProfile = async (userId: string) => {
   const { data: profile, error } = await supabaseAdmin
     .from('profiles')
@@ -152,6 +158,100 @@ const determineLevelFromRules = async (examType: 'TOPIK_I' | 'TOPIK_II', totalSc
   }
 
   return rule;
+};
+
+const getRandomLevelTestExam = async (examType: LevelTestExamType) => {
+  const { data: mockTests, error: testError } = await supabaseAdmin
+    .from('mock_test_bank')
+    .select('*')
+    .eq('is_active', true)
+    .eq('exam_type', examType)
+    .order('test_number', { ascending: false });
+
+  if (testError || !mockTests || mockTests.length === 0) {
+    return { error: 'Шалгалт олдсонгүй' as const };
+  }
+
+  const availableTests: MockTestRow[] = [];
+
+  for (const mockTest of mockTests as MockTestRow[]) {
+    const { count, error: countError } = await supabaseAdmin
+      .from('mock_test_questions')
+      .select('*', { count: 'exact', head: true })
+      .eq('mock_test_id', mockTest.id);
+
+    if (!countError && count && count >= mockTest.total_questions) {
+      availableTests.push(mockTest);
+    }
+  }
+
+  if (availableTests.length === 0) {
+    return { error: 'Шалгалтын асуултууд олдсонгүй' as const };
+  }
+
+  return {
+    exam: availableTests[Math.floor(Math.random() * availableTests.length)],
+  };
+};
+
+const createLevelTestSessionPayload = async (
+  userId: string,
+  exam: MockTestRow,
+  abandonExisting = false,
+) => {
+  if (abandonExisting) {
+    await supabaseAdmin
+      .from('level_test_sessions')
+      .update({
+        status: 'abandoned',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('status', 'in_progress');
+  }
+
+  const { data: session, error: sessionError } = await supabaseAdmin
+    .from('level_test_sessions')
+    .insert({
+      user_id: userId,
+      exam_id: exam.id,
+      status: 'in_progress',
+      started_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (sessionError || !session) {
+    throw new Error('Session үүсгэхэд алдаа гарлаа');
+  }
+
+  const { data: questions, error: questionsError } = await supabaseAdmin
+    .from('mock_test_questions')
+    .select('id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url')
+    .eq('mock_test_id', exam.id)
+    .order('section', { ascending: true })
+    .order('question_number', { ascending: true });
+
+  if (questionsError || !questions || questions.length === 0) {
+    throw new Error('Шалгалтын асуултууд олдсонгүй');
+  }
+
+  return {
+    session: {
+      id: session.id,
+      started_at: session.started_at,
+    },
+    test: {
+      id: exam.id,
+      title: exam.title,
+      exam_type: exam.exam_type,
+      duration: exam.duration,
+      total_questions: exam.total_questions,
+      listening_questions: exam.listening_questions,
+      reading_questions: exam.reading_questions,
+    },
+    questions: shuffleOptions(questions as QuestionRow[]),
+  };
 };
 
 export const getExams = async (_req: AuthRequest, res: Response) => {
@@ -308,6 +408,7 @@ export const startExam = async (req: AuthRequest, res: Response) => {
 
 export const startLevelTest = async (req: AuthRequest, res: Response) => {
   const userId = req.userId;
+  const { examType } = (req.body || {}) as LevelTestStartBody;
 
   if (!userId) {
     return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй' });
@@ -326,13 +427,20 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
     const { data: mockTests, error: testError } = await supabaseAdmin
       .from('mock_test_bank')
       .select('*')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .eq('exam_type', examType === 'TOPIK_II' ? 'TOPIK_II' : 'TOPIK_I');
 
     if (testError || !mockTests || mockTests.length === 0) {
       return res.status(404).json({ success: false, error: 'Шалгалт олдсонгүй' });
     }
 
     const randomTest = mockTests[Math.floor(Math.random() * mockTests.length)] as MockTestRow;
+    const payload = await createLevelTestSessionPayload(userId, randomTest, true);
+
+    return res.json({
+      success: true,
+      ...payload,
+    });
 
     await supabaseAdmin
       .from('level_test_sessions')
@@ -385,6 +493,44 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
         reading_questions: randomTest.reading_questions,
       },
       questions: shuffleOptions(questions as QuestionRow[]),
+    });
+  } catch (error) {
+    console.error('Start level test error:', error);
+    return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
+  }
+};
+
+export const startLevelTestMockTest = async (req: AuthRequest, res: Response) => {
+  const userId = req.userId;
+  const { examType } = (req.body || {}) as LevelTestStartBody;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй' });
+  }
+
+  try {
+    const premiumCheck = await getPremiumProfile(userId);
+    if ('error' in premiumCheck) {
+      return res.status(premiumCheck.requiresPremium ? 403 : 500).json({
+        success: false,
+        error: premiumCheck.error,
+        requiresPremium: premiumCheck.requiresPremium,
+      });
+    }
+
+    const nextExamResult = await getRandomLevelTestExam(
+      examType === 'TOPIK_II' ? 'TOPIK_II' : 'TOPIK_I',
+    );
+
+    if ('error' in nextExamResult) {
+      return res.status(404).json({ success: false, error: nextExamResult.error });
+    }
+
+    const payload = await createLevelTestSessionPayload(userId, nextExamResult.exam, true);
+
+    return res.json({
+      success: true,
+      ...payload,
     });
   } catch (error) {
     console.error('Start level test error:', error);
@@ -615,6 +761,10 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
     }
 
     const finalLevel = levelRule?.determined_level ?? 0;
+    const shouldUnlockTopikII =
+      exam.exam_type === 'TOPIK_I' && levelRule?.next_exam_type === 'TOPIK_II';
+
+    let nextLevelTest: Awaited<ReturnType<typeof createLevelTestSessionPayload>> | null = null;
     const finalLevelName = levelRule?.determined_level_name ?? 'Түвшин тодорхойгүй';
 
     await supabaseAdmin
@@ -635,6 +785,14 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
       })
       .eq('id', sessionId);
 
+    if (shouldUnlockTopikII) {
+      const nextExamResult = await getRandomLevelTestExam('TOPIK_II');
+
+      if (!('error' in nextExamResult)) {
+        nextLevelTest = await createLevelTestSessionPayload(userId, nextExamResult.exam);
+      }
+    }
+
     const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
     return res.json({
@@ -647,6 +805,7 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
         percentage: Math.round(percentage),
         level: finalLevel,
         levelName: finalLevelName,
+        nextExamType: nextLevelTest ? 'TOPIK_II' : 'none',
         listeningScore,
         listeningMaxScore,
         listeningCorrectAnswers: listeningCorrect,
@@ -654,6 +813,7 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
         readingMaxScore,
         readingCorrectAnswers: readingCorrect,
       },
+      nextLevelTest,
     });
   } catch (error) {
     console.error('Submit level test error:', error);

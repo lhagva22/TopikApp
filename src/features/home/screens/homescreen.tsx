@@ -1,5 +1,13 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -14,7 +22,7 @@ import { useHome } from '../hooks/useHome';
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const { user } = useAppStore();
-  const { userLevel, loading, loadUserLevel, startLevelTest } = useHome();
+  const { userLevel, loading, startingLevelTest, loadUserLevel, startLevelTest } = useHome();
   const { showPayment, openPayment, closePayment } = usePaymentModal();
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [showLevelTestInfo, setShowLevelTestInfo] = React.useState(false);
@@ -27,15 +35,22 @@ const HomeScreen = () => {
 
   const handleStartLevelTest = async () => {
     setActionError(null);
-    if (user?.status !== 'premium') { openPayment(); return; }
+
+    if (user?.status !== 'premium') {
+      openPayment();
+      return;
+    }
+
     setShowLevelTestInfo(true);
   };
 
   const handleConfirmLevelTestStart = async () => {
     setShowLevelTestInfo(false);
+
     const result = await startLevelTest();
     if (result.success && result.data) {
       const { test, session, questions } = result.data;
+
       navigation.navigate('ExamInterface', {
         examId: test.id,
         examTitle: test.title,
@@ -52,26 +67,32 @@ const HomeScreen = () => {
     }
 
     setActionError(
-      getErrorMessage('error' in result ? result.error : null, 'Шалгалт эхлүүлэхэд алдаа гарлаа.'),
+      getErrorMessage(
+        'error' in result ? result.error : null,
+        'Шалгалт эхлүүлэхэд алдаа гарлаа.',
+      ),
     );
   };
 
   const currentLevel =
-    userLevel && userLevel > 0 ? LEVELS.find((l) => l.levelValue === userLevel) : undefined;
+    userLevel && userLevel > 0 ? LEVELS.find((level) => level.levelValue === userLevel) : undefined;
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#155DFC" />
+        <Text style={styles.loadingText}>Home ачааллаж байна...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.screen}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-        {/* Greeting */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.greeting}>
           <View>
             <Text style={styles.greetTitle}>
@@ -84,8 +105,7 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* Current level */}
-        {currentLevel && (
+        {currentLevel ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionDot} />
@@ -93,9 +113,8 @@ const HomeScreen = () => {
             </View>
             <LevelCard level={currentLevel} isActive />
           </View>
-        )}
+        ) : null}
 
-        {/* School card */}
         <View style={styles.schoolCard}>
           <View style={styles.schoolIconBox}>
             <Icon name="school-outline" size={24} color="#fff" />
@@ -103,12 +122,12 @@ const HomeScreen = () => {
           <View style={styles.schoolBody}>
             <Text style={styles.schoolTitle}>Шинэ эхлэл нархан сургууль</Text>
             <Text style={styles.schoolDesc}>
-              Ахлах ангидаа Солонгос улсад шилжин суралцах боломжтой Монгол улсын цорын ганц сургууль.
+              Ахлах ангидаа Солонгос улсад шилжин суралцах боломжтой Монгол улсын цорын
+              ганц сургууль.
             </Text>
           </View>
         </View>
 
-        {/* Level test */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionDot} />
@@ -123,25 +142,28 @@ const HomeScreen = () => {
                 <Icon name="trophy-outline" size={22} color="#F59E0B" />
               </View>
               <View style={styles.testBody}>
-                <Text style={styles.testTitle}>Өөрийн түвшинг мэдэхийн тулд богино шалгалт өгнө үү</Text>
+                <Text style={styles.testTitle}>
+                  Өөрийн түвшинг зөвхөн бүтэн mock test-ээр тодорхойлно.
+                </Text>
               </View>
             </View>
 
             <View style={styles.testChips}>
               <View style={styles.testChip}>
                 <Icon name="school-outline" size={13} color="#93C5FD" />
-                <Text style={styles.testChipText}>15 минут</Text>
+                <Text style={styles.testChipText}>Random TOPIK I mock test</Text>
               </View>
               <View style={styles.testChip}>
                 <Icon name="trending-up-outline" size={13} color="#93C5FD" />
-                <Text style={styles.testChipText}>20 асуулт</Text>
+                <Text style={styles.testChipText}>140+ бол TOPIK II нээгдэнэ</Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={styles.testBtn}
+              style={[styles.testBtn, startingLevelTest && styles.testBtnDisabled]}
               onPress={handleStartLevelTest}
               activeOpacity={0.85}
+              disabled={startingLevelTest}
             >
               <Icon name="play" size={16} color="#155DFC" />
               <Text style={styles.testBtnText}>Шалгалт эхлүүлэх</Text>
@@ -149,7 +171,6 @@ const HomeScreen = () => {
           </View>
         </View>
 
-        {/* All levels */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionDot} />
@@ -185,30 +206,60 @@ const HomeScreen = () => {
               <Icon name="school-outline" size={24} color="#155DFC" />
             </View>
             <Text style={styles.modalTitle}>Түвшин тогтоох шалгалтын мэдээлэл</Text>
-            <Text style={styles.modalText}>1. Эхлээд санамсаргүй TOPIK I шалгалт эхэлнэ.</Text>
-            <Text style={styles.modalText}>2. Хэрэв 140-аас дээш оноо авбал TOPIK II шат нээгдэнэ.</Text>
-            <Text style={styles.modalText}>3. Энэ дүрэм зөвхөн түвшин тогтоох шалгалтад үйлчилнэ. Энгийн mock test-д хамаарахгүй.</Text>
-            <Text style={styles.modalText}>4. Шалгалт дууссаны дараа Home дээрх "Түвшнүүд" хэсэгт өөрийн байршлыг харна.</Text>
+            <Text style={styles.modalText}>
+              1. Энэ flow нь богино тест биш, бүтэн mock test ашиглана.
+            </Text>
+            <Text style={styles.modalText}>
+              2. Эхлээд санамсаргүй TOPIK I mock test эхэлнэ.
+            </Text>
+            <Text style={styles.modalText}>
+              3. Хэрэв 140-аас дээш оноо авбал TOPIK II шат нээгдэнэ.
+            </Text>
+            <Text style={styles.modalText}>
+              4. Энэ дүрэм зөвхөн түвшин тогтоох үед үйлчилнэ. Энгийн mock test-д
+              хамаарахгүй.
+            </Text>
+            <Text style={styles.modalText}>
+              5. Дууссаны дараа Home дээрх "Түвшнүүд" хэсэгт өөрийн байрлалыг харна.
+            </Text>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
                 onPress={() => setShowLevelTestInfo(false)}
                 activeOpacity={0.85}
+                disabled={startingLevelTest}
               >
                 <Text style={styles.modalCancelText}>Буцах</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.modalConfirmButton}
-                onPress={() => void handleConfirmLevelTestStart()}
+                style={[styles.modalConfirmButton, startingLevelTest && styles.modalConfirmButtonDisabled]}
+                onPress={handleConfirmLevelTestStart}
                 activeOpacity={0.85}
+                disabled={startingLevelTest}
               >
-                <Text style={styles.modalConfirmText}>Шалгалт эхлүүлэх</Text>
+                {startingLevelTest ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Шалгалт эхлүүлэх</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      {startingLevelTest ? (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#155DFC" />
+            <Text style={styles.loadingOverlayTitle}>Шалгалт бэлтгэж байна...</Text>
+            <Text style={styles.loadingOverlayText}>
+              Түвшин тогтоох mock test-ийг ачаалж байна.
+            </Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -218,8 +269,8 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 36 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+  loadingText: { marginTop: 12, fontSize: 13, color: '#64748B' },
 
-  /* Greeting */
   greeting: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -256,7 +307,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  /* School card */
   schoolCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -288,7 +338,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  /* Section */
   section: { marginBottom: 14 },
   sectionHeader: {
     flexDirection: 'row',
@@ -310,7 +359,6 @@ const styles = StyleSheet.create({
   },
   message: { marginBottom: 10 },
 
-  /* Level test card */
   testCard: {
     backgroundColor: '#155DFC',
     borderRadius: 18,
@@ -338,7 +386,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   testChips: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 8,
     marginBottom: 16,
   },
@@ -365,11 +413,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 13,
   },
+  testBtnDisabled: {
+    opacity: 0.7,
+  },
   testBtnText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#155DFC',
   },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.55)',
@@ -426,11 +478,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#155DFC',
     paddingVertical: 13,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmButtonDisabled: {
+    opacity: 0.8,
   },
   modalConfirmText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  loadingCard: {
+    width: '100%',
+    maxWidth: 300,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  loadingOverlayTitle: {
+    marginTop: 14,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  loadingOverlayText: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    color: '#64748B',
   },
 });
 

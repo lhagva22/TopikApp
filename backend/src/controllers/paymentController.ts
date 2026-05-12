@@ -138,8 +138,12 @@ const activatePremiumSubscription = async (userId: string, months: number) => {
     profile.subscription_end_date && new Date(profile.subscription_end_date).getTime() > now.getTime()
       ? new Date(profile.subscription_end_date)
       : null;
-
-  const startDate = profile.subscription_start_date ? new Date(profile.subscription_start_date) : now;
+  const existingStartDate =
+    profile.subscription_start_date && !Number.isNaN(new Date(profile.subscription_start_date).getTime())
+      ? new Date(profile.subscription_start_date)
+      : null;
+  const hasActiveSubscription = currentEndDate !== null;
+  const startDate = hasActiveSubscription && existingStartDate ? existingStartDate : now;
   const baseDate = currentEndDate ?? now;
   const nextEndDate = new Date(baseDate);
   nextEndDate.setMonth(nextEndDate.getMonth() + months);

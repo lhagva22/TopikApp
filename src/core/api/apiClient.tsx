@@ -163,6 +163,7 @@ export const ENDPOINTS = {
   },
   PROGRESS: {
     SUMMARY: '/progress',
+    DETAIL: (id: string) => `/progress/results/${id}`,
   },
   LESSONS: {
     CATEGORIES: '/lesson-categories',

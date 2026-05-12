@@ -1,15 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Image,
   Linking,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import type { RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -79,6 +81,8 @@ const PaymentCheckout = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusVariant, setStatusVariant] = useState<StatusVariant>('info');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(0)).current;
 
   const selectedMethodLabel = useMemo(
     () => paymentMethods.find((method) => method.id === selectedMethod)?.label ?? 'QPay',
@@ -96,6 +100,37 @@ const PaymentCheckout = () => {
     setStatusMessage(message);
     setStatusVariant(variant);
   };
+
+  const showSuccess = () => {
+    scaleAnim.setValue(0);
+    setShowSuccessModal(true);
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      damping: 14,
+      stiffness: 180,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const resetPaymentState = useCallback(() => {
+    setPayment(null);
+    setSelectedMethod('qpay');
+    setStatusMessage(null);
+    setStatusVariant('info');
+    setIsCreating(false);
+    setIsChecking(false);
+    setIsSimulating(false);
+  }, []);
+
+  useEffect(() => {
+    resetPaymentState();
+  }, [planMonths, planPrice, planTitle, resetPaymentState]);
+
+  useFocusEffect(
+    useCallback(() => {
+      resetPaymentState();
+    }, [resetPaymentState]),
+  );
 
   const openExternalLink = async (url: string, fallbackUrl?: string) => {
     try {
@@ -185,9 +220,7 @@ const PaymentCheckout = () => {
       if (response.payment.status === 'completed') {
         await syncProfile();
         updateStatus(response.message ?? `${planMonths} сарын багц амжилттай идэвхжлээ.`, 'success');
-        setTimeout(() => {
-          navigation.navigate('Home');
-        }, 900);
+        showSuccess();
         return;
       }
 
@@ -231,10 +264,7 @@ const PaymentCheckout = () => {
         response.message ?? `${planMonths} сарын багц тестээр амжилттай идэвхжлээ.`,
         'success',
       );
-
-      setTimeout(() => {
-        navigation.navigate('Home');
-      }, 900);
+      showSuccess();
     } catch (error) {
       logError('Simulate payment success error', error);
       updateStatus(getErrorMessage(error, 'Тест төлбөрийг амжилттай болгож чадсангүй.'), 'error');
@@ -247,6 +277,32 @@ const PaymentCheckout = () => {
 
   return (
     <View style={styles.container}>
+      <Modal visible={showSuccessModal} transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.modalOverlay}>
+          <Animated.View style={[styles.successCard, { transform: [{ scale: scaleAnim }] }]}>
+            <View style={styles.successIconCircle}>
+              <Icon name="checkmark" size={52} color="#fff" />
+            </View>
+            <Text style={styles.successTitle}>Баяр хүргэе!</Text>
+            <Text style={styles.successSubtitle}>Таны premium багц амжилттай идэвхжлээ.</Text>
+            <View style={styles.successBadge}>
+              <Icon name="star" size={13} color="#F59E0B" />
+              <Text style={styles.successBadgeText}>{planTitle} · {planMonths} сар</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.successButton}
+              activeOpacity={0.85}
+              onPress={() => {
+                setShowSuccessModal(false);
+                navigation.navigate('Home');
+              }}
+            >
+              <Text style={styles.successButtonText}>Нүүр хуудас руу очих</Text>
+              <Icon name="arrow-forward" size={18} color="#fff" />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrow-back" size={24} color="#333" />
@@ -656,6 +712,87 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.7,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  successCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingTop: 36,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  successIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#22c55e',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  successTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 8,
+    letterSpacing: 0.2,
+  },
+  successSubtitle: {
+    fontSize: 15,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  successBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 28,
+  },
+  successBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  successButton: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#155DFC',
+    borderRadius: 14,
+    paddingVertical: 15,
+  },
+  successButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
 

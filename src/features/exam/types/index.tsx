@@ -27,6 +27,20 @@ export interface ExamQuestion {
   audio_url?: string;
 }
 
+export interface LevelTestData {
+  session: ExamSession;
+  test: {
+    id: string;
+    title: string;
+    exam_type: 'TOPIK_I' | 'TOPIK_II';
+    duration: number;
+    total_questions: number;
+    listening_questions: number;
+    reading_questions: number;
+  };
+  questions: ExamQuestion[];
+}
+
 export interface ExamResult {
   id: string;
   score: number;
@@ -40,6 +54,9 @@ export interface ExamResult {
   readingScore: number;
   readingMaxScore?: number;
   readingCorrectAnswers?: number;
+  level?: number;
+  levelName?: string;
+  nextExamType?: 'TOPIK_II' | 'none';
 }
 
 export interface ExamResultSummary {
@@ -70,4 +87,12 @@ export type StartExamResponse =
 
 export type SubmitExamResponse =
   | { success: true; result: ExamResult }
+  | { success: false; error: string };
+
+export type StartLevelTestResponse =
+  | ({ success: true } & LevelTestData)
+  | { success: false; error: string };
+
+export type SubmitLevelTestResponse =
+  | { success: true; result: ExamResult; nextLevelTest?: LevelTestData | null }
   | { success: false; error: string };
