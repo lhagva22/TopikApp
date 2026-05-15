@@ -1,5 +1,5 @@
 import { apiRequest, ENDPOINTS } from '../../../core/api/apiClient';
-import type { ExamResult, ExamResultDetail, LessonProgress } from '../model/types';
+import type { ExamResult, ExamResultDetail, LessonProgress, ProgressRecommendation } from '../model/types';
 
 interface ProgressResponse {
   success: boolean;
@@ -9,6 +9,11 @@ interface ProgressResponse {
     }
   >;
   lessonProgress: LessonProgress[];
+  recommendations: Array<
+    Omit<ProgressRecommendation, 'createdAt'> & {
+      createdAt?: string;
+    }
+  >;
   error?: string;
 }
 

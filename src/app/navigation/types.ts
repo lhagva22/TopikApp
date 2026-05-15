@@ -50,6 +50,7 @@ export type RootDrawerParamList = {
     isLevelTest?: boolean;
   };
   ExamResultScreen: {
+    id?: string;
     score: number;
     maxScore: number;
     percentage: number;
@@ -60,6 +61,23 @@ export type RootDrawerParamList = {
     readingScore: number;
     readingMaxScore?: number;
     examTitle: string;
+    isLevelTest?: boolean;
+    level?: number;
+    levelName?: string;
+    currentExamType?: 'TOPIK_I' | 'TOPIK_II';
+    nextLevelTest?: {
+      session: { id: string; started_at: string };
+      test: {
+        id: string;
+        title: string;
+        exam_type: 'TOPIK_I' | 'TOPIK_II';
+        duration: number;
+        total_questions: number;
+        listening_questions: number;
+        reading_questions: number;
+      };
+      questions: ExamQuestionParam[];
+    } | null;
   };
 };
 

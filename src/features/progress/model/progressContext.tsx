@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { useAppStore } from '../../../app/store';
 import { getErrorMessage, logError } from '../../../shared/lib/errors';
 import { progressApi } from '../api/progressApi';
-import type { ExamResult, LessonProgress, ProgressContextType } from './types';
+import type { ExamResult, LessonProgress, ProgressContextType, ProgressRecommendation } from './types';
 
 const ProgressContext = createContext<ProgressContextType | undefined>(undefined);
 
@@ -11,6 +11,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isInitialized } = useAppStore();
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
+  const [recommendations, setRecommendations] = useState<ProgressRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +23,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated) {
       setExamResults([]);
       setLessonProgress([]);
+      setRecommendations([]);
       setError(null);
       setIsLoading(false);
       return;
@@ -46,23 +48,31 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
             completedDate: progress.completedDate ? new Date(progress.completedDate) : undefined,
           })),
         );
+        setRecommendations(
+          (response.recommendations || []).map((recommendation) => ({
+            ...recommendation,
+            createdAt: recommendation.createdAt ? new Date(recommendation.createdAt) : undefined,
+          })),
+        );
       } else {
         setExamResults([]);
         setLessonProgress([]);
-        setError(getErrorMessage(response.error, 'Ахиц дэвшлийн мэдээлэл ачаалагдсангүй.'));
+        setRecommendations([]);
+        setError(getErrorMessage(response.error, 'Failed to load progress data.'));
       }
-    } catch (error) {
-      logError('Error loading progress data', error);
+    } catch (caughtError) {
+      logError('Error loading progress data', caughtError);
       setExamResults([]);
       setLessonProgress([]);
-      setError(getErrorMessage(error, 'Ахиц дэвшлийн мэдээлэл ачаалагдсангүй.'));
+      setRecommendations([]);
+      setError(getErrorMessage(caughtError, 'Failed to load progress data.'));
     } finally {
       setIsLoading(false);
     }
   }, [isAuthenticated, isInitialized]);
 
   useEffect(() => {
-    void loadData();
+    loadData().catch(() => undefined);
   }, [loadData]);
 
   const addExamResult = (result: ExamResult) => {
@@ -95,7 +105,10 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getAverageScore = () => {
-    if (examResults.length === 0) return 0;
+    if (examResults.length === 0) {
+      return 0;
+    }
+
     const total = examResults.reduce(
       (sum, result) => sum + (result.totalScore / Math.max(result.maxScore, 1)) * 100,
       0,
@@ -132,6 +145,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const clearAllData = async () => {
     setExamResults([]);
     setLessonProgress([]);
+    setRecommendations([]);
   };
 
   return (
@@ -139,6 +153,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       value={{
         examResults,
         lessonProgress,
+        recommendations,
         isLoading,
         error,
         addExamResult,

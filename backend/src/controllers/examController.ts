@@ -616,26 +616,30 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
       questions.some((question) => question.id === answer.questionId && question.section === 'reading'),
     );
 
-    const { error: insertError } = await supabaseAdmin.from('level_test_results').insert({
-      session_id: sessionId,
-      user_id: userId,
-      mock_test_id: session.exam_id,
-      exam_type: exam.exam_type,
-      total_score: totalScore,
-      listening_score: listeningScore,
-      reading_score: readingScore,
-      listening_answers: listeningAnswers,
-      reading_answers: readingAnswers,
-      time_spent_listening: exam.listening_questions > 0 ? timeSpent || 0 : 0,
-      time_spent_reading: exam.reading_questions > 0 ? timeSpent || 0 : 0,
-      started_at: session.started_at,
-      completed_at: completedAt,
-    });
+    const { data: insertedResult, error: insertError } = await supabaseAdmin
+      .from('level_test_results')
+      .insert({
+        session_id: sessionId,
+        user_id: userId,
+        mock_test_id: session.exam_id,
+        exam_type: exam.exam_type,
+        total_score: totalScore,
+        listening_score: listeningScore,
+        reading_score: readingScore,
+        listening_answers: listeningAnswers,
+        reading_answers: readingAnswers,
+        time_spent_listening: exam.listening_questions > 0 ? timeSpent || 0 : 0,
+        time_spent_reading: exam.reading_questions > 0 ? timeSpent || 0 : 0,
+        started_at: session.started_at,
+        completed_at: completedAt,
+      })
+      .select('id')
+      .single();
 
-    if (insertError) {
+    if (insertError || !insertedResult) {
       return res.status(500).json({
         success: false,
-        error: `Үр дүнг хадгалахад алдаа гарлаа: ${insertError.message}`,
+        error: `Үр дүнг хадгалахад алдаа гарлаа: ${insertError?.message || 'result id missing'}`,
       });
     }
 
@@ -652,6 +656,7 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
     return res.json({
       success: true,
       result: {
+        id: insertedResult.id,
         score: totalScore,
         maxScore,
         totalQuestions: exam.total_questions,
@@ -732,31 +737,35 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
     const completedAt = new Date().toISOString();
     const levelRule = await determineLevelFromRules(exam.exam_type, totalScore);
 
-    const { error: resultInsertError } = await supabaseAdmin.from('level_test_results').insert({
-      session_id: sessionId,
-      user_id: userId,
-      mock_test_id: session.exam_id,
-      exam_type: exam.exam_type,
-      total_score: totalScore,
-      adjusted_score: totalScore,
-      listening_score: listeningScore,
-      reading_score: readingScore,
-      listening_answers: (answers || []).filter((answer) =>
-        questions.some((question) => question.id === answer.questionId && question.section === 'listening'),
-      ),
-      reading_answers: (answers || []).filter((answer) =>
-        questions.some((question) => question.id === answer.questionId && question.section === 'reading'),
-      ),
-      time_spent_listening: exam.listening_questions > 0 ? timeSpent || 0 : 0,
-      time_spent_reading: exam.reading_questions > 0 ? timeSpent || 0 : 0,
-      started_at: session.started_at,
-      completed_at: completedAt,
-    });
+    const { data: insertedLevelResult, error: resultInsertError } = await supabaseAdmin
+      .from('level_test_results')
+      .insert({
+        session_id: sessionId,
+        user_id: userId,
+        mock_test_id: session.exam_id,
+        exam_type: exam.exam_type,
+        total_score: totalScore,
+        adjusted_score: totalScore,
+        listening_score: listeningScore,
+        reading_score: readingScore,
+        listening_answers: (answers || []).filter((answer) =>
+          questions.some((question) => question.id === answer.questionId && question.section === 'listening'),
+        ),
+        reading_answers: (answers || []).filter((answer) =>
+          questions.some((question) => question.id === answer.questionId && question.section === 'reading'),
+        ),
+        time_spent_listening: exam.listening_questions > 0 ? timeSpent || 0 : 0,
+        time_spent_reading: exam.reading_questions > 0 ? timeSpent || 0 : 0,
+        started_at: session.started_at,
+        completed_at: completedAt,
+      })
+      .select('id')
+      .single();
 
-    if (resultInsertError) {
+    if (resultInsertError || !insertedLevelResult) {
       return res.status(500).json({
         success: false,
-        error: `Үр дүн хадгалахад алдаа гарлаа: ${resultInsertError.message}`,
+        error: `Үр дүн хадгалахад алдаа гарлаа: ${resultInsertError?.message || 'result id missing'}`,
       });
     }
 
@@ -798,6 +807,7 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
     return res.json({
       success: true,
       result: {
+        id: insertedLevelResult.id,
         score: totalScore,
         maxScore,
         totalQuestions: exam.total_questions,

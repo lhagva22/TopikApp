@@ -69,6 +69,15 @@ export function ExamReviewScreen({ navigation, route }: Props) {
       : resultDetail.reviewQuestions
     : [];
 
+  const handleBackPress = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate('Progress');
+  };
+
   return (
     <ScrollView
       style={styles.screen}
@@ -83,7 +92,7 @@ export function ExamReviewScreen({ navigation, route }: Props) {
         />
       }
     >
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+      <TouchableOpacity onPress={handleBackPress} style={styles.backBtn}>
         <Icon name="arrow-back" size={20} color="#0F172A" />
       </TouchableOpacity>
 
@@ -243,34 +252,50 @@ export function ExamReviewScreen({ navigation, route }: Props) {
                   ) : null}
 
                   <View style={styles.optionsWrap}>
-                    {question.options.map((option, index) => (
-                      <View
-                        key={`${question.id}-${index}`}
-                        style={[
-                          styles.optionItem,
-                          option.isCorrect && styles.optionItemCorrect,
-                          option.isSelected && !option.isCorrect && styles.optionItemWrong,
-                        ]}
-                      >
-                        {option.imageUrl ? (
-                          <Image
-                            source={{ uri: resolveApiAssetUrl(option.imageUrl) || undefined }}
-                            style={styles.optionImage}
-                            resizeMode="cover"
-                          />
-                        ) : null}
+                    {question.options.map((option, index) => {
+                      const showOptionExplanation = !!option.explanation && (option.isCorrect || option.isSelected);
 
-                        <View style={styles.optionBody}>
-                          <Text style={styles.optionText}>{option.text}</Text>
+                      return (
+                        <View
+                          key={`${question.id}-${index}`}
+                          style={[
+                            styles.optionItem,
+                            option.isCorrect && styles.optionItemCorrect,
+                            option.isSelected && !option.isCorrect && styles.optionItemWrong,
+                          ]}
+                        >
+                          {option.imageUrl ? (
+                            <Image
+                              source={{ uri: resolveApiAssetUrl(option.imageUrl) || undefined }}
+                              style={styles.optionImage}
+                              resizeMode="cover"
+                            />
+                          ) : null}
+
+                          <View style={styles.optionBody}>
+                            <Text style={styles.optionText}>{option.text}</Text>
+                            {showOptionExplanation ? (
+                              <Text
+                                style={[
+                                  styles.optionExplanation,
+                                  option.isCorrect ? styles.optionExplanationCorrect : styles.optionExplanationWrong,
+                                ]}
+                              >
+                                {option.isCorrect
+                                  ? `Яагаад зөв вэ: ${option.explanation}`
+                                  : `Яагаад буруу вэ: ${option.explanation}`}
+                              </Text>
+                            ) : null}
+                          </View>
+
+                          {option.isCorrect ? (
+                            <Icon name="checkmark-circle" size={18} color="#059669" style={styles.optionIcon} />
+                          ) : option.isSelected ? (
+                            <Icon name="close-circle" size={18} color="#EF4444" style={styles.optionIcon} />
+                          ) : null}
                         </View>
-
-                        {option.isCorrect ? (
-                          <Icon name="checkmark-circle" size={18} color="#059669" />
-                        ) : option.isSelected ? (
-                          <Icon name="close-circle" size={18} color="#EF4444" />
-                        ) : null}
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
 
                   <View style={styles.answerSummary}>
@@ -284,10 +309,12 @@ export function ExamReviewScreen({ navigation, route }: Props) {
                     </View>
                   </View>
 
-                  <View style={styles.explanationBox}>
-                    <Icon name="bulb-outline" size={18} color="#8B5CF6" />
-                    <Text style={styles.explanationText}>{question.explanation}</Text>
-                  </View>
+                  {question.explanation ? (
+                    <View style={styles.explanationBox}>
+                      <Icon name="bulb-outline" size={18} color="#8B5CF6" />
+                      <Text style={styles.explanationText}>{question.explanation}</Text>
+                    </View>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -536,7 +563,7 @@ const styles = StyleSheet.create({
   optionsWrap: { gap: 8 },
   optionItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
     backgroundColor: '#F8FAFC',
     borderRadius: 12,
@@ -558,11 +585,25 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#E2E8F0',
   },
-  optionBody: { flex: 1 },
+  optionBody: { flex: 1, gap: 6 },
   optionText: {
     fontSize: 13,
     color: '#334155',
     lineHeight: 19,
+  },
+  optionExplanation: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  optionExplanationCorrect: {
+    color: '#166534',
+  },
+  optionExplanationWrong: {
+    color: '#B91C1C',
+  },
+  optionIcon: {
+    marginTop: 2,
   },
   answerSummary: {
     flexDirection: 'row',

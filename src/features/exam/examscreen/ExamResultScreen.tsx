@@ -6,6 +6,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { LEVELS } from '../../home/constants/levels';
 
 type ResultParams = {
+  id?: string;
   score: number;
   maxScore: number;
   percentage: number;
@@ -41,6 +42,7 @@ const ExamResultScreen = () => {
   const params: ResultParams = route.params ?? {};
 
   const {
+    id,
     score = 0,
     maxScore = 0,
     percentage = 0,
@@ -64,6 +66,12 @@ const ExamResultScreen = () => {
   const accentColor = isPassed ? passColor : failColor;
   const accentBg    = isPassed ? '#DCFCE7' : '#FEE2E2';
   const levelMeta = level ? LEVELS.find((item) => item.levelValue === level) : undefined;
+  const canReviewAnswers = Boolean(id);
+  const hasIncorrectAnswers =
+    typeof correctAnswers === 'number' ? correctAnswers < totalQuestions : true;
+  const reviewButtonLabel = hasIncorrectAnswers
+    ? 'Алдсан асуултын тайлбар харах'
+    : 'Бүх асуултын тайлбар харах';
 
   const handleContinueTopikII = () => {
     if (!nextLevelTest) {
@@ -224,6 +232,17 @@ const ExamResultScreen = () => {
             </View>
           ) : null}
         </View>
+      ) : null}
+
+      {canReviewAnswers ? (
+        <TouchableOpacity
+          style={styles.reviewBtn}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('ExamReview', { resultId: id })}
+        >
+          <Icon name="help-buoy-outline" size={18} color="#155DFC" />
+          <Text style={styles.reviewBtnText}>{reviewButtonLabel}</Text>
+        </TouchableOpacity>
       ) : null}
 
       {isLevelTest ? (
@@ -508,6 +527,24 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   secondaryBtnText: { color: '#155DFC', fontSize: 16, fontWeight: '700' },
+  reviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginBottom: 10,
+  },
+  reviewBtnText: {
+    color: '#155DFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
 });
 
 export default ExamResultScreen;
