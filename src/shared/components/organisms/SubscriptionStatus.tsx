@@ -38,7 +38,7 @@ const customProgressStyles = StyleSheet.create({
 });
 
 export function SubscriptionStatus() {
-  const { user, hasAccess } = useAppStore();
+  const { user, hasAccess, getSubscriptionStatus } = useAppStore();
 
   // Зөвхөн paid хэрэглэгчдэд харуулах
   if (!hasAccess('paid') || !user) {
@@ -53,39 +53,7 @@ export function SubscriptionStatus() {
     ? new Date(user.subscription_start_date) 
     : null;
 
-  const getDaysRemaining = () => {
-    if (!subscriptionEndDate) return 0;
-    const now = new Date();
-    const diffTime = subscriptionEndDate.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-  };
-
-  const getTotalDays = () => {
-    if (!subscriptionStartDate || !subscriptionEndDate) return 0;
-    const diffTime = subscriptionEndDate.getTime() - subscriptionStartDate.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  const getDaysUsed = () => {
-    if (!subscriptionStartDate) return 0;
-    const now = new Date();
-    const diffTime = now.getTime() - subscriptionStartDate.getTime();
-    const daysUsed = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-    const totalDays = getTotalDays();
-    return Math.min(daysUsed, totalDays);
-  };
-
-  const getSubscriptionProgress = () => {
-    const totalDays = getTotalDays();
-    const daysUsed = getDaysUsed();
-    if (totalDays === 0) return 0;
-    return Math.round((daysUsed / totalDays) * 100);
-  };
-
-  const daysRemaining = getDaysRemaining();
-  const totalDays = getTotalDays();
-  const daysUsed = getDaysUsed();
-  const progress = getSubscriptionProgress();
+  const { daysRemaining, totalDays, daysUsed, progress } = getSubscriptionStatus();
 
   // ✅ formatDate - Date | null төрлийг хүлээн авах
   const formatDate = (date: Date | null) => {

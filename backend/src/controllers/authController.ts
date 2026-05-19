@@ -74,6 +74,32 @@ const upsertProfileFromAuthUser = async (user: any, fallbackName?: string) => {
   return profile;
 };
 
+const downgradeExpiredSubscription = async (profile: any) => {
+  if (
+    profile?.status !== 'premium' ||
+    !profile.subscription_end_date ||
+    new Date(profile.subscription_end_date).getTime() > Date.now()
+  ) {
+    return profile;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .update({
+      status: 'registered',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', profile.id)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data || { ...profile, status: 'registered' };
+};
+
 export const register = async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
 
@@ -165,7 +191,7 @@ export const googleLogin = async (req: Request, res: Response) => {
   }
 
   try {
-    const profile = await upsertProfileFromAuthUser(data.user);
+    const profile = await downgradeExpiredSubscription(await upsertProfileFromAuthUser(data.user));
 
     res.json({
       success: true,
@@ -323,6 +349,10 @@ export const login = async (req: Request, res: Response) => {
         profile = newProfile;
       }
     }
+
+    if (profile) {
+      profile = await downgradeExpiredSubscription(profile);
+    }
   }
 
   res.json({ 
@@ -389,6 +419,13 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: 'Профайл авахад алдаа гарлаа' });
   }
 
+  try {
+    profile = await downgradeExpiredSubscription(profile);
+  } catch (downgradeError) {
+    console.error('Failed to downgrade expired subscription:', downgradeError);
+    return res.status(500).json({ error: 'Багцын хугацаа шалгахад алдаа гарлаа' });
+  }
+
   const { data: { user: authUser } } = await supabase.auth.getUser(token || '');
 
   res.json({ 
@@ -421,7 +458,7 @@ export const upgradeToPaid = async (req: AuthRequest, res: Response) => {
   // Эхлээд profile байгаа эсэхийг шалгах
   const { data: existingProfile } = await supabase
     .from('profiles')
-    .select('id')
+    .select('id, subscription_start_date, subscription_end_date, subscription_months')
     .eq('id', userId)
     .single();
 
@@ -429,9 +466,19 @@ export const upgradeToPaid = async (req: AuthRequest, res: Response) => {
     return res.status(404).json({ error: 'Хэрэглэгчийн профайл олдсонгүй' });
   }
 
-  const startDate = new Date();
-  const endDate = new Date();
+  const now = new Date();
+  const currentEndDate =
+    existingProfile.subscription_end_date && new Date(existingProfile.subscription_end_date).getTime() > now.getTime()
+      ? new Date(existingProfile.subscription_end_date)
+      : null;
+  const existingStartDate =
+    existingProfile.subscription_start_date && !Number.isNaN(new Date(existingProfile.subscription_start_date).getTime())
+      ? new Date(existingProfile.subscription_start_date)
+      : null;
+  const startDate = currentEndDate && existingStartDate ? existingStartDate : now;
+  const endDate = new Date(currentEndDate ?? now);
   endDate.setMonth(endDate.getMonth() + months);
+  const hasActiveSubscription = currentEndDate !== null;
 
   const { data, error } = await supabase
     .from('profiles')
@@ -439,7 +486,7 @@ export const upgradeToPaid = async (req: AuthRequest, res: Response) => {
       status: 'premium',
       subscription_start_date: startDate.toISOString(),
       subscription_end_date: endDate.toISOString(),
-      subscription_months: months,
+      subscription_months: hasActiveSubscription ? (existingProfile.subscription_months ?? 0) + months : months,
       updated_at: new Date().toISOString()
     })
     .eq('id', userId)

@@ -173,23 +173,6 @@ const isLevelTestResult = (result: ResultRow) => {
   );
 };
 
-const getLatestResultsByMockTest = (results: ResultRow[]) => {
-  const seenMockTestIds = new Set<string>();
-
-  return results.filter((result) => {
-    if (!result.mock_test_id) {
-      return true;
-    }
-
-    if (seenMockTestIds.has(result.mock_test_id)) {
-      return false;
-    }
-
-    seenMockTestIds.add(result.mock_test_id);
-    return true;
-  });
-};
-
 const buildQuestionMetaByTest = async (mockTestIds: string[]) => {
   const questionMetaByTest = new Map<string, TestMeta>();
 
@@ -468,7 +451,7 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
 
     const typedResults = (results || []) as ResultRow[];
     const levelTestResults = typedResults.filter(isLevelTestResult);
-    const mockResults = getLatestResultsByMockTest(typedResults.filter((result) => !isLevelTestResult(result)));
+    const mockResults = typedResults.filter((result) => !isLevelTestResult(result));
     const visibleResults = [...mockResults, ...levelTestResults].sort(
       (left, right) =>
         new Date(right.completed_at || right.created_at).getTime() -

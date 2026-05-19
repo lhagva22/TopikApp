@@ -132,7 +132,6 @@ export function Progress() {
   const latestResult = filteredResults[0] ?? null;
   const previousResult = filteredResults[1] ?? null;
   const trendResults = filteredResults.slice(0, 6);
-  const recentResults = filteredResults.slice(0, 5);
   const totalStudyTime = filteredResults.reduce((sum, result) => sum + result.duration, 0);
   const avgStudyTime = hasFilteredResults ? Math.round(totalStudyTime / filteredResults.length / 60) : 0;
   const periodAverageScore = hasFilteredResults
@@ -554,7 +553,7 @@ export function Progress() {
             </View>
 
             <View style={styles.subsectionHeader}>
-              <Text style={styles.subsectionTitle}>Сүүлийн шалгалтууд</Text>
+              <Text style={styles.subsectionTitle}>Бүх шалгалтууд</Text>
               <View style={styles.toggleRow}>
                 {(['chart', 'list'] as const).map((mode) => {
                   const active = viewMode === mode;
@@ -609,7 +608,7 @@ export function Progress() {
               )
             ) : (
               <View style={styles.listGap}>
-                {recentResults.map((result) => {
+                {filteredResults.map((result) => {
                   const pct = getScorePercentage(result.totalScore, result.maxScore);
                   const scoreColor = pct >= 80 ? '#059669' : pct >= 60 ? '#155DFC' : '#EF4444';
                   const scoreBg = pct >= 80 ? '#ECFDF5' : pct >= 60 ? '#EFF6FF' : '#FEF2F2';

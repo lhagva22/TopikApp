@@ -43,7 +43,7 @@ const calculateTotalDays = (startDate?: string | null, endDate?: string | null):
 const calculateDaysUsed = (startDate?: string | null, endDate?: string | null): number => {
   if (!startDate) return 0;
   const diffTime = new Date().getTime() - new Date(startDate).getTime();
-  const daysUsed = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  const daysUsed = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
   const totalDays = calculateTotalDays(startDate, endDate);
   return Math.min(daysUsed, totalDays);
 };

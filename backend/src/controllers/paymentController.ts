@@ -154,7 +154,7 @@ const activatePremiumSubscription = async (userId: string, months: number) => {
       status: 'premium',
       subscription_start_date: startDate.toISOString(),
       subscription_end_date: nextEndDate.toISOString(),
-      subscription_months: (profile.subscription_months ?? 0) + months,
+      subscription_months: hasActiveSubscription ? (profile.subscription_months ?? 0) + months : months,
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId);

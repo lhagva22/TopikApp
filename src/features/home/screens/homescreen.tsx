@@ -21,7 +21,7 @@ import { useHome } from '../hooks/useHome';
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const { user, hasAccess } = useAppStore();
-  const { userLevel, loading, startingLevelTest, loadUserLevel, startLevelTest } = useHome();
+  const { userLevel, startingLevelTest, loadUserLevel, startLevelTest } = useHome();
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [showLevelTestInfo, setShowLevelTestInfo] = React.useState(false);
 
@@ -80,15 +80,6 @@ const HomeScreen = () => {
 
   const currentLevel =
     userLevel && userLevel > 0 ? LEVELS.find((level) => level.levelValue === userLevel) : undefined;
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#155DFC" />
-        <Text style={styles.loadingText}>Home ачааллаж байна...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.screen}>
@@ -259,8 +250,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F8FAFC' },
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 36 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-  loadingText: { marginTop: 12, fontSize: 13, color: '#64748B' },
 
   greeting: {
     flexDirection: 'row',

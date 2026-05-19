@@ -15,6 +15,16 @@ const REQUIRED_STATUS: Record<AccessLevel, UserStatus> = {
 
 export const getUserStatus = (user: User | null): UserStatus => user?.status || 'guest';
 
+const hasActiveSubscription = (user: User | null): boolean => {
+  if (!user?.subscription_end_date) {
+    return false;
+  }
+
+  const endTime = new Date(user.subscription_end_date).getTime();
+
+  return !Number.isNaN(endTime) && endTime > Date.now();
+};
+
 export const hasAccess = (user: User | null, requiredStatus: AccessLevel): boolean => {
   if (requiredStatus === 'guest') {
     return true;
@@ -23,7 +33,11 @@ export const hasAccess = (user: User | null, requiredStatus: AccessLevel): boole
   const currentStatus = getUserStatus(user);
   const requiredUserStatus = REQUIRED_STATUS[requiredStatus];
 
-  return ACCESS_RANK[currentStatus] >= ACCESS_RANK[requiredUserStatus];
+  if (requiredStatus === 'paid') {
+    return currentStatus === 'premium' && hasActiveSubscription(user);
+  }
+
+  return (ACCESS_RANK[currentStatus] ?? 0) >= ACCESS_RANK[requiredUserStatus];
 };
 
 export const getAccessBlockReason = (
@@ -39,4 +53,4 @@ export const getAccessBlockReason = (
 
 export const isGuestStatus = (user: User | null): boolean => getUserStatus(user) === 'guest';
 export const isRegisteredStatus = (user: User | null): boolean => getUserStatus(user) === 'registered';
-export const isPaidStatus = (user: User | null): boolean => getUserStatus(user) === 'premium';
+export const isPaidStatus = (user: User | null): boolean => hasAccess(user, 'paid');

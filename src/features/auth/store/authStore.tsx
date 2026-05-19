@@ -72,8 +72,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const response = await authApi.login({ email, password });
 
-      if (response.success && response.user) {
-        set({ isLoading: false, error: null });
+      if (response.success && response.user && response.session) {
+        set(await persistAuthenticatedUser(response.user, response.session));
         return true;
       }
 
