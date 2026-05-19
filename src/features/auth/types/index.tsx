@@ -8,6 +8,10 @@ export interface User {
   subscription_start_date?: string | null;
   subscription_end_date?: string | null;
   subscription_months?: number | null;
+  emailVerified?: boolean;
+  emailConfirmedAt?: string | null;
+  provider?: string;
+  providers?: string[];
 }
 
 export interface LoginRequest {
@@ -21,6 +25,10 @@ export interface RegisterRequest {
   name: string;
 }
 
+export interface GoogleLoginRequest {
+  idToken: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   user?: User;
@@ -28,6 +36,8 @@ export interface AuthResponse {
     access_token: string;
     refresh_token: string;
   };
+  message?: string;
+  resetToken?: string;
   error?: string;
 }
 
@@ -35,7 +45,12 @@ export interface ForgotPasswordRequest {
   email: string;
 }
 
-export interface ResetPasswordRequest {
-  password: string;
+export interface VerifyResetOtpRequest {
+  email: string;
   token: string;
+}
+
+export interface ResetPasswordRequest {
+  resetToken: string;
+  password: string;
 }

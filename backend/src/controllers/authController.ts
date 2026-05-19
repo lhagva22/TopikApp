@@ -1,6 +1,78 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';  
 import { supabase, supabaseAdmin } from '../config/supabase';
 import { AuthRequest } from '../types';
+
+const PASSWORD_RESET_TOKEN_TTL_MS = 10 * 60 * 1000;
+const passwordResetTokens = new Map<string, { userId: string; email: string; expiresAt: number }>();
+
+const getAuthInfo = (user: any) => {
+  const providers = Array.isArray(user?.app_metadata?.providers)
+    ? user.app_metadata.providers
+    : user?.app_metadata?.provider
+      ? [user.app_metadata.provider]
+      : [];
+
+  return {
+    emailVerified: Boolean(user?.email_confirmed_at),
+    emailConfirmedAt: user?.email_confirmed_at || null,
+    provider: user?.app_metadata?.provider || providers[0] || 'email',
+    providers,
+  };
+};
+
+const upsertProfileFromAuthUser = async (user: any, fallbackName?: string) => {
+  const name =
+    fallbackName ||
+    user?.user_metadata?.name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split('@')[0] ||
+    'User';
+
+  const { data: existingProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (existingProfile) {
+    const { data: profile, error } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        email: user.email,
+        name: existingProfile.name || name,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return profile;
+  }
+
+  const { data: profile, error } = await supabaseAdmin
+    .from('profiles')
+    .insert({
+      id: user.id,
+      email: user.email,
+      name,
+      status: 'registered',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return profile;
+};
 
 export const register = async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
@@ -70,7 +142,139 @@ export const register = async (req: Request, res: Response) => {
       name: name,
       status: 'registered',
       current_level: 0,
+      ...getAuthInfo(data.user),
+    },
+    session: data.session,
+  });
+};
+
+export const googleLogin = async (req: Request, res: Response) => {
+  const { idToken } = req.body;
+
+  if (!idToken) {
+    return res.status(400).json({ error: 'Google idToken шаардлагатай.' });
+  }
+
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'google',
+    token: idToken,
+  });
+
+  if (error || !data.user || !data.session) {
+    return res.status(401).json({ error: error?.message || 'Google нэвтрэлт амжилтгүй.' });
+  }
+
+  try {
+    const profile = await upsertProfileFromAuthUser(data.user);
+
+    res.json({
+      success: true,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        name: profile.name || data.user.user_metadata?.name,
+        status: profile.status || 'registered',
+        current_level: profile.current_level || 0,
+        subscription_start_date: profile.subscription_start_date,
+        subscription_end_date: profile.subscription_end_date,
+        subscription_months: profile.subscription_months,
+        ...getAuthInfo(data.user),
+      },
+      session: data.session,
+    });
+  } catch (profileError: any) {
+    console.error('Google profile upsert error:', profileError);
+    res.status(500).json({ error: 'Google profile үүсгэхэд алдаа гарлаа.' });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'И-мэйлээ оруулна уу.' });
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+
+  if (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  res.json({
+    success: true,
+    message: 'Нууц үг сэргээх холбоосыг имэйл рүү илгээлээ.',
+  });
+};
+
+export const verifyResetOtp = async (req: Request, res: Response) => {
+  const { email, token } = req.body;
+
+  if (!email || !token) {
+    return res.status(400).json({ error: 'И-мэйл болон OTP кодоо оруулна уу.' });
+  }
+
+  for (const [resetToken, payload] of passwordResetTokens.entries()) {
+    if (payload.expiresAt <= Date.now()) {
+      passwordResetTokens.delete(resetToken);
     }
+  }
+
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'recovery',
+  });
+
+  if (error || !data.user) {
+    return res.status(400).json({ error: error?.message || 'OTP код буруу эсвэл хугацаа дууссан байна.' });
+  }
+
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  passwordResetTokens.set(resetToken, {
+    userId: data.user.id,
+    email,
+    expiresAt: Date.now() + PASSWORD_RESET_TOKEN_TTL_MS,
+  });
+
+  res.json({
+    success: true,
+    message: 'OTP баталгаажлаа. Шинэ нууц үгээ оруулна уу.',
+    resetToken,
+  });
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  const { resetToken, password } = req.body;
+
+  if (!resetToken || !password) {
+    return res.status(400).json({ error: 'Баталгаажуулалт болон шинэ нууц үгээ оруулна уу.' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой.' });
+  }
+
+  const payload = passwordResetTokens.get(resetToken);
+
+  if (!payload || payload.expiresAt <= Date.now()) {
+    passwordResetTokens.delete(resetToken);
+    return res.status(400).json({ error: 'Баталгаажуулалтын хугацаа дууссан байна. OTP дахин авна уу.' });
+  }
+
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(payload.userId, {
+    password,
+  });
+
+  if (updateError) {
+    return res.status(400).json({ error: updateError.message });
+  }
+
+  passwordResetTokens.delete(resetToken);
+
+  res.json({
+    success: true,
+    message: 'Нууц үг амжилттай шинэчлэгдлээ.',
   });
 };
 
@@ -132,6 +336,7 @@ export const login = async (req: Request, res: Response) => {
       subscription_start_date: profile?.subscription_start_date,
       subscription_end_date: profile?.subscription_end_date,
       subscription_months: profile?.subscription_months,
+      ...getAuthInfo(data.user),
     },
     session: data.session 
   });
@@ -184,6 +389,8 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: 'Профайл авахад алдаа гарлаа' });
   }
 
+  const { data: { user: authUser } } = await supabase.auth.getUser(token || '');
+
   res.json({ 
     success: true, 
     user: {
@@ -195,6 +402,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
       subscription_start_date: profile.subscription_start_date,
       subscription_end_date: profile.subscription_end_date,
       subscription_months: profile.subscription_months,
+      ...getAuthInfo(authUser),
     }
   });
 };

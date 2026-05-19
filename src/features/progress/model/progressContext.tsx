@@ -10,6 +10,7 @@ const ProgressContext = createContext<ProgressContextType | undefined>(undefined
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isInitialized } = useAppStore();
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
+  const [levelTestResults, setLevelTestResults] = useState<ExamResult[]>([]);
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
   const [recommendations, setRecommendations] = useState<ProgressRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,6 +23,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
 
     if (!isAuthenticated) {
       setExamResults([]);
+      setLevelTestResults([]);
       setLessonProgress([]);
       setRecommendations([]);
       setError(null);
@@ -42,6 +44,12 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
             date: new Date(result.date),
           })),
         );
+        setLevelTestResults(
+          (response.levelTestResults || []).map((result) => ({
+            ...result,
+            date: new Date(result.date),
+          })),
+        );
         setLessonProgress(
           response.lessonProgress.map((progress) => ({
             ...progress,
@@ -56,6 +64,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         );
       } else {
         setExamResults([]);
+        setLevelTestResults([]);
         setLessonProgress([]);
         setRecommendations([]);
         setError(getErrorMessage(response.error, 'Failed to load progress data.'));
@@ -63,6 +72,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     } catch (caughtError) {
       logError('Error loading progress data', caughtError);
       setExamResults([]);
+      setLevelTestResults([]);
       setLessonProgress([]);
       setRecommendations([]);
       setError(getErrorMessage(caughtError, 'Failed to load progress data.'));
@@ -144,6 +154,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
 
   const clearAllData = async () => {
     setExamResults([]);
+    setLevelTestResults([]);
     setLessonProgress([]);
     setRecommendations([]);
   };
@@ -152,6 +163,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     <ProgressContext.Provider
       value={{
         examResults,
+        levelTestResults,
         lessonProgress,
         recommendations,
         isLoading,

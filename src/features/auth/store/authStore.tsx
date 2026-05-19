@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+import { getUserStatus } from '../../../app/store/accessControl';
 import { useAppStore } from '../../../app/store';
 import { getErrorMessage, logError } from '../../../shared/lib/errors';
 import { authApi } from '../api/authApi';
@@ -16,19 +17,21 @@ const createGuestUser = (): User => ({
 });
 
 const syncSharedAuthState = (user: User, token: string | null) => {
+  const status = getUserStatus(user);
+
   useAppStore.setState({
     user,
     token,
-    isAuthenticated: user.status !== 'guest',
-    isGuest: user.status === 'guest',
+    isAuthenticated: status !== 'guest',
+    isGuest: status === 'guest',
   });
 };
 
 const buildAuthState = (user: User, token: string | null) => ({
   user,
   token,
-  isAuthenticated: user.status !== 'guest',
-  isGuest: user.status === 'guest',
+  isAuthenticated: getUserStatus(user) !== 'guest',
+  isGuest: getUserStatus(user) === 'guest',
   isLoading: false,
   error: null,
 });
@@ -69,8 +72,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const response = await authApi.login({ email, password });
 
-      if (response.success && response.user && response.session) {
-        set(await persistAuthenticatedUser(response.user, response.session));
+      if (response.success && response.user) {
+        set({ isLoading: false, error: null });
         return true;
       }
 
@@ -78,6 +81,26 @@ export const useAuthStore = create<AuthState>((set) => ({
       return false;
     } catch (error) {
       logError('Login error', error);
+      set(failAuth(getErrorMessage(error, 'Серверт холбогдоход алдаа гарлаа.')));
+      return false;
+    }
+  },
+
+  googleLogin: async (idToken: string) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await authApi.googleLogin({ idToken });
+
+      if (response.success && response.user && response.session) {
+        set(await persistAuthenticatedUser(response.user, response.session));
+        return true;
+      }
+
+      set(failAuth(getErrorMessage(response.error, 'Google ашиглан нэвтрэхэд алдаа гарлаа.')));
+      return false;
+    } catch (error) {
+      logError('Google login error', error);
       set(failAuth(getErrorMessage(error, 'Серверт холбогдоход алдаа гарлаа.')));
       return false;
     }

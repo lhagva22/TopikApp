@@ -1,6 +1,8 @@
 import type { User } from '../../features/auth/types';
 
 export type UserStatus = 'guest' | 'registered' | 'premium';
+export type AccessLevel = 'guest' | 'registered' | 'paid';
+export type AccessBlockReason = 'guest' | 'registered';
 
 export interface SubscriptionStatusInfo {
   daysRemaining: number;
@@ -18,6 +20,7 @@ export interface AppState {
   isAuthenticated: boolean;
   isGuest: boolean;
   error: string | null;
+  toastMessage: string | null;
   isInitialized: boolean;
   initAuth: () => Promise<void>;
   updateUser: (user: User) => void;
@@ -29,6 +32,8 @@ export interface AppState {
   getSubscriptionProgress: () => number;
   getSubscriptionStatus: () => SubscriptionStatusInfo;
   getUserStatus: () => UserStatus;
+  hasAccess: (requiredStatus: AccessLevel) => boolean;
+  getAccessBlockReason: (requiredStatus: AccessLevel) => AccessBlockReason | null;
   isGuestUser: () => boolean;
   isRegisteredUser: () => boolean;
   isPaidUser: () => boolean;
@@ -39,4 +44,6 @@ export interface AppState {
   canViewProgress: () => boolean;
   canGetRecommendations: () => boolean;
   clearError: () => void;
+  showToast: (message: string) => void;
+  clearToast: () => void;
 }

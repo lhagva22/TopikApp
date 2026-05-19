@@ -3,15 +3,21 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+import GoogleIcon from '../../../shared/assets/images/googlesvg';
 import SectionTitle from '../../../shared/components/atoms/sectionTitle';
 import { InlineMessage } from '../../../shared/components/feedback';
 import CustomButton from '../../../shared/components/molecules/button';
+import { Card, CardTitle } from '../../../shared/components/molecules/card';
 import { getErrorMessage } from '../../../shared/lib/errors';
 import { useAuth } from '../hooks/useAuth';
+import {
+  getGoogleIdToken,
+  getGoogleSignInErrorMessage,
+} from '../services/googleSignIn';
 import type { SigninScreenNavigationProp } from './types';
 
 const Signin = () => {
-  const { register, error, clearError } = useAuth();
+  const { register, googleLogin, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<SigninScreenNavigationProp>();
 
   const [email, setEmail] = useState('');
@@ -25,6 +31,31 @@ const Signin = () => {
   const nameRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
+
+  const handleGoogleSignup = async () => {
+    setFormError(null);
+    clearError();
+
+    try {
+      const idToken = await getGoogleIdToken();
+
+      if (!idToken) {
+        return;
+      }
+
+      const success = await googleLogin(idToken);
+
+      if (!success) {
+        return;
+      }
+    } catch (googleError) {
+      const message = getGoogleSignInErrorMessage(googleError);
+
+      if (message) {
+        setFormError(message);
+      }
+    }
+  };
 
   const handleSignup = async () => {
     setFormError(null);
@@ -63,7 +94,18 @@ const Signin = () => {
         Бүртгүүлэх
       </SectionTitle>
 
-      <InlineMessage message={formError} containerStyle={styles.message} />
+      <InlineMessage message={formError || error} containerStyle={styles.message} />
+
+      <TouchableOpacity
+        activeOpacity={0.75}
+        disabled={isLoading}
+        onPress={handleGoogleSignup}
+      >
+        <Card style={styles.socialCard}>
+          <GoogleIcon width={24} height={24} />
+          <CardTitle style={styles.socialText}>Google ашиглан бүртгүүлэх</CardTitle>
+        </Card>
+      </TouchableOpacity>
 
       <View style={styles.form}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => emailRef.current?.focus()}>
@@ -175,6 +217,16 @@ const styles = StyleSheet.create({
   },
   message: {
     marginBottom: 20,
+  },
+  socialCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+  },
+  socialText: {
+    marginLeft: 10,
+    fontSize: 16,
   },
   form: {
     gap: 24,

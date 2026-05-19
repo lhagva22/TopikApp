@@ -37,6 +37,30 @@ type LevelTestStartBody = {
   examType?: LevelTestExamType;
 };
 
+type ProfileStatus = 'registered' | 'premium' | string;
+
+type LevelTestHistoryResult = {
+  id: string;
+  exam_type: LevelTestExamType;
+  total_score: number | null;
+  completed_at: string | null;
+  level_test_sessions?:
+    | {
+        final_level: number | null;
+        status: string | null;
+        completed_at: string | null;
+      }
+    | {
+        final_level: number | null;
+        status: string | null;
+        completed_at: string | null;
+      }[]
+    | null;
+};
+
+const LEVEL_TEST_UNLOCK_SCORE = 140;
+const LEVEL_TEST_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
 const getPremiumProfile = async (userId: string) => {
   const { data: profile, error } = await supabaseAdmin
     .from('profiles')
@@ -56,6 +80,134 @@ const getPremiumProfile = async (userId: string) => {
   }
 
   return { profile };
+};
+
+const getAccessProfile = async (userId: string) => {
+  const { data: profile, error } = await supabaseAdmin
+    .from('profiles')
+    .select('status, subscription_end_date')
+    .eq('id', userId)
+    .single<{ status: ProfileStatus; subscription_end_date: string | null }>();
+
+  if (error || !profile) {
+    return { error: 'Хэрэглэгчийн мэдээлэл авахад алдаа гарлаа' as const };
+  }
+
+  return { profile };
+};
+
+const getResultSession = (result: LevelTestHistoryResult) =>
+  Array.isArray(result.level_test_sessions)
+    ? result.level_test_sessions[0] || null
+    : result.level_test_sessions || null;
+
+const isCompletedLevelTestResult = (result: LevelTestHistoryResult) => {
+  const session = getResultSession(result);
+
+  return (
+    session?.status === 'completed' &&
+    session.final_level !== null &&
+    session.final_level !== undefined
+  );
+};
+
+const getLevelTestHistory = async (userId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('level_test_results')
+    .select(
+      `
+        id,
+        exam_type,
+        total_score,
+        completed_at,
+        level_test_sessions:session_id (
+          final_level,
+          status,
+          completed_at
+        )
+      `,
+    )
+    .eq('user_id', userId)
+    .order('completed_at', { ascending: false, nullsFirst: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data || []) as LevelTestHistoryResult[]).filter(isCompletedLevelTestResult);
+};
+
+const isAfter = (left?: string | null, right?: string | null) => {
+  if (!left || !right) {
+    return false;
+  }
+
+  return new Date(left).getTime() > new Date(right).getTime();
+};
+
+const getLevelTestAccess = async (userId: string, examType: LevelTestExamType) => {
+  const profileResult = await getAccessProfile(userId);
+  if ('error' in profileResult) {
+    return { allowed: false as const, status: 500, error: profileResult.error };
+  }
+
+  const { profile } = profileResult;
+  const isPremium = profile.status === 'premium';
+  const history = await getLevelTestHistory(userId);
+  const topikIResults = history.filter((result) => result.exam_type === 'TOPIK_I');
+  const topikIIResults = history.filter((result) => result.exam_type === 'TOPIK_II');
+  const latestTopikI = topikIResults[0] || null;
+  const latestTopikII = topikIIResults[0] || null;
+
+  if (examType === 'TOPIK_II') {
+    if (!latestTopikI || (latestTopikI.total_score || 0) < LEVEL_TEST_UNLOCK_SCORE) {
+      return {
+        allowed: false as const,
+        status: 403,
+        error: 'TOPIK II түвшин тогтоох шалгалт TOPIK I дээр 140+ оноо авсны дараа нээгдэнэ.',
+      };
+    }
+
+    if (isAfter(latestTopikII?.completed_at, latestTopikI.completed_at)) {
+      return {
+        allowed: false as const,
+        status: 403,
+        error: isPremium
+          ? 'Энэ TOPIK I үр дүнгээр TOPIK II түвшин тогтоох шалгалтаа аль хэдийн өгсөн байна.'
+          : 'TOPIK II түвшин тогтоох шалгалтыг үнэгүй нэг удаа өгөх эрх аль хэдийн ашиглагдсан байна.',
+      };
+    }
+
+    return { allowed: true as const, profile };
+  }
+
+  if (!isPremium) {
+    if (topikIResults.length > 0) {
+      return {
+        allowed: false as const,
+        status: 403,
+        error: 'Үнэгүй түвшин тогтоох шалгалтыг нэг удаа өгөх боломжтой.',
+      };
+    }
+
+    return { allowed: true as const, profile };
+  }
+
+  const latestTopikICompletedAt = latestTopikI?.completed_at;
+  if (latestTopikICompletedAt) {
+    const elapsedMs = Date.now() - new Date(latestTopikICompletedAt).getTime();
+
+    if (elapsedMs < LEVEL_TEST_COOLDOWN_MS) {
+      const remainingDays = Math.ceil((LEVEL_TEST_COOLDOWN_MS - elapsedMs) / (24 * 60 * 60 * 1000));
+      return {
+        allowed: false as const,
+        status: 429,
+        error: `Төлбөртэй хэрэглэгч түвшин тогтоох шалгалтыг 7 хоногт нэг удаа өгнө. ${remainingDays} хоногийн дараа дахин оролдоно уу.`,
+      };
+    }
+  }
+
+  return { allowed: true as const, profile };
 };
 
 const shuffleOptions = (questions: QuestionRow[]) =>
@@ -399,12 +551,12 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const premiumCheck = await getPremiumProfile(userId);
-    if ('error' in premiumCheck) {
-      return res.status(premiumCheck.requiresPremium ? 403 : 500).json({
+    const targetExamType = examType === 'TOPIK_II' ? 'TOPIK_II' : 'TOPIK_I';
+    const access = await getLevelTestAccess(userId, targetExamType);
+    if (!access.allowed) {
+      return res.status(access.status).json({
         success: false,
-        error: premiumCheck.error,
-        requiresPremium: premiumCheck.requiresPremium,
+        error: access.error,
       });
     }
 
@@ -412,7 +564,7 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
       .from('mock_test_bank')
       .select('*')
       .eq('is_active', true)
-      .eq('exam_type', examType === 'TOPIK_II' ? 'TOPIK_II' : 'TOPIK_I');
+      .eq('exam_type', targetExamType);
 
     if (testError || !mockTests || mockTests.length === 0) {
       return res.status(404).json({ success: false, error: 'Шалгалт олдсонгүй' });
@@ -440,17 +592,17 @@ export const startLevelTestMockTest = async (req: AuthRequest, res: Response) =>
   }
 
   try {
-    const premiumCheck = await getPremiumProfile(userId);
-    if ('error' in premiumCheck) {
-      return res.status(premiumCheck.requiresPremium ? 403 : 500).json({
+    const targetExamType = examType === 'TOPIK_II' ? 'TOPIK_II' : 'TOPIK_I';
+    const access = await getLevelTestAccess(userId, targetExamType);
+    if (!access.allowed) {
+      return res.status(access.status).json({
         success: false,
-        error: premiumCheck.error,
-        requiresPremium: premiumCheck.requiresPremium,
+        error: access.error,
       });
     }
 
     const nextExamResult = await getRandomLevelTestExam(
-      examType === 'TOPIK_II' ? 'TOPIK_II' : 'TOPIK_I',
+      targetExamType,
     );
 
     if ('error' in nextExamResult) {
@@ -631,6 +783,10 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Session олдсонгүй' });
     }
 
+    if (session.status !== 'in_progress') {
+      return res.status(400).json({ success: false, error: 'Энэ шалгалт аль хэдийн дууссан байна' });
+    }
+
     const { data: exam, error: examError } = await supabaseAdmin
       .from('mock_test_bank')
       .select('id, exam_type, title, total_questions, listening_questions, reading_questions')
@@ -726,9 +882,11 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
       .eq('id', sessionId);
 
     if (shouldUnlockTopikII) {
+      const topikIIAccess = await getLevelTestAccess(userId, 'TOPIK_II');
+
       const nextExamResult = await getRandomLevelTestExam('TOPIK_II');
 
-      if (!('error' in nextExamResult)) {
+      if (topikIIAccess.allowed && !('error' in nextExamResult)) {
         nextLevelTest = await createLevelTestSessionPayload(userId, nextExamResult.exam);
       }
     }

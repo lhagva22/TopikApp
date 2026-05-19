@@ -130,11 +130,13 @@ export const del = async <T = any>(endpoint: string): Promise<T> =>
 export const ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
+    GOOGLE: '/auth/google',
     REGISTER: '/auth/register',
     PROFILE: '/auth/profile',
     LOGOUT: '/auth/logout',
     REFRESH: '/auth/refresh',
     FORGOT_PASSWORD: '/auth/forgot-password',
+    VERIFY_RESET_OTP: '/auth/verify-reset-otp',
     RESET_PASSWORD: '/auth/reset-password',
   },
   EXAMS: {

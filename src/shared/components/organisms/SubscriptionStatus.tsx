@@ -38,10 +38,10 @@ const customProgressStyles = StyleSheet.create({
 });
 
 export function SubscriptionStatus() {
-  const { user, isPaidUser } = useAppStore();
+  const { user, hasAccess } = useAppStore();
 
   // Зөвхөн paid хэрэглэгчдэд харуулах
-  if (!isPaidUser() || !user) {
+  if (!hasAccess('paid') || !user) {
     return null;
   }
 

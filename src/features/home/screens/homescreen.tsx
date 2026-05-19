@@ -12,7 +12,6 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import { useAppStore } from '../../../app/store';
-import { PaymentScreen as Payment, usePaymentModal } from '../../../features/payment';
 import { InlineMessage } from '../../../shared/components/feedback';
 import { getErrorMessage } from '../../../shared/lib/errors';
 import { LevelCard } from '../components/LevelCard';
@@ -21,9 +20,8 @@ import { useHome } from '../hooks/useHome';
 
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
-  const { user } = useAppStore();
+  const { user, hasAccess } = useAppStore();
   const { userLevel, loading, startingLevelTest, loadUserLevel, startLevelTest } = useHome();
-  const { showPayment, openPayment, closePayment } = usePaymentModal();
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [showLevelTestInfo, setShowLevelTestInfo] = React.useState(false);
 
@@ -36,8 +34,14 @@ const HomeScreen = () => {
   const handleStartLevelTest = async () => {
     setActionError(null);
 
-    if (user?.status !== 'premium') {
-      openPayment();
+    if (!hasAccess('registered')) {
+      let rootNavigation = navigation;
+
+      while (rootNavigation?.getParent?.()) {
+        rootNavigation = rootNavigation.getParent();
+      }
+
+      rootNavigation?.navigate?.('Auth', { screen: 'Login' });
       return;
     }
 
@@ -185,19 +189,6 @@ const HomeScreen = () => {
           ))}
         </View>
       </ScrollView>
-
-      <Payment
-        visible={showPayment}
-        onClose={closePayment}
-        onSelectPlan={(item) => {
-          navigation.navigate('PaymentCheckout', {
-            planId: item.id,
-            planTitle: item.title,
-            planPrice: item.price,
-            planMonths: item.months,
-          });
-        }}
-      />
 
       <Modal visible={showLevelTestInfo} transparent animationType="fade" statusBarTranslucent>
         <View style={styles.modalOverlay}>

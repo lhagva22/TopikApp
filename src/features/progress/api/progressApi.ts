@@ -8,6 +8,11 @@ interface ProgressResponse {
       date: string;
     }
   >;
+  levelTestResults?: Array<
+    Omit<ExamResult, 'date'> & {
+      date: string;
+    }
+  >;
   lessonProgress: LessonProgress[];
   recommendations: Array<
     Omit<ProgressRecommendation, 'createdAt'> & {

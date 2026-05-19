@@ -98,7 +98,6 @@ const Dictionary = () => {
           <Icon name="library-outline" size={28} color="#60A5FA" />
         </View>
         <Text style={styles.heroTitle}>Үгийн сан</Text>
-        <Text style={styles.heroDesc}>Солонгос үгс хайж, утгыг нь олоорой.</Text>
       </View>
 
       <View style={styles.searchCard}>

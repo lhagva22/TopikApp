@@ -4,18 +4,18 @@ import { useAppStore } from '../../../app/store';
 import { ExamBank } from '../types';
 
 export const useExam = () => {
-  const { user } = useAppStore();
+  const { hasAccess } = useAppStore();
   const store = useExamStore();
 
   const startExam = async (examId: string) => {
-    if (user?.status !== 'premium') {
+    if (!hasAccess('paid')) {
       return { success: false, error: 'Premium шаардлагатай', requiresPayment: true };
     }
     return await store.startExam(examId);
   };
 
   const canStartExam = (exam: ExamBank) => {
-    if (user?.status !== 'premium') {
+    if (!hasAccess('paid')) {
       return { 
         allowed: false, 
         error: 'Premium шаардлагатай', 
@@ -56,6 +56,6 @@ export const useExam = () => {
     getGroupedExams,
     
     // Status
-    canTakeExam: user?.status === 'premium',
+    canTakeExam: hasAccess('paid'),
   };
 };

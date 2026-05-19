@@ -1,10 +1,21 @@
 // src/features/auth/api/authApi.ts
 import { post, get, ENDPOINTS } from '../../../core/api/apiClient';
-import { LoginRequest, RegisterRequest, AuthResponse, ForgotPasswordRequest, ResetPasswordRequest } from '../types';
+import {
+  LoginRequest,
+  RegisterRequest,
+  GoogleLoginRequest,
+  AuthResponse,
+  ForgotPasswordRequest,
+  VerifyResetOtpRequest,
+  ResetPasswordRequest,
+} from '../types';
 
 export const authApi = {
   login: (data: LoginRequest) => 
     post<AuthResponse>(ENDPOINTS.AUTH.LOGIN, data),
+
+  googleLogin: (data: GoogleLoginRequest) =>
+    post<AuthResponse>(ENDPOINTS.AUTH.GOOGLE, data),
   
   register: (data: RegisterRequest) => 
     post<AuthResponse>(ENDPOINTS.AUTH.REGISTER, data),
@@ -17,6 +28,9 @@ export const authApi = {
   
   forgotPassword: (data: ForgotPasswordRequest) => 
     post<AuthResponse>(ENDPOINTS.AUTH.FORGOT_PASSWORD, data),
+
+  verifyResetOtp: (data: VerifyResetOtpRequest) =>
+    post<AuthResponse>(ENDPOINTS.AUTH.VERIFY_RESET_OTP, data),
   
   resetPassword: (data: ResetPasswordRequest) => 
     post<AuthResponse>(ENDPOINTS.AUTH.RESET_PASSWORD, data),

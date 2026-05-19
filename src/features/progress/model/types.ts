@@ -16,6 +16,7 @@ export interface ExamResult {
   sections: ProgressSection[];
   duration: number;
   level?: string;
+  resultType?: 'mock' | 'level_test';
 }
 
 export interface ReviewOption {
@@ -97,6 +98,7 @@ export interface WeakArea {
 
 export interface ProgressContextType {
   examResults: ExamResult[];
+  levelTestResults: ExamResult[];
   lessonProgress: LessonProgress[];
   recommendations: ProgressRecommendation[];
   isLoading: boolean;

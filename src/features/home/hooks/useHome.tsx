@@ -7,13 +7,13 @@ import { homeApi } from '../api/homeApi';
 import { StartLevelTestResult } from '../types';
 
 export const useHome = () => {
-  const { user } = useAppStore();
+  const { user, hasAccess } = useAppStore();
   const [userLevel, setUserLevel] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [startingLevelTest, setStartingLevelTest] = useState(false);
 
   const loadUserLevel = useCallback(async () => {
-    if (!user?.id || user.status === 'guest') {
+    if (!user?.id || !hasAccess('registered')) {
       setUserLevel(null);
       setLoading(false);
       return;
@@ -33,7 +33,7 @@ export const useHome = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.current_level, user?.id, user?.status]);
+  }, [hasAccess, user?.current_level, user?.id]);
 
   const startLevelTest = async (): Promise<StartLevelTestResult> => {
     setStartingLevelTest(true);

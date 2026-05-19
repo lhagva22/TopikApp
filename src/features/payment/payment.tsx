@@ -8,8 +8,10 @@ import {
   View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 
-import { ProtectedTouchable } from '../../shared/components/molecules/protectedTouchable';
+import { useAppStore } from '../../app/store';
+import type { RootStackParamList } from '../../app/navigation/types';
 import type { PaymentPlanItem, PaymentProps } from './types';
 
 const FEATURES = ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'];
@@ -22,8 +24,29 @@ const paymentItems: PaymentPlanItem[] = [
 
 const Payment = ({ visible, onClose, onSelectPlan }: PaymentProps) => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { hasAccess } = useAppStore();
+  const navigation = useNavigation<any>();
+
+  const navigateToLogin = () => {
+    let rootNavigation = navigation;
+
+    while (rootNavigation?.getParent?.()) {
+      rootNavigation = rootNavigation.getParent();
+    }
+
+    rootNavigation?.navigate?.('Auth' satisfies keyof RootStackParamList, {
+      screen: 'Login',
+    });
+  };
 
   const handleSelectPlan = (item: PaymentPlanItem) => {
+    if (!hasAccess('registered')) {
+      onClose();
+      requestAnimationFrame(() => {
+        navigateToLogin();
+      });
+      return;
+    }
     setSelectedId(item.id);
     setTimeout(() => {
       onClose();
@@ -67,9 +90,8 @@ const Payment = ({ visible, onClose, onSelectPlan }: PaymentProps) => {
               const isPopular = item.id === 2;
 
               return (
-                <ProtectedTouchable
+                <TouchableOpacity
                   key={item.id}
-                  requiredStatus="registered"
                   onPress={() => handleSelectPlan(item)}
                   activeOpacity={0.82}
                   style={[
@@ -121,7 +143,7 @@ const Payment = ({ visible, onClose, onSelectPlan }: PaymentProps) => {
                       </View>
                     ))}
                   </View>
-                </ProtectedTouchable>
+                </TouchableOpacity>
               );
             })}
           </ScrollView>

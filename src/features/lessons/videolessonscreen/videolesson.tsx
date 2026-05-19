@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import Video from 'react-native-video/lib/index';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import { useAppStore } from '../../../app/store';
-import { PaymentScreen as Payment, usePaymentModal } from '../../../features/payment';
 import AppText from '../../../shared/components/atoms/AppText';
 import { ProtectedTouchable } from '../../../shared/components/molecules/protectedTouchable';
 import { getErrorMessage } from '../../../shared/lib/errors';
@@ -31,9 +29,7 @@ const getBadgeLabel = (lesson: VideoLesson) => {
 };
 
 const Videolesson = () => {
-  const navigation = useNavigation<any>();
-  const { isPaidUser } = useAppStore();
-  const { showPayment, openPayment, closePayment } = usePaymentModal();
+  const { hasAccess } = useAppStore();
   const [selectedVideo, setSelectedVideo] = useState<VideoLesson | null>(null);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('all');
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -161,9 +157,8 @@ const Videolesson = () => {
             {group.lessons.map((video) => (
               <ProtectedTouchable
                 key={video.id}
-                requiredStatus="paid"
+                requiredStatus="registered"
                 onPress={() => handleVideoPress(video)}
-                onPaymentRequired={openPayment}
                 activeOpacity={0.82}
                 style={styles.cardWrapper}
               >
@@ -181,7 +176,7 @@ const Videolesson = () => {
                         <Icon name="play" size={20} color="#fff" />
                       </View>
                     </View>
-                    {!isPaidUser() && (
+                    {!hasAccess('registered') && (
                       <View style={styles.lockBadge}>
                         <Icon name="lock-closed" size={10} color="#fff" />
                       </View>
@@ -251,15 +246,6 @@ const Videolesson = () => {
         </View>
       </Modal>
 
-      <Payment
-        visible={showPayment}
-        onClose={closePayment}
-        onSelectPlan={(item) => {
-          navigation.navigate('PaymentCheckout', {
-            planId: item.id, planTitle: item.title, planPrice: item.price, planMonths: item.months,
-          });
-        }}
-      />
     </>
   );
 };

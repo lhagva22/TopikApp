@@ -3,7 +3,6 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-na
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 
-import { PaymentScreen as Payment, usePaymentModal } from '../../../features/payment';
 import AppText from '../../../shared/components/atoms/AppText';
 import { ProtectedTouchable } from '../../../shared/components/molecules/protectedTouchable';
 import { getErrorMessage } from '../../../shared/lib/errors';
@@ -35,7 +34,6 @@ const CATEGORY_BG: Record<string, string> = {
 
 const LessonScreen = () => {
   const navigation = useNavigation<any>();
-  const { showPayment, openPayment, closePayment } = usePaymentModal();
   const [categories, setCategories] = useState<DisplayLessonCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -138,9 +136,8 @@ const LessonScreen = () => {
           return (
             <ProtectedTouchable
               key={item.slug}
-              requiredStatus="paid"
+              requiredStatus="registered"
               onPress={() => handleLessonPress(item.route)}
-              onPaymentRequired={openPayment}
               activeOpacity={0.82}
               style={styles.cardWrapper}
             >
@@ -169,18 +166,6 @@ const LessonScreen = () => {
         })}
       </ScrollView>
 
-      <Payment
-        visible={showPayment}
-        onClose={closePayment}
-        onSelectPlan={(item) => {
-          navigation.navigate('PaymentCheckout', {
-            planId: item.id,
-            planTitle: item.title,
-            planPrice: item.price,
-            planMonths: item.months,
-          });
-        }}
-      />
     </>
   );
 };

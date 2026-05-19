@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -7,22 +7,31 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import GoogleIcon from '../../../shared/assets/images/googlesvg';
+import { useAppStore } from '../../../app/store';
 import AppleIcon from '../../../shared/assets/images/applesvg';
+import GoogleIcon from '../../../shared/assets/images/googlesvg';
 import SectionTitle from '../../../shared/components/atoms/sectionTitle';
 import { InlineMessage } from '../../../shared/components/feedback';
 import CustomButton from '../../../shared/components/molecules/button';
 import { Card, CardTitle } from '../../../shared/components/molecules/card';
 import { getErrorMessage } from '../../../shared/lib/errors';
 import { useAuth } from '../hooks/useAuth';
+import {
+  getGoogleIdToken,
+  getGoogleSignInErrorMessage,
+} from '../services/googleSignIn';
+import type { AuthStackParamList } from '../navigation/types';
 import type { LoginScreenNavigationProp } from './types';
 
 const Login = () => {
-  const { login, error, clearError } = useAuth();
+  const { login, googleLogin, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
+  const route = useRoute<RouteProp<AuthStackParamList, 'Login'>>();
+  const showToast = useAppStore((state) => state.showToast);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +44,15 @@ const Login = () => {
   const handleGoBack = () => {
     navigation.popToTop();
   };
+
+  useEffect(() => {
+    if (!route.params?.successMessage) {
+      return;
+    }
+
+    showToast(route.params.successMessage);
+    navigation.setParams({ successMessage: undefined });
+  }, [navigation, route.params?.successMessage, showToast]);
 
   const handleLogin = async () => {
     setFormError(null);
@@ -53,6 +71,31 @@ const Login = () => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setFormError(null);
+    clearError();
+
+    try {
+      const idToken = await getGoogleIdToken();
+
+      if (!idToken) {
+        return;
+      }
+
+      const success = await googleLogin(idToken);
+
+      if (!success) {
+        return;
+      }
+    } catch (googleError) {
+      const message = getGoogleSignInErrorMessage(googleError);
+
+      if (message) {
+        setFormError(message);
+      }
+    }
+  };
+
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={handleGoBack}>
@@ -63,16 +106,19 @@ const Login = () => {
         Нэвтрэх
       </SectionTitle>
 
-      <InlineMessage
-        message={formError}
-        containerStyle={styles.message}
-      />
+      <InlineMessage message={formError || error} containerStyle={styles.message} />
 
       <View style={styles.socialList}>
-        <Card style={styles.socialCard}>
-          <GoogleIcon width={24} height={24} />
-          <CardTitle style={styles.socialText}>Google ашиглан нэвтрэх</CardTitle>
-        </Card>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          disabled={isLoading}
+          onPress={handleGoogleLogin}
+        >
+          <Card style={styles.socialCard}>
+            <GoogleIcon width={24} height={24} />
+            <CardTitle style={styles.socialText}>Google ашиглан нэвтрэх</CardTitle>
+          </Card>
+        </TouchableOpacity>
         <Card style={styles.socialCard}>
           <AppleIcon width={24} height={24} />
           <CardTitle style={styles.socialText}>Apple ID ашиглан нэвтрэх</CardTitle>

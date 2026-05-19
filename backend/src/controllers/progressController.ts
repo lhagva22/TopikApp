@@ -23,6 +23,7 @@ type TestMeta = {
 
 type ResultRow = {
   id: string;
+  session_id: string | null;
   mock_test_id: string;
   exam_type: 'TOPIK_I' | 'TOPIK_II';
   total_score: number | null;
@@ -47,6 +48,18 @@ type ResultRow = {
         total_questions: number;
         listening_questions: number;
         reading_questions: number;
+      }[]
+    | null;
+  level_test_sessions?:
+    | {
+        final_level: number | null;
+        final_level_name: string | null;
+        status: string | null;
+      }
+    | {
+        final_level: number | null;
+        final_level_name: string | null;
+        status: string | null;
       }[]
     | null;
 };
@@ -149,6 +162,16 @@ const getExamMeta = (mockTestBank: ResultRow['mock_test_bank']) =>
 
 const getSingleRelation = <T>(value: T | T[] | null | undefined) =>
   Array.isArray(value) ? value[0] || null : value || null;
+
+const isLevelTestResult = (result: ResultRow) => {
+  const session = getSingleRelation(result.level_test_sessions);
+
+  return (
+    session?.status === 'completed' &&
+    session.final_level !== null &&
+    session.final_level !== undefined
+  );
+};
 
 const getLatestResultsByMockTest = (results: ResultRow[]) => {
   const seenMockTestIds = new Set<string>();
@@ -266,6 +289,8 @@ const mapResultSummary = (result: ResultRow, testMeta?: TestMeta) => ({
     result.time_spent_reading,
   ),
   sections: buildSectionSummaries(result, testMeta),
+  resultType: isLevelTestResult(result) ? 'level_test' : 'mock',
+  level: getSingleRelation(result.level_test_sessions)?.final_level_name || undefined,
 });
 
 const joinExplanationParts = (...parts: Array<string | null | undefined>) => {
@@ -407,6 +432,7 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
       .select(
         `
           id,
+          session_id,
           mock_test_id,
           exam_type,
           total_score,
@@ -424,6 +450,11 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
             total_questions,
             listening_questions,
             reading_questions
+          ),
+          level_test_sessions:session_id (
+            final_level,
+            final_level_name,
+            status
           )
         `,
       )
@@ -436,21 +467,31 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
     }
 
     const typedResults = (results || []) as ResultRow[];
-    const latestResults = getLatestResultsByMockTest(typedResults);
-    const mockTestIds = [...new Set(latestResults.map((result) => result.mock_test_id).filter(Boolean))];
+    const levelTestResults = typedResults.filter(isLevelTestResult);
+    const mockResults = getLatestResultsByMockTest(typedResults.filter((result) => !isLevelTestResult(result)));
+    const visibleResults = [...mockResults, ...levelTestResults].sort(
+      (left, right) =>
+        new Date(right.completed_at || right.created_at).getTime() -
+        new Date(left.completed_at || left.created_at).getTime(),
+    );
+    const mockTestIds = [...new Set(visibleResults.map((result) => result.mock_test_id).filter(Boolean))];
     const questionMetaByTest = await buildQuestionMetaByTest(mockTestIds);
     const recommendations = await loadRecommendations(
       userId,
-      latestResults.map((result) => result.id),
+      visibleResults.map((result) => result.id),
     );
 
-    const examResults = latestResults.map((result) =>
+    const examResults = mockResults.map((result) =>
+      mapResultSummary(result, questionMetaByTest.get(result.mock_test_id)),
+    );
+    const levelTestExamResults = levelTestResults.map((result) =>
       mapResultSummary(result, questionMetaByTest.get(result.mock_test_id)),
     );
 
     return res.json({
       success: true,
       examResults,
+      levelTestResults: levelTestExamResults,
       lessonProgress: [],
       recommendations,
     });
@@ -478,6 +519,7 @@ export const getProgressResultDetail = async (req: AuthRequest, res: Response) =
       .select(
         `
           id,
+          session_id,
           mock_test_id,
           exam_type,
           total_score,
@@ -495,6 +537,11 @@ export const getProgressResultDetail = async (req: AuthRequest, res: Response) =
             total_questions,
             listening_questions,
             reading_questions
+          ),
+          level_test_sessions:session_id (
+            final_level,
+            final_level_name,
+            status
           )
         `,
       )

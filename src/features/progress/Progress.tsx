@@ -26,6 +26,7 @@ import type { ProgressRecommendation, ProgressSection } from './model/types';
 type ProgressNavigationProp = DrawerScreenProps<RootDrawerParamList, 'Progress'>['navigation'];
 type TrendMode = 'chart' | 'list';
 type TimePeriod = 'all' | 'week' | 'month';
+type ProgressSource = 'level_test' | 'mock';
 
 const getScorePercentage = (score: number, maxScore: number) =>
   Math.round((score / Math.max(maxScore, 1)) * 100);
@@ -81,10 +82,11 @@ const getRecommendationTypeLabel = (contentType?: string | null) => {
 
 export function Progress() {
   const navigation = useNavigation<ProgressNavigationProp>();
-  const { examResults, recommendations, isLoading, error, reloadData } = useProgress();
+  const { examResults, levelTestResults, recommendations, isLoading, error, reloadData } = useProgress();
 
   const [viewMode, setViewMode] = useState<TrendMode>('chart');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
+  const [progressSource, setProgressSource] = useState<ProgressSource>('level_test');
   const [chartWidth, setChartWidth] = useState(0);
 
   const canGoBack = navigation.canGoBack();
@@ -105,9 +107,11 @@ export function Progress() {
     }, [reloadData]),
   );
 
-  const totalExams = examResults.length;
+  const activeResults = progressSource === 'level_test' ? levelTestResults : examResults;
+  const totalExams = activeResults.length;
+  const totalAvailableResults = examResults.length + levelTestResults.length;
 
-  const filteredResults = examResults.filter((result) => {
+  const filteredResults = activeResults.filter((result) => {
     if (timePeriod === 'all') {
       return true;
     }
@@ -300,7 +304,7 @@ export function Progress() {
     navigation.navigate('Lesson');
   };
 
-  if (isLoading && totalExams === 0 && !error) {
+  if (isLoading && totalAvailableResults === 0 && !error) {
     return (
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <TouchableOpacity onPress={handleBackPress} style={styles.backBtn}>
@@ -323,7 +327,7 @@ export function Progress() {
     );
   }
 
-  if (totalExams === 0) {
+  if (totalAvailableResults === 0) {
     return (
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <TouchableOpacity onPress={handleBackPress} style={styles.backBtn}>
@@ -355,7 +359,7 @@ export function Progress() {
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
-          refreshing={isLoading && totalExams > 0}
+          refreshing={isLoading && totalAvailableResults > 0}
           onRefresh={() => {
             reloadData().catch(() => undefined);
           }}
@@ -373,6 +377,25 @@ export function Progress() {
         </View>
         <Text style={styles.heroTitle}>Ахиц дэвшил</Text>
         <Text style={styles.heroDesc}>Сүүлийн дүн, өөрчлөлт, сул хэсэг, дараагийн алхмаа эндээс нэг дор харна.</Text>
+      </View>
+
+      <View style={styles.filterRow}>
+        {([
+          ['level_test', 'Түвшин тогтоох'],
+          ['mock', 'Mock test'],
+        ] as const).map(([key, label]) => {
+          const active = progressSource === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              style={[styles.filterPill, active && styles.filterPillActive]}
+              onPress={() => setProgressSource(key)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <View style={styles.filterRow}>
@@ -397,7 +420,7 @@ export function Progress() {
 
       <InlineMessage message={error} containerStyle={styles.message} />
 
-      {isLoading && totalExams > 0 ? (
+      {isLoading && totalAvailableResults > 0 ? (
         <View style={styles.refreshBanner}>
           <Icon name="sync-outline" size={14} color="#155DFC" />
           <Text style={styles.refreshText}>Шинэчилж байна...</Text>

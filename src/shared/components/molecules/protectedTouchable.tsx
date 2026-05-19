@@ -7,21 +7,6 @@ import { useAppStore } from '../../../app/store';
 import { LockMessage } from '../feedback';
 import type { AccessBlockReason, ProtectedTouchableProps } from './types';
 
-const resolveBlockReason = (
-  isGuest: boolean,
-  isRegistered: boolean,
-): AccessBlockReason | null => {
-  if (isGuest) {
-    return 'guest';
-  }
-
-  if (isRegistered) {
-    return 'registered';
-  }
-
-  return null;
-};
-
 export const ProtectedTouchable: React.FC<ProtectedTouchableProps> = ({
   children,
   onPress,
@@ -31,12 +16,17 @@ export const ProtectedTouchable: React.FC<ProtectedTouchableProps> = ({
   activeOpacity = 0.7,
 }) => {
   const navigation = useNavigation<any>();
-  const { isGuestUser, isRegisteredUser, isPaidUser } = useAppStore();
+  const { hasAccess, getAccessBlockReason } = useAppStore();
   const [showLockMessage, setShowLockMessage] = useState(false);
   const [blockReason, setBlockReason] = useState<AccessBlockReason>('guest');
 
   const handleLoginClick = () => {
-    const rootNavigation = navigation.getParent?.();
+    let rootNavigation = navigation;
+
+    while (rootNavigation?.getParent?.()) {
+      rootNavigation = rootNavigation.getParent();
+    }
+
     rootNavigation?.navigate?.('Auth' satisfies keyof RootStackParamList, {
       screen: 'Login',
     });
@@ -54,22 +44,12 @@ export const ProtectedTouchable: React.FC<ProtectedTouchableProps> = ({
   };
 
   const handlePress = () => {
-    if (requiredStatus === 'guest') {
+    if (hasAccess(requiredStatus)) {
       onPress?.();
       return;
     }
 
-    if (requiredStatus === 'registered' && (isRegisteredUser() || isPaidUser())) {
-      onPress?.();
-      return;
-    }
-
-    if (requiredStatus === 'paid' && isPaidUser()) {
-      onPress?.();
-      return;
-    }
-
-    const reason = resolveBlockReason(isGuestUser(), isRegisteredUser());
+    const reason = getAccessBlockReason(requiredStatus);
     if (reason) {
       setBlockReason(reason);
       setShowLockMessage(true);

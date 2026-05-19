@@ -1,5 +1,5 @@
 export type AuthStackParamList = {
-  Login: undefined;
+  Login: { successMessage?: string } | undefined;
   Signin: undefined;
   ForgotPassword: undefined;
 };

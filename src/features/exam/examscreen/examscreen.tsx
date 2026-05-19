@@ -171,23 +171,6 @@ const ExamScreen = () => {
     >
       <InlineMessage message={actionError} containerStyle={styles.message} />
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        {[
-          { label: 'Өгсөн',       value: String(stats.taken),       icon: 'checkmark-circle-outline', color: '#059669', bg: '#ECFDF5' },
-          { label: 'Дундаж оноо', value: `${stats.avgScore}%`,      icon: 'stats-chart-outline',      color: '#155DFC', bg: '#EFF6FF' },
-          { label: 'Нийт',        value: String(exams.length),      icon: 'library-outline',           color: '#8B5CF6', bg: '#F5F3FF' },
-        ].map((s) => (
-          <View key={s.label} style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: s.bg }]}>
-              <Icon name={s.icon} size={18} color={s.color} />
-            </View>
-            <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
-
       {/* Filter */}
       <View style={styles.filterRow}>
         {filterItems.map((item) => {

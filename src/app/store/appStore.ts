@@ -5,6 +5,14 @@ import { getToken } from '../../core/api/apiClient';
 import { authApi } from '../../features/auth/api/authApi';
 import type { User } from '../../features/auth/types';
 import { getErrorMessage, logError } from '../../shared/lib/errors';
+import {
+  getAccessBlockReason,
+  getUserStatus,
+  hasAccess,
+  isGuestStatus,
+  isPaidStatus,
+  isRegisteredStatus,
+} from './accessControl';
 import type { AppState } from './types';
 
 const GUEST_USER = {
@@ -58,6 +66,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isAuthenticated: false,
   isGuest: false,
   error: null,
+  toastMessage: null,
   isInitialized: false,
 
   initAuth: async () => {
@@ -119,15 +128,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       isAuthenticated: false,
       isGuest: false,
       error: null,
+      toastMessage: null,
       isInitialized: false,
     });
   },
 
   updateUser: (user: User) => {
+    const status = getUserStatus(user);
+
     set({
       user,
-      isAuthenticated: user.status !== 'guest',
-      isGuest: user.status === 'guest',
+      isAuthenticated: status !== 'guest',
+      isGuest: status === 'guest',
     });
   },
 
@@ -136,21 +148,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   getDaysRemaining: () => {
-    const { user, isGuest } = get();
-    if (isGuest || user?.status !== 'premium') return 0;
-    return calculateDaysRemaining(user.subscription_end_date);
+    const { user } = get();
+    if (!get().hasAccess('paid')) return 0;
+    return calculateDaysRemaining(user?.subscription_end_date);
   },
 
   getTotalDays: () => {
-    const { user, isGuest } = get();
-    if (isGuest || user?.status !== 'premium') return 0;
-    return calculateTotalDays(user.subscription_start_date, user.subscription_end_date);
+    const { user } = get();
+    if (!get().hasAccess('paid')) return 0;
+    return calculateTotalDays(user?.subscription_start_date, user?.subscription_end_date);
   },
 
   getDaysUsed: () => {
-    const { user, isGuest } = get();
-    if (isGuest || user?.status !== 'premium') return 0;
-    return calculateDaysUsed(user.subscription_start_date, user.subscription_end_date);
+    const { user } = get();
+    if (!get().hasAccess('paid')) return 0;
+    return calculateDaysUsed(user?.subscription_start_date, user?.subscription_end_date);
   },
 
   getSubscriptionProgress: () => {
@@ -176,20 +188,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
   },
 
-  getUserStatus: () => {
-    const { user, isGuest } = get();
-    if (isGuest) return 'guest';
-    return user?.status || 'guest';
-  },
-
-  isGuestUser: () => get().isGuest,
-  isRegisteredUser: () => !get().isGuest && get().user?.status === 'registered',
-  isPaidUser: () => !get().isGuest && get().user?.status === 'premium',
+  getUserStatus: () => getUserStatus(get().user),
+  hasAccess: (requiredStatus) => hasAccess(get().user, requiredStatus),
+  getAccessBlockReason: (requiredStatus) => getAccessBlockReason(get().user, requiredStatus),
+  isGuestUser: () => isGuestStatus(get().user),
+  isRegisteredUser: () => isRegisteredStatus(get().user),
+  isPaidUser: () => isPaidStatus(get().user),
   canViewContent: () => true,
-  canStudyLesson: () => !get().isGuest,
-  canTakeLevelTest: () => get().isPaidUser(),
-  canTakeMockExam: () => get().isPaidUser(),
-  canViewProgress: () => !get().isGuest,
-  canGetRecommendations: () => get().isPaidUser(),
+  canStudyLesson: () => get().hasAccess('registered'),
+  canTakeLevelTest: () => get().hasAccess('registered'),
+  canTakeMockExam: () => get().hasAccess('paid'),
+  canViewProgress: () => get().hasAccess('registered'),
+  canGetRecommendations: () => get().hasAccess('paid'),
   clearError: () => set({ error: null }),
+  showToast: (message: string) => set({ toastMessage: message }),
+  clearToast: () => set({ toastMessage: null }),
 }));

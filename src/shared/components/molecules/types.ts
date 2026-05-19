@@ -1,8 +1,8 @@
 import type React from 'react';
 import type { StyleProp, TextProps, TextStyle, ViewProps, ViewStyle } from 'react-native';
+import type { AccessBlockReason, AccessLevel } from '../../../app/store/types';
 
-export type AccessLevel = 'guest' | 'registered' | 'paid';
-export type AccessBlockReason = 'guest' | 'registered';
+export type { AccessBlockReason, AccessLevel };
 
 export interface ProtectedTouchableProps {
   children: React.ReactNode;

@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TextInput,
@@ -10,6 +10,9 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+import { useAppStore } from '../../../app/store';
+import type { AccessLevel } from '../../../app/store/types';
+import { ProtectedTouchable } from '../../../shared/components/molecules/protectedTouchable';
 import { getErrorMessage } from '../../../shared/lib/errors';
 import { lessonApi, type KoreanGrammarLesson } from '../api/lessonApi';
 
@@ -25,6 +28,104 @@ const LEVEL_OPTIONS: Array<{ value: LevelFilter; label: string }> = [
 
 
 const normalize = (value?: string | null) => (value || '').trim().toLowerCase();
+
+const getGrammarRequiredStatus = (level: KoreanGrammarLesson['level']): AccessLevel =>
+  level === 'Beginner' ? 'registered' : 'paid';
+
+// ─── Chip ─────────────────────────────────────────────────────────────────────
+
+interface ChipProps {
+  label: string;
+  isSelected: boolean;
+  onPress: () => void;
+}
+
+const Chip = React.memo(({ label, isSelected, onPress }: ChipProps) => (
+  <TouchableOpacity
+    onPress={onPress}
+    activeOpacity={0.78}
+    style={[styles.chip, isSelected && styles.chipActive]}
+  >
+    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{label}</Text>
+  </TouchableOpacity>
+));
+
+// ─── Grammar card ─────────────────────────────────────────────────────────────
+
+const GrammarCard = React.memo(({ lesson }: { lesson: KoreanGrammarLesson }) => {
+  const { hasAccess } = useAppStore();
+  const requiredStatus = getGrammarRequiredStatus(lesson.level);
+  const isLocked = !hasAccess(requiredStatus);
+
+  return (
+  <ProtectedTouchable requiredStatus={requiredStatus} activeOpacity={0.88} style={styles.cardTouch}>
+  <View style={[styles.grammarCard, isLocked && styles.grammarCardLocked]}>
+    <View style={styles.cardHeader}>
+      <View style={styles.patternBlock}>
+        <Text style={styles.patternText}>{lesson.grammarPattern}</Text>
+        {isLocked ? (
+          <View style={styles.lockedHint}>
+            <Icon name="lock-closed" size={13} color="#92400E" />
+            <Text style={styles.lockedHintText}>Дунд болон гүнзгий шат Premium эрхээр нээгдэнэ</Text>
+          </View>
+        ) : (
+          <Text style={styles.meaningText}>{lesson.meaningMn}</Text>
+        )}
+      </View>
+      <View style={styles.orderBadge}>
+        <Text style={styles.orderText}>{lesson.sortOrder}</Text>
+      </View>
+    </View>
+
+    <View style={styles.metaRow}>
+      <View style={styles.metaPill}>
+        <Icon name="school-outline" size={13} color="#155DFC" />
+        <Text style={styles.metaText}>{lesson.level}</Text>
+      </View>
+      <View style={styles.metaPill}>
+        <Icon name="ribbon-outline" size={13} color="#155DFC" />
+        <Text style={styles.metaText}>{lesson.topikLevel}</Text>
+      </View>
+      {!!lesson.category && (
+        <View style={styles.metaPill}>
+          <Icon name="pricetag-outline" size={13} color="#155DFC" />
+          <Text style={styles.metaText}>{lesson.category}</Text>
+        </View>
+      )}
+      {isLocked && (
+        <View style={styles.premiumPill}>
+          <Icon name="diamond-outline" size={13} color="#B45309" />
+          <Text style={styles.premiumPillText}>Premium</Text>
+        </View>
+      )}
+    </View>
+
+    {!isLocked && !!lesson.formRule && (
+      <View style={styles.infoBlock}>
+        <Text style={styles.infoLabel}>Хэлбэр</Text>
+        <Text style={styles.infoText}>{lesson.formRule}</Text>
+      </View>
+    )}
+
+    {!isLocked && (!!lesson.exampleKr || !!lesson.exampleMn) && (
+      <View style={styles.exampleBlock}>
+        {!!lesson.exampleKr && <Text style={styles.exampleKr}>{lesson.exampleKr}</Text>}
+        {!!lesson.exampleMn && <Text style={styles.exampleMn}>{lesson.exampleMn}</Text>}
+      </View>
+    )}
+
+    {!isLocked && !!lesson.noteMn && (
+      <View style={styles.noteBlock}>
+        <Icon name="bulb-outline" size={15} color="#92400E" />
+        <Text style={styles.noteText}>{lesson.noteMn}</Text>
+      </View>
+    )}
+  </View>
+  </ProtectedTouchable>
+  );
+});
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 
 const GrammarScreen = () => {
   const [query, setQuery] = useState('');
@@ -42,12 +143,10 @@ const GrammarScreen = () => {
       try {
         setIsLoading(true);
         setError(null);
-
         const response = await lessonApi.getKoreanGrammarLessons();
         if (!response.success) {
           throw new Error(response.error || 'Дүрмийн мэдээлэл ачааллах боломжгүй байна.');
         }
-
         if (isMounted) setLessons(response.lessons || []);
       } catch (e) {
         if (isMounted) {
@@ -59,137 +158,131 @@ const GrammarScreen = () => {
     };
 
     void load();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   const categories = useMemo(() => {
     const unique = Array.from(
-      new Set(lessons.map((lesson) => lesson.category).filter((item): item is string => Boolean(item))),
+      new Set(lessons.map((l) => l.category).filter((c): c is string => Boolean(c))),
     );
-
     return ['all', ...unique.sort((a, b) => a.localeCompare(b))];
   }, [lessons]);
 
   const filteredLessons = useMemo(() => {
     const q = normalize(query);
-
     return lessons.filter((lesson) => {
       const matchesLevel = selectedLevel === 'all' || lesson.level === selectedLevel;
       const matchesTopik = selectedTopik === 'all' || lesson.topikLevel === selectedTopik;
       const matchesCategory = selectedCategory === 'all' || lesson.category === selectedCategory;
-      const searchText = normalize(
-        [
-          lesson.grammarPattern,
-          lesson.meaningMn,
-          lesson.formRule,
-          lesson.exampleKr,
-          lesson.exampleMn,
-          lesson.noteMn,
-          lesson.category,
-          lesson.level,
-          lesson.topikLevel,
-        ].join(' '),
-      );
-
-      return matchesLevel && matchesTopik && matchesCategory && (!q || searchText.includes(q));
+      if (!matchesLevel || !matchesTopik || !matchesCategory) return false;
+      if (!q) return true;
+      return normalize(
+        [lesson.grammarPattern, lesson.meaningMn, lesson.formRule,
+         lesson.exampleKr, lesson.exampleMn, lesson.noteMn,
+         lesson.category, lesson.level, lesson.topikLevel].join(' '),
+      ).includes(q);
     });
   }, [lessons, query, selectedCategory, selectedLevel, selectedTopik]);
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     setQuery('');
     setSelectedLevel('all');
     setSelectedTopik('all');
     setSelectedCategory('all');
-  };
+  }, []);
 
-  const renderChip = (label: string, isSelected: boolean, onPress: () => void) => (
-    <TouchableOpacity
-      key={label}
-      onPress={onPress}
-      activeOpacity={0.78}
-      style={[styles.chip, isSelected && styles.chipActive]}
-    >
-      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{label}</Text>
-    </TouchableOpacity>
+  const hasActiveFilter =
+    !!query || selectedLevel !== 'all' || selectedTopik !== 'all' || selectedCategory !== 'all';
+
+  const renderItem = useCallback(
+    ({ item }: { item: KoreanGrammarLesson }) => <GrammarCard lesson={item} />,
+    [],
   );
 
-  return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.hero}>
-        <View style={styles.heroTopRow}>
-          <View style={styles.heroIconBox}>
-            <Icon name="document-text-outline" size={28} color="#60A5FA" />
+  const keyExtractor = useCallback((item: KoreanGrammarLesson) => item.id, []);
+
+  const listHeader = useMemo(
+    () => (
+      <>
+        <View style={styles.hero}>
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroIconBox}>
+              <Icon name="document-text-outline" size={28} color="#60A5FA" />
+            </View>
+            <View style={styles.heroCounter}>
+              <Text style={styles.heroCounterText}>{lessons.length}</Text>
+            </View>
           </View>
-          <View style={styles.heroCounter}>
-            <Text style={styles.heroCounterText}>{lessons.length}</Text>
-          </View>
+          <Text style={styles.heroTitle}>Дүрэм</Text>
+          <Text style={styles.heroDesc}>Солонгос хэлний дүрмийн сан, жишээ болон тайлбар</Text>
         </View>
-        <Text style={styles.heroTitle}>Дүрэм</Text>
-        <Text style={styles.heroDesc}>Солонгос хэлний дүрмийн сан, жишээ болон тайлбар</Text>
-      </View>
 
-      <View style={styles.searchBox}>
-        <Icon name="search-outline" size={19} color="#155DFC" />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Дүрэм, утга, жишээгээр хайх..."
-          placeholderTextColor="#94A3B8"
-          style={styles.searchInput}
-          returnKeyType="search"
-        />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')} activeOpacity={0.7}>
-            <Icon name="close-circle" size={19} color="#94A3B8" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.filterBlock}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {LEVEL_OPTIONS.map((option) =>
-            renderChip(option.label, selectedLevel === option.value, () => setSelectedLevel(option.value)),
-          )}
-        </ScrollView>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {/* {TOPIK_OPTIONS.map((option) =>
-            renderChip(option.label, selectedTopik === option.value, () => setSelectedTopik(option.value)),
-          )} */}
-        </ScrollView>
-
-      </View>
-
-      {!isLoading && !error && (
-        <View style={styles.countRow}>
-          <View style={styles.accent} />
-          <Text style={styles.countText}>Илэрц: {filteredLessons.length}</Text>
-          {(query || selectedLevel !== 'all' || selectedTopik !== 'all' || selectedCategory !== 'all') && (
-            <TouchableOpacity onPress={resetFilters} style={styles.resetButton} activeOpacity={0.75}>
-              <Icon name="refresh-outline" size={14} color="#155DFC" />
-              <Text style={styles.resetText}>Цэвэрлэх</Text>
+        <View style={styles.searchBox}>
+          <Icon name="search-outline" size={19} color="#155DFC" />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Дүрэм, утга, жишээгээр хайх..."
+            placeholderTextColor="#94A3B8"
+            style={styles.searchInput}
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')} activeOpacity={0.7}>
+              <Icon name="close-circle" size={19} color="#94A3B8" />
             </TouchableOpacity>
           )}
         </View>
-      )}
 
-      {isLoading && (
+        <View style={styles.filterBlock}>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={LEVEL_OPTIONS}
+            keyExtractor={(o) => o.value}
+            renderItem={({ item: o }) => (
+              <Chip
+                label={o.label}
+                isSelected={selectedLevel === o.value}
+                onPress={() => setSelectedLevel(o.value)}
+              />
+            )}
+            contentContainerStyle={styles.chipRow}
+          />
+          
+        </View>
+
+        {!isLoading && !error && (
+          <View style={styles.countRow}>
+            <View style={styles.accent} />
+            <Text style={styles.countText}>Илэрц: {filteredLessons.length}</Text>
+            {hasActiveFilter && (
+              <TouchableOpacity onPress={resetFilters} style={styles.resetButton} activeOpacity={0.75}>
+                <Icon name="refresh-outline" size={14} color="#155DFC" />
+                <Text style={styles.resetText}>Цэвэрлэх</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lessons.length, query, selectedLevel, selectedTopik, selectedCategory,
+     categories, isLoading, error, filteredLessons.length, hasActiveFilter, resetFilters],
+  );
+
+  const listEmpty = useMemo(() => {
+    if (isLoading) {
+      return (
         <View style={styles.stateCard}>
           <ActivityIndicator color="#155DFC" />
           <Text style={styles.stateTitle}>Ачааллаж байна...</Text>
           <Text style={styles.stateDesc}>Дүрмийн санг татаж байна.</Text>
         </View>
-      )}
-
-      {!isLoading && error && (
+      );
+    }
+    if (error) {
+      return (
         <View style={styles.stateCard}>
           <View style={[styles.stateIconBox, styles.errorIconBox]}>
             <Icon name="alert-circle-outline" size={26} color="#EF4444" />
@@ -197,74 +290,36 @@ const GrammarScreen = () => {
           <Text style={[styles.stateTitle, styles.errorText]}>Алдаа гарлаа</Text>
           <Text style={styles.stateDesc}>{error}</Text>
         </View>
-      )}
-
-      {!isLoading && !error && filteredLessons.length === 0 && (
-        <View style={styles.stateCard}>
-          <View style={styles.stateIconBox}>
-            <Icon name="search-outline" size={26} color="#94A3B8" />
-          </View>
-          <Text style={styles.stateTitle}>Дүрэм олдсонгүй</Text>
-          <Text style={styles.stateDesc}>Хайлтын үг эсвэл шүүлтүүрээ өөрчлөөд дахин үзээрэй.</Text>
+      );
+    }
+    return (
+      <View style={styles.stateCard}>
+        <View style={styles.stateIconBox}>
+          <Icon name="search-outline" size={26} color="#94A3B8" />
         </View>
-      )}
+        <Text style={styles.stateTitle}>Дүрэм олдсонгүй</Text>
+        <Text style={styles.stateDesc}>Хайлтын үг эсвэл шүүлтүүрээ өөрчлөөд дахин үзээрэй.</Text>
+      </View>
+    );
+  }, [isLoading, error]);
 
-      {!isLoading && !error && filteredLessons.length > 0 && (
-        <View style={styles.list}>
-          {filteredLessons.map((lesson) => (
-            <View key={lesson.id} style={styles.grammarCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.patternBlock}>
-                  <Text style={styles.patternText}>{lesson.grammarPattern}</Text>
-                  <Text style={styles.meaningText}>{lesson.meaningMn}</Text>
-                </View>
-                <View style={styles.orderBadge}>
-                  <Text style={styles.orderText}>{lesson.sortOrder}</Text>
-                </View>
-              </View>
-
-              <View style={styles.metaRow}>
-                <View style={styles.metaPill}>
-                  <Icon name="school-outline" size={13} color="#155DFC" />
-                  <Text style={styles.metaText}>{lesson.level}</Text>
-                </View>
-                <View style={styles.metaPill}>
-                  <Icon name="ribbon-outline" size={13} color="#155DFC" />
-                  <Text style={styles.metaText}>{lesson.topikLevel}</Text>
-                </View>
-                {!!lesson.category && (
-                  <View style={styles.metaPill}>
-                    <Icon name="pricetag-outline" size={13} color="#155DFC" />
-                    <Text style={styles.metaText}>{lesson.category}</Text>
-                  </View>
-                )}
-              </View>
-
-              {!!lesson.formRule && (
-                <View style={styles.infoBlock}>
-                  <Text style={styles.infoLabel}>Хэлбэр</Text>
-                  <Text style={styles.infoText}>{lesson.formRule}</Text>
-                </View>
-              )}
-
-              {(!!lesson.exampleKr || !!lesson.exampleMn) && (
-                <View style={styles.exampleBlock}>
-                  {!!lesson.exampleKr && <Text style={styles.exampleKr}>{lesson.exampleKr}</Text>}
-                  {!!lesson.exampleMn && <Text style={styles.exampleMn}>{lesson.exampleMn}</Text>}
-                </View>
-              )}
-
-              {!!lesson.noteMn && (
-                <View style={styles.noteBlock}>
-                  <Icon name="bulb-outline" size={15} color="#92400E" />
-                  <Text style={styles.noteText}>{lesson.noteMn}</Text>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+  return (
+    <FlatList
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      data={filteredLessons}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      ListHeaderComponent={listHeader}
+      ListEmptyComponent={listEmpty}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      removeClippedSubviews
+      maxToRenderPerBatch={8}
+      windowSize={10}
+      initialNumToRender={10}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+    />
   );
 };
 
@@ -359,7 +414,8 @@ const styles = StyleSheet.create({
   stateDesc: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20 },
   errorText: { color: '#EF4444' },
 
-  list: { gap: 12 },
+  separator: { height: 12 },
+  cardTouch: { borderRadius: 16 },
   grammarCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -368,10 +424,24 @@ const styles = StyleSheet.create({
     padding: 15,
     gap: 12,
   },
+  grammarCardLocked: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+  },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   patternBlock: { flex: 1, gap: 5 },
   patternText: { fontSize: 18, fontWeight: '900', color: '#0F172A', lineHeight: 25 },
   meaningText: { fontSize: 14, fontWeight: '700', color: '#155DFC', lineHeight: 20 },
+  lockedHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  lockedHintText: { flex: 1, color: '#92400E', fontSize: 12, lineHeight: 17, fontWeight: '700' },
   orderBadge: {
     minWidth: 34,
     height: 28,
@@ -396,6 +466,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
   },
   metaText: { fontSize: 11, color: '#475569', fontWeight: '800' },
+  premiumPill: {
+    minHeight: 28,
+    borderRadius: 14,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+  },
+  premiumPillText: { fontSize: 11, color: '#B45309', fontWeight: '900' },
 
   infoBlock: { borderLeftWidth: 3, borderLeftColor: '#155DFC', paddingLeft: 10, gap: 4 },
   infoLabel: { color: '#64748B', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },

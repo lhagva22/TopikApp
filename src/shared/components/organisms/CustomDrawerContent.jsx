@@ -15,12 +15,12 @@ const MENU_ITEMS = [
 
 const CustomDrawerContent = (props) => {
   const { showPayment, openPayment, closePayment } = usePaymentModal();
-  const { isAuthenticated, isPaidUser, user, getDaysRemaining, getSubscriptionProgress } = useAppStore();
+  const { isAuthenticated, hasAccess, user, getDaysRemaining, getSubscriptionProgress } = useAppStore();
   const { logout } = useAuthStore();
 
   const daysRemaining = getDaysRemaining();
   const progress = getSubscriptionProgress();
-  const isPaid = isPaidUser();
+  const isPaid = hasAccess('paid');
 
   const handlePress = (item) => {
     if (item.screen === 'Payment') { openPayment(); return; }
@@ -102,6 +102,7 @@ const CustomDrawerContent = (props) => {
       <View style={styles.menu}>
         <Text style={styles.menuLabel}>Цэс</Text>
         {MENU_ITEMS.map((item) => (
+
           <TouchableOpacity
             key={item.screen}
             style={styles.menuItem}

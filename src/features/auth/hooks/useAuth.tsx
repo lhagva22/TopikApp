@@ -2,10 +2,12 @@ import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 
 import type { RootStackParamList } from '../../../app/navigation/types';
+import { useAppStore } from '../../../app/store';
 import { useAuthStore } from '../store/authStore';
 
 export const useAuth = () => {
   const navigation = useNavigation();
+  const showToast = useAppStore((state) => state.showToast);
 
   const {
     user,
@@ -15,6 +17,7 @@ export const useAuth = () => {
     isGuest,
     error,
     login,
+    googleLogin,
     register,
     logout,
     loadProfile,
@@ -46,6 +49,18 @@ export const useAuth = () => {
 
     if (success) {
       dismissAuthFlow();
+      showToast('Амжилттай нэвтэрлээ.');
+    }
+
+    return success;
+  };
+
+  const handleGoogleLogin = async (idToken: string) => {
+    const success = await googleLogin(idToken);
+
+    if (success) {
+      dismissAuthFlow();
+      showToast('Амжилттай нэвтэрлээ.');
     }
 
     return success;
@@ -55,7 +70,9 @@ export const useAuth = () => {
     const success = await register(email, password, name);
 
     if (success) {
-      dismissAuthFlow();
+      navigation.navigate('Login' as never, {
+        successMessage: 'Бүртгэл амжилттай. Одоо нэвтэрнэ үү.',
+      } as never);
     }
 
     return success;
@@ -74,6 +91,7 @@ export const useAuth = () => {
     isGuest,
     error,
     login: handleLogin,
+    googleLogin: handleGoogleLogin,
     register: handleRegister,
     logout: handleLogout,
     loadProfile,
