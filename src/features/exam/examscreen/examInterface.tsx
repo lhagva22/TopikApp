@@ -58,6 +58,7 @@ export const ExamInterface = () => {
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [audioPaused, setAudioPaused] = useState(true);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioPlayerRef = useRef<VideoRef | null>(null);
@@ -371,8 +372,27 @@ export const ExamInterface = () => {
   const currentQuestionImageUrl = resolveApiAssetUrl(currentQ?.question_image_url);
 
   useEffect(() => {
-    stopAudioPlayback(false);
-  }, [currentQ?.id, stopAudioPlayback]);
+    if (!currentQ) {
+      return;
+    }
+
+    if (currentQ.section !== 'listening') {
+      if (activeAudioUrl) {
+        stopAudioPlayback(true);
+        setActiveAudioUrl(null);
+      }
+      return;
+    }
+
+    if (currentAudioUrl && currentAudioUrl !== activeAudioUrl) {
+      if (activeAudioUrl) {
+        stopAudioPlayback(true);
+      }
+      setActiveAudioUrl(currentAudioUrl);
+      setAudioPaused(true);
+      setAudioError(null);
+    }
+  }, [activeAudioUrl, currentAudioUrl, currentQ, stopAudioPlayback]);
 
   useEffect(() => {
     if (showSubmitModal || hasSubmitted) {
@@ -485,7 +505,7 @@ export const ExamInterface = () => {
       <ScrollView style={styles.content}>
         <InlineMessage message={submissionError} containerStyle={styles.message} />
 
-        {currentAudioUrl ? (
+        {activeAudioUrl ? (
           <View style={styles.audioCard}>
             <View style={styles.audioHeaderRow}>
               <View style={styles.audioTextWrap}>
@@ -509,7 +529,7 @@ export const ExamInterface = () => {
               {!hasSubmitted ? (
                 <Video
                   ref={audioPlayerRef}
-                  source={{ uri: currentAudioUrl }}
+                  source={{ uri: activeAudioUrl }}
                   style={styles.audioPlayer}
                   controls={true}
                   paused={audioPaused}
@@ -548,6 +568,7 @@ export const ExamInterface = () => {
                 style={[styles.optionButton, isSelected && styles.optionSelected]}
                 onPress={() => handleAnswerSelect(option)}
                 disabled={hasSubmitted}
+                delayPressIn={0}
               >
                 <View style={styles.optionContent}>
                   {optionImageUrl ? (
@@ -583,6 +604,7 @@ export const ExamInterface = () => {
                   ]}
                   onPress={() => setCurrentQuestion(index)}
                   disabled={hasSubmitted}
+                  delayPressIn={0}
                 >
                   <Text
                     style={[

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -41,7 +41,7 @@ const ExamScreen = () => {
   const { exams, isLoading, error, loadExams, startExam, canStartExam, getGroupedExams, isStarting } =
     useExam();
 
-  const groupedExams = getGroupedExams();
+  const groupedExams = useMemo(() => getGroupedExams(), [exams]);
   const filteredTopikI  = selectedFilter === 'TOPIK_II' ? [] : groupedExams.TOPIK_I;
   const filteredTopikII = selectedFilter === 'TOPIK_I'  ? [] : groupedExams.TOPIK_II;
   const hasVisibleExams = filteredTopikI.length > 0 || filteredTopikII.length > 0;

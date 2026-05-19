@@ -12,13 +12,17 @@ export type DictionaryWord = {
 type DictionarySearchResponse = {
   success: boolean;
   words: DictionaryWord[];
+  total?: number;
+  limit?: number;
+  offset?: number;
+  hasMore?: boolean;
   error?: string;
 };
 
 export const dictionaryApi = {
-  searchWords: (query: string) =>
+  searchWords: (query: string, options: { limit?: number; offset?: number } = {}) =>
     apiRequest<DictionarySearchResponse>(
-      `${ENDPOINTS.DICTIONARY.SEARCH}?q=${encodeURIComponent(query)}`,
+      `${ENDPOINTS.DICTIONARY.SEARCH}?q=${encodeURIComponent(query)}&limit=${options.limit || 200}&offset=${options.offset || 0}`,
       { method: 'GET' },
     ),
 };

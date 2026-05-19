@@ -388,37 +388,10 @@ const loadRecommendations = async (userId: string, resultIds: string[]) => {
 
 const getExplanationText = (
   question: QuestionRow,
-  selectedAnswer: string | null,
-  isCorrect: boolean,
+  _selectedAnswer: string | null,
+  _isCorrect: boolean,
 ) => {
   return question.explanation?.trim() || null;
-
-  const baseExplanation = question.explanation?.trim() || null;
-  const selectedOptionExplanation = null;
-  const correctOptionExplanation = null;
-  const correctAnswerSummary = `Зөв хариулт нь "${question.correct_answer_text}".`;
-
-  if (isCorrect) {
-    return joinExplanationParts(
-      'Таны сонгосон хариулт зөв байна.',
-      baseExplanation || correctAnswerSummary,
-    );
-  }
-
-  if (!selectedAnswer) {
-    return joinExplanationParts(
-      'Та энэ асуултад хариулаагүй.',
-      correctAnswerSummary,
-      baseExplanation,
-    );
-  }
-
-  return joinExplanationParts(
-    `Та "${selectedAnswer}" гэж хариулсан боловч зөв хариулт нь "${question.correct_answer_text}" байсан.`,
-    selectedOptionExplanation ? `Таны сонголт яагаад буруу вэ: ${selectedOptionExplanation}` : null,
-    correctOptionExplanation ? `Зөв хариулт яагаад зөв вэ: ${correctOptionExplanation}` : null,
-    baseExplanation,
-  );
 };
 
 export const getProgress = async (req: AuthRequest, res: Response) => {

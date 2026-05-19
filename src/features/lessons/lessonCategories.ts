@@ -53,22 +53,7 @@ export const lessonCategories: LessonCategory[] = [
       'Жишээ өгүүлбэртэй тайлбарууд',
     ],
   },
-  {
-    id: 'vocabulary',
-    slug: 'vocabulary',
-    title: 'Өргөн хэрэглээний үгс',
-    description: '6000 гаруй үгсийн сан',
-    image: require('../../shared/assets/images/dictionary.png'),
-    level: 'Бүх шат',
-    route: 'LessonVocabulary',
-    subtitle: 'Өдөр тутмын болон шалгалтад түгээмэл ашиглагддаг үгсийн сангаа нэмэгдүүлнэ.',
-    points: [
-      'Сэдэвчилсэн үгсийн сан',
-      'Эсрэг, ойролцоо утгатай үгс',
-      'TOPIK сонсгол ба уншлагад ордог түгээмэл үгс',
-      'Үгсийг өгүүлбэр дунд хэрэглэх жишээнүүд',
-    ],
-  },
+
   {
     id: 'books',
     slug: 'books',

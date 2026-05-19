@@ -48,6 +48,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('   GET  /api/auth/profile');
   console.log('   GET  /api/exams');
   console.log('   GET  /api/lessons');
+  console.log('   GET  /api/korean-grammar-lessons');
   console.log('   GET  /api/dictionary/search');
   console.log('   POST /api/payments/qpay/create');
   console.log('   POST /api/payments/:paymentId/check');

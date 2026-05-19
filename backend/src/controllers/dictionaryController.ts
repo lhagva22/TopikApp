@@ -5,13 +5,19 @@ import type { AuthRequest } from '../types';
 
 export const searchDictionary = async (req: AuthRequest, res: Response) => {
   const query = String(req.query.q || '').trim();
+  const limitParam = Number(req.query.limit);
+  const offsetParam = Number(req.query.offset);
+  const limit = Number.isFinite(limitParam) && limitParam > 0
+    ? Math.min(Math.floor(limitParam), 500)
+    : 200;
+  const offset = Number.isFinite(offsetParam) && offsetParam > 0 ? Math.floor(offsetParam) : 0;
 
   try {
     let request = supabaseAdmin
       .from('dictionary_words')
-      .select('id, korean_word, mongolian_meaning, example_sentence, level, created_at')
+      .select('id, korean_word, mongolian_meaning, example_sentence, level, created_at', { count: 'exact' })
       .order('korean_word', { ascending: true })
-      .limit(100);
+      .range(offset, offset + limit - 1);
 
     if (query) {
       request = request.or(
@@ -19,7 +25,7 @@ export const searchDictionary = async (req: AuthRequest, res: Response) => {
       );
     }
 
-    const { data, error } = await request;
+    const { data, error, count } = await request;
 
     if (error) {
       return res.status(400).json({ success: false, error: error.message });
@@ -37,6 +43,10 @@ export const searchDictionary = async (req: AuthRequest, res: Response) => {
     return res.json({
       success: true,
       words,
+      total: count || 0,
+      limit,
+      offset,
+      hasMore: offset + words.length < (count || 0),
     });
   } catch (error) {
     console.error('Search dictionary error:', error);

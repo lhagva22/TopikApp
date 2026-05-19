@@ -4,3 +4,4 @@ export { default as AlphabetNumbersScreen } from './detailScreens/alphabetNumber
 export { default as GrammarScreen } from './detailScreens/grammarScreen';
 export { default as VocabularyScreen } from './detailScreens/vocabularyScreen';
 export { default as BooksScreen } from './detailScreens/booksScreen';
+export { default as BookReaderScreen } from './detailScreens/BookReaderScreen';

@@ -10,6 +10,7 @@ import { HomeScreen } from '../../features/home';
 import { AboutScreen, ContactScreen } from '../../features/info';
 import {
   AlphabetNumbersScreen,
+  BookReaderScreen,
   BooksScreen,
   GrammarScreen,
   LessonScreen,
@@ -50,6 +51,7 @@ const AlphabetNumbersScreenWrapper = withShell(AlphabetNumbersScreen);
 const GrammarScreenWrapper = withShell(GrammarScreen);
 const VocabularyScreenWrapper = withShell(VocabularyScreen);
 const BooksScreenWrapper = withShell(BooksScreen);
+const BookReaderScreenWrapper = withShell(BookReaderScreen);
 const ExamScreenWrapper = withShell(ExamScreen);
 const DictionaryScreenWrapper = withShell(DictionaryScreen);
 const ProgressScreenWrapper = withShell(Progress);
@@ -116,6 +118,11 @@ export function DrawerNavigator() {
       <Drawer.Screen
         name="LessonBooks"
         component={BooksScreenWrapper}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
+      <Drawer.Screen
+        name="BookReader"
+        component={BookReaderScreenWrapper}
         options={{ drawerItemStyle: { display: 'none' } }}
       />
       <Drawer.Screen name="Exam" component={ExamScreenWrapper} />

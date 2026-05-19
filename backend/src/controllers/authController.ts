@@ -47,8 +47,6 @@ export const register = async (req: Request, res: Response) => {
         return res.status(500).json({ error: 'Профайл үүсгэхэд алдаа гарлаа' });
       }
     } else {
-      console.log('Profile already exists for user:', data.user.id);
-      // Байгаа profile-г update хийх
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -63,8 +61,6 @@ export const register = async (req: Request, res: Response) => {
       }
     }
   }
-
-  console.log('Register success:', email);
 
   res.status(201).json({ 
     success: true, 
@@ -106,7 +102,6 @@ export const login = async (req: Request, res: Response) => {
     
     // Хэрэв profile байхгүй бол үүсгэх
     if (!profileData) {
-      console.log('Profile not found, creating one for user:', data.user.id);
       const { data: newProfile, error: createError } = await supabase
         .from('profiles')
         .insert({
@@ -125,9 +120,6 @@ export const login = async (req: Request, res: Response) => {
       }
     }
   }
-
-  console.log('Login success:', email);
-  console.log('Profile:', profile);
 
   res.json({ 
     success: true, 

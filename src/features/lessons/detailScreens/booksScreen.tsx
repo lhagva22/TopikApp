@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import {
   Image,
-  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+import type { RootDrawerParamList } from '../../../app/navigation/types';
 import { getErrorMessage } from '../../../shared/lib/errors';
 import { lessonApi, type LessonContent } from '../api/lessonApi';
 
@@ -33,6 +35,7 @@ const getLevelTheme = (level?: string) => {
 };
 
 const BooksScreen = () => {
+  const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const [books, setBooks] = useState<LessonContent[]>([]);
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,11 +73,13 @@ const BooksScreen = () => {
     );
   }, [books, searchQuery]);
 
-  const handleOpenBook = async (book: LessonContent) => {
+  const handleOpenBook = (book: LessonContent) => {
     const url = sanitizeUrl(book.contentUrl);
     if (!url) return;
-    const supported = await Linking.canOpenURL(url);
-    if (supported) await Linking.openURL(url);
+    navigation.navigate('BookReader', {
+      title: book.title,
+      url,
+    });
   };
 
   return (
@@ -174,7 +179,7 @@ const BooksScreen = () => {
             return (
               <TouchableOpacity
                 key={book.id}
-                onPress={() => void handleOpenBook(book)}
+                onPress={() => handleOpenBook(book)}
                 disabled={!canOpen}
                 activeOpacity={0.75}
                 style={[styles.bookCard, !canOpen && styles.bookCardDisabled]}

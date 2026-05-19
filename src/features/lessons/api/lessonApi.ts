@@ -30,6 +30,29 @@ export type LessonContent = {
   } | null;
 };
 
+export type KoreanGrammarLesson = {
+  id: string;
+  sortOrder: number;
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  topikLevel: 'TOPIK 1' | 'TOPIK 2';
+  category?: string | null;
+  grammarPattern: string;
+  meaningMn: string;
+  formRule?: string | null;
+  exampleKr?: string | null;
+  exampleMn?: string | null;
+  noteMn?: string | null;
+  isActive: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type KoreanGrammarLessonFilters = {
+  level?: KoreanGrammarLesson['level'];
+  topikLevel?: KoreanGrammarLesson['topikLevel'];
+  category?: string;
+};
+
 export type VideoCategorySummary = {
   id: string;
   slug: string;
@@ -69,6 +92,12 @@ type LessonContentsResponse = {
   error?: string;
 };
 
+type KoreanGrammarLessonsResponse = {
+  success: boolean;
+  lessons: KoreanGrammarLesson[];
+  error?: string;
+};
+
 type VideoCategoriesResponse = {
   success: boolean;
   categories: VideoCategorySummary[];
@@ -85,6 +114,16 @@ export const lessonApi = {
   getLessonCategories: () => get<LessonCategoriesResponse>(ENDPOINTS.LESSONS.CATEGORIES),
   getLessons: () => get<LessonContentsResponse>(ENDPOINTS.LESSONS.LIST),
   getLessonsByCategory: (slug: string) => get<LessonContentsResponse>(ENDPOINTS.LESSONS.BY_CATEGORY(slug)),
+  getKoreanGrammarLessons: (filters: KoreanGrammarLessonFilters = {}) => {
+    const params = new URLSearchParams();
+
+    if (filters.level) params.append('level', filters.level);
+    if (filters.topikLevel) params.append('topikLevel', filters.topikLevel);
+    if (filters.category) params.append('category', filters.category);
+
+    const query = params.toString();
+    return get<KoreanGrammarLessonsResponse>(`${ENDPOINTS.LESSONS.GRAMMAR}${query ? `?${query}` : ''}`);
+  },
   getVideoCategories: () => get<VideoCategoriesResponse>(ENDPOINTS.VIDEO_LESSONS.CATEGORIES),
   getVideoLessons: () => get<VideoLessonsResponse>(ENDPOINTS.VIDEO_LESSONS.LIST),
 };

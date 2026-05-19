@@ -98,6 +98,25 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS korean_grammar_lessons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sort_order INTEGER UNIQUE NOT NULL,
+  level TEXT NOT NULL DEFAULT 'Beginner'
+    CHECK (level IN ('Beginner', 'Intermediate', 'Advanced')),
+  topik_level TEXT NOT NULL DEFAULT 'TOPIK 1'
+    CHECK (topik_level IN ('TOPIK 1', 'TOPIK 2')),
+  category TEXT,
+  grammar_pattern TEXT NOT NULL,
+  meaning_mn TEXT NOT NULL,
+  form_rule TEXT,
+  example_kr TEXT,
+  example_mn TEXT,
+  note_mn TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS level_test_rules (
   id SERIAL PRIMARY KEY,
   exam_type TEXT NOT NULL CHECK (exam_type IN ('TOPIK_I', 'TOPIK_II')),
@@ -144,6 +163,10 @@ CREATE INDEX IF NOT EXISTS idx_level_test_results_mock_test_id ON level_test_res
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_qpay_invoice_id ON payments(qpay_invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_sender_invoice_no ON payments(sender_invoice_no);
+CREATE INDEX IF NOT EXISTS idx_korean_grammar_lessons_active ON korean_grammar_lessons(is_active);
+CREATE INDEX IF NOT EXISTS idx_korean_grammar_lessons_level ON korean_grammar_lessons(level);
+CREATE INDEX IF NOT EXISTS idx_korean_grammar_lessons_topik_level ON korean_grammar_lessons(topik_level);
+CREATE INDEX IF NOT EXISTS idx_korean_grammar_lessons_category ON korean_grammar_lessons(category);
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -165,12 +188,19 @@ BEFORE UPDATE ON mock_test_bank
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_korean_grammar_lessons_updated_at ON korean_grammar_lessons;
+CREATE TRIGGER update_korean_grammar_lessons_updated_at
+BEFORE UPDATE ON korean_grammar_lessons
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mock_test_bank ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mock_test_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE level_test_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE level_test_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE korean_grammar_lessons ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 CREATE POLICY "Users can view own profile"
@@ -201,6 +231,12 @@ CREATE POLICY "Anyone can view mock test questions"
 ON mock_test_questions
 FOR SELECT
 USING (true);
+
+DROP POLICY IF EXISTS "Anyone can view active Korean grammar lessons" ON korean_grammar_lessons;
+CREATE POLICY "Anyone can view active Korean grammar lessons"
+ON korean_grammar_lessons
+FOR SELECT
+USING (is_active = true);
 
 DROP POLICY IF EXISTS "Users can view own sessions" ON level_test_sessions;
 CREATE POLICY "Users can view own sessions"

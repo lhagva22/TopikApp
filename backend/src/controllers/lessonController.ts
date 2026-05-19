@@ -34,6 +34,23 @@ const mapLesson = (item: any) => ({
     : null,
 });
 
+const mapGrammarLesson = (item: any) => ({
+  id: String(item.id),
+  sortOrder: item.sort_order || 0,
+  level: item.level || 'Beginner',
+  topikLevel: item.topik_level || 'TOPIK 1',
+  category: item.category || '',
+  grammarPattern: item.grammar_pattern || '',
+  meaningMn: item.meaning_mn || '',
+  formRule: item.form_rule || '',
+  exampleKr: item.example_kr || '',
+  exampleMn: item.example_mn || '',
+  noteMn: item.note_mn || '',
+  isActive: Boolean(item.is_active),
+  createdAt: item.created_at || null,
+  updatedAt: item.updated_at || null,
+});
+
 export const getLessonCategories = async (_req: Request, res: Response) => {
   try {
     const { data, error } = await supabaseAdmin
@@ -142,6 +159,62 @@ export const getLessonsByCategory = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Get lessons by category error:', error);
+    return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
+  }
+};
+
+export const getKoreanGrammarLessons = async (req: Request, res: Response) => {
+  const { level, topikLevel, category } = req.query;
+
+  try {
+    let query = supabaseAdmin
+      .from('korean_grammar_lessons')
+      .select(
+        `
+          id,
+          sort_order,
+          level,
+          topik_level,
+          category,
+          grammar_pattern,
+          meaning_mn,
+          form_rule,
+          example_kr,
+          example_mn,
+          note_mn,
+          is_active,
+          created_at,
+          updated_at
+        `,
+      )
+      .eq('is_active', true);
+
+    if (typeof level === 'string' && level.trim()) {
+      query = query.eq('level', level.trim());
+    }
+
+    if (typeof topikLevel === 'string' && topikLevel.trim()) {
+      query = query.eq('topik_level', topikLevel.trim());
+    }
+
+    if (typeof category === 'string' && category.trim()) {
+      query = query.eq('category', category.trim());
+    }
+
+    const { data, error } = await query
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+
+    return res.json({
+      success: true,
+      lessons: (data || []).map(mapGrammarLesson),
+    });
+  } catch (error) {
+    console.error('Get Korean grammar lessons error:', error);
     return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
   }
 };

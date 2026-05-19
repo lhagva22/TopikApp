@@ -1,46 +1,120 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import { getErrorMessage } from '../../../shared/lib/errors';
-import { lessonApi, type LessonContent } from '../api/lessonApi';
+import { lessonApi, type KoreanGrammarLesson } from '../api/lessonApi';
+
+type LevelFilter = KoreanGrammarLesson['level'] | 'all';
+type TopikFilter = KoreanGrammarLesson['topikLevel'] | 'all';
+
+const LEVEL_OPTIONS: Array<{ value: LevelFilter; label: string }> = [
+  { value: 'all', label: 'Бүгд' },
+  { value: 'Beginner', label: 'Анхан шат' },
+  { value: 'Intermediate', label: 'Дунд шат' },
+  { value: 'Advanced', label: 'Гүнзгий шат' },
+];
+
+
+const normalize = (value?: string | null) => (value || '').trim().toLowerCase();
 
 const GrammarScreen = () => {
   const [query, setQuery] = useState('');
-  const [lessons, setLessons] = useState<LessonContent[]>([]);
+  const [lessons, setLessons] = useState<KoreanGrammarLesson[]>([]);
+  const [selectedLevel, setSelectedLevel] = useState<LevelFilter>('all');
+  const [selectedTopik, setSelectedTopik] = useState<TopikFilter>('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+
     const load = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await lessonApi.getLessonsByCategory('grammar');
-        if (!response.success) throw new Error(response.error || 'Дүрмийн өгөгдөл ачаалах боломжгүй байна.');
+
+        const response = await lessonApi.getKoreanGrammarLessons();
+        if (!response.success) {
+          throw new Error(response.error || 'Дүрмийн мэдээлэл ачааллах боломжгүй байна.');
+        }
+
         if (isMounted) setLessons(response.lessons || []);
       } catch (e) {
-        if (isMounted) setError(getErrorMessage(e, 'Дүрмийн өгөгдөл ачаалах үед алдаа гарлаа.'));
+        if (isMounted) {
+          setError(getErrorMessage(e, 'Дүрмийн мэдээлэл ачааллах үед алдаа гарлаа.'));
+        }
       } finally {
         if (isMounted) setIsLoading(false);
       }
     };
+
     void load();
-    return () => { isMounted = false; };
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const filteredLessons = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return lessons;
-    return lessons.filter((l) => `${l.title} ${l.description}`.toLowerCase().includes(q));
-  }, [lessons, query]);
+  const categories = useMemo(() => {
+    const unique = Array.from(
+      new Set(lessons.map((lesson) => lesson.category).filter((item): item is string => Boolean(item))),
+    );
 
-  const handleOpen = async (lesson: LessonContent) => {
-    if (!lesson.contentUrl) return;
-    const supported = await Linking.canOpenURL(lesson.contentUrl);
-    if (supported) await Linking.openURL(lesson.contentUrl);
+    return ['all', ...unique.sort((a, b) => a.localeCompare(b))];
+  }, [lessons]);
+
+  const filteredLessons = useMemo(() => {
+    const q = normalize(query);
+
+    return lessons.filter((lesson) => {
+      const matchesLevel = selectedLevel === 'all' || lesson.level === selectedLevel;
+      const matchesTopik = selectedTopik === 'all' || lesson.topikLevel === selectedTopik;
+      const matchesCategory = selectedCategory === 'all' || lesson.category === selectedCategory;
+      const searchText = normalize(
+        [
+          lesson.grammarPattern,
+          lesson.meaningMn,
+          lesson.formRule,
+          lesson.exampleKr,
+          lesson.exampleMn,
+          lesson.noteMn,
+          lesson.category,
+          lesson.level,
+          lesson.topikLevel,
+        ].join(' '),
+      );
+
+      return matchesLevel && matchesTopik && matchesCategory && (!q || searchText.includes(q));
+    });
+  }, [lessons, query, selectedCategory, selectedLevel, selectedTopik]);
+
+  const resetFilters = () => {
+    setQuery('');
+    setSelectedLevel('all');
+    setSelectedTopik('all');
+    setSelectedCategory('all');
   };
+
+  const renderChip = (label: string, isSelected: boolean, onPress: () => void) => (
+    <TouchableOpacity
+      key={label}
+      onPress={onPress}
+      activeOpacity={0.78}
+      style={[styles.chip, isSelected && styles.chipActive]}
+    >
+      <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView
@@ -49,103 +123,144 @@ const GrammarScreen = () => {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Hero */}
       <View style={styles.hero}>
-        <View style={styles.heroIconBox}>
-          <Icon name="document-text-outline" size={28} color="#60A5FA" />
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroIconBox}>
+            <Icon name="document-text-outline" size={28} color="#60A5FA" />
+          </View>
+          <View style={styles.heroCounter}>
+            <Text style={styles.heroCounterText}>{lessons.length}</Text>
+          </View>
         </View>
         <Text style={styles.heroTitle}>Дүрэм</Text>
-        <Text style={styles.heroDesc}>Солонгос хэлний дүрмийн хичээлүүд</Text>
+        <Text style={styles.heroDesc}>Солонгос хэлний дүрмийн сан, жишээ болон тайлбар</Text>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchCard}>
-        <View style={styles.searchIconBox}>
-          <Icon name="search-outline" size={18} color="#155DFC" />
-        </View>
+      <View style={styles.searchBox}>
+        <Icon name="search-outline" size={19} color="#155DFC" />
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Дүрэм хайх..."
+          placeholder="Дүрэм, утга, жишээгээр хайх..."
           placeholderTextColor="#94A3B8"
           style={styles.searchInput}
           returnKeyType="search"
         />
         {query.length > 0 && (
           <TouchableOpacity onPress={() => setQuery('')} activeOpacity={0.7}>
-            <Icon name="close-circle" size={18} color="#94A3B8" />
+            <Icon name="close-circle" size={19} color="#94A3B8" />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Count */}
+      <View style={styles.filterBlock}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {LEVEL_OPTIONS.map((option) =>
+            renderChip(option.label, selectedLevel === option.value, () => setSelectedLevel(option.value)),
+          )}
+        </ScrollView>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {/* {TOPIK_OPTIONS.map((option) =>
+            renderChip(option.label, selectedTopik === option.value, () => setSelectedTopik(option.value)),
+          )} */}
+        </ScrollView>
+
+      </View>
+
       {!isLoading && !error && (
         <View style={styles.countRow}>
           <View style={styles.accent} />
-          <Text style={styles.countText}>
-            {query.trim() ? `"${query}" — ${filteredLessons.length} дүрэм` : `Нийт ${lessons.length} дүрэм`}
-          </Text>
+          <Text style={styles.countText}>Илэрц: {filteredLessons.length}</Text>
+          {(query || selectedLevel !== 'all' || selectedTopik !== 'all' || selectedCategory !== 'all') && (
+            <TouchableOpacity onPress={resetFilters} style={styles.resetButton} activeOpacity={0.75}>
+              <Icon name="refresh-outline" size={14} color="#155DFC" />
+              <Text style={styles.resetText}>Цэвэрлэх</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      {/* Loading */}
       {isLoading && (
         <View style={styles.stateCard}>
-          <View style={styles.stateIconBox}>
-            <Icon name="hourglass-outline" size={26} color="#94A3B8" />
-          </View>
+          <ActivityIndicator color="#155DFC" />
           <Text style={styles.stateTitle}>Ачааллаж байна...</Text>
-          <Text style={styles.stateDesc}>Дүрмийн хичээлүүд татаж байна.</Text>
+          <Text style={styles.stateDesc}>Дүрмийн санг татаж байна.</Text>
         </View>
       )}
 
-      {/* Error */}
       {!isLoading && error && (
         <View style={styles.stateCard}>
-          <View style={[styles.stateIconBox, { backgroundColor: '#FEF2F2' }]}>
+          <View style={[styles.stateIconBox, styles.errorIconBox]}>
             <Icon name="alert-circle-outline" size={26} color="#EF4444" />
           </View>
-          <Text style={[styles.stateTitle, { color: '#EF4444' }]}>Алдаа гарлаа</Text>
+          <Text style={[styles.stateTitle, styles.errorText]}>Алдаа гарлаа</Text>
           <Text style={styles.stateDesc}>{error}</Text>
         </View>
       )}
 
-      {/* Empty */}
       {!isLoading && !error && filteredLessons.length === 0 && (
         <View style={styles.stateCard}>
           <View style={styles.stateIconBox}>
             <Icon name="search-outline" size={26} color="#94A3B8" />
           </View>
           <Text style={styles.stateTitle}>Дүрэм олдсонгүй</Text>
-          <Text style={styles.stateDesc}>
-            {query.trim() ? `"${query}" дүрэм олдсонгүй.` : 'Дүрмийн мэдээлэл байхгүй байна.'}
-          </Text>
+          <Text style={styles.stateDesc}>Хайлтын үг эсвэл шүүлтүүрээ өөрчлөөд дахин үзээрэй.</Text>
         </View>
       )}
 
-      {/* List */}
       {!isLoading && !error && filteredLessons.length > 0 && (
-        <View style={styles.listCard}>
-          {filteredLessons.map((lesson, idx) => (
-            <TouchableOpacity
-              key={lesson.id}
-              onPress={() => void handleOpen(lesson)}
-              activeOpacity={0.7}
-              style={[styles.row, idx < filteredLessons.length - 1 && styles.rowBorder]}
-            >
-              <View style={styles.rowIconBox}>
-                <Icon name="document-text-outline" size={16} color="#155DFC" />
+        <View style={styles.list}>
+          {filteredLessons.map((lesson) => (
+            <View key={lesson.id} style={styles.grammarCard}>
+              <View style={styles.cardHeader}>
+                <View style={styles.patternBlock}>
+                  <Text style={styles.patternText}>{lesson.grammarPattern}</Text>
+                  <Text style={styles.meaningText}>{lesson.meaningMn}</Text>
+                </View>
+                <View style={styles.orderBadge}>
+                  <Text style={styles.orderText}>{lesson.sortOrder}</Text>
+                </View>
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>{lesson.title}</Text>
-                {!!lesson.description && (
-                  <Text style={styles.rowDesc}>{lesson.description}</Text>
+
+              <View style={styles.metaRow}>
+                <View style={styles.metaPill}>
+                  <Icon name="school-outline" size={13} color="#155DFC" />
+                  <Text style={styles.metaText}>{lesson.level}</Text>
+                </View>
+                <View style={styles.metaPill}>
+                  <Icon name="ribbon-outline" size={13} color="#155DFC" />
+                  <Text style={styles.metaText}>{lesson.topikLevel}</Text>
+                </View>
+                {!!lesson.category && (
+                  <View style={styles.metaPill}>
+                    <Icon name="pricetag-outline" size={13} color="#155DFC" />
+                    <Text style={styles.metaText}>{lesson.category}</Text>
+                  </View>
                 )}
               </View>
-              {!!lesson.contentUrl && (
-                <Icon name="open-outline" size={15} color="#CBD5E1" />
+
+              {!!lesson.formRule && (
+                <View style={styles.infoBlock}>
+                  <Text style={styles.infoLabel}>Хэлбэр</Text>
+                  <Text style={styles.infoText}>{lesson.formRule}</Text>
+                </View>
               )}
-            </TouchableOpacity>
+
+              {(!!lesson.exampleKr || !!lesson.exampleMn) && (
+                <View style={styles.exampleBlock}>
+                  {!!lesson.exampleKr && <Text style={styles.exampleKr}>{lesson.exampleKr}</Text>}
+                  {!!lesson.exampleMn && <Text style={styles.exampleMn}>{lesson.exampleMn}</Text>}
+                </View>
+              )}
+
+              {!!lesson.noteMn && (
+                <View style={styles.noteBlock}>
+                  <Icon name="bulb-outline" size={15} color="#92400E" />
+                  <Text style={styles.noteText}>{lesson.noteMn}</Text>
+                </View>
+              )}
+            </View>
           ))}
         </View>
       )}
@@ -159,106 +274,146 @@ const styles = StyleSheet.create({
 
   hero: {
     backgroundColor: '#0F172A',
-    borderRadius: 22,
-    padding: 24,
-    alignItems: 'center',
+    borderRadius: 20,
+    padding: 22,
     marginBottom: 14,
     gap: 10,
   },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroIconBox: {
-    width: 58,
-    height: 58,
+    width: 56,
+    height: 56,
     borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitle: { fontSize: 20, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.3 },
-  heroDesc:  { fontSize: 13, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
-
-  searchCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 14,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  searchIconBox: {
-    width: 34,
+  heroCounter: {
+    minWidth: 46,
     height: 34,
-    borderRadius: 10,
-    backgroundColor: '#EFF6FF',
+    borderRadius: 17,
+    backgroundColor: 'rgba(96,165,250,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 12,
   },
-  searchInput: { flex: 1, fontSize: 15, color: '#0F172A', fontWeight: '500', paddingVertical: 0 },
+  heroCounterText: { color: '#BFDBFE', fontSize: 14, fontWeight: '800' },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: '#F8FAFC' },
+  heroDesc: { fontSize: 13, color: '#CBD5E1', lineHeight: 20 },
+
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    marginBottom: 12,
+    gap: 10,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: '#0F172A', fontWeight: '500', paddingVertical: 0 },
+
+  filterBlock: { gap: 8, marginBottom: 13 },
+  chipRow: { gap: 8, paddingRight: 8 },
+  chip: {
+    minHeight: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: '#DCE6F2',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 13,
+  },
+  chipActive: { backgroundColor: '#155DFC', borderColor: '#155DFC' },
+  chipText: { color: '#475569', fontSize: 12, fontWeight: '700' },
+  chipTextActive: { color: '#FFFFFF' },
 
   countRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   accent: { width: 4, height: 18, borderRadius: 2, backgroundColor: '#155DFC' },
-  countText: { fontSize: 13, fontWeight: '700', color: '#374151' },
+  countText: { flex: 1, fontSize: 13, fontWeight: '800', color: '#334155' },
+  resetButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 5, paddingHorizontal: 8 },
+  resetText: { fontSize: 12, fontWeight: '700', color: '#155DFC' },
 
   stateCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 28,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     gap: 10,
   },
   stateIconBox: {
-    width: 58,
-    height: 58,
+    width: 56,
+    height: 56,
     borderRadius: 16,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
-  stateTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  stateDesc:  { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20 },
+  errorIconBox: { backgroundColor: '#FEF2F2' },
+  stateTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  stateDesc: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20 },
+  errorText: { color: '#EF4444' },
 
-  listCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
+  list: { gap: 12 },
+  grammarCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 15,
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
   },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  rowIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  patternBlock: { flex: 1, gap: 5 },
+  patternText: { fontSize: 18, fontWeight: '900', color: '#0F172A', lineHeight: 25 },
+  meaningText: { fontSize: 14, fontWeight: '700', color: '#155DFC', lineHeight: 20 },
+  orderBadge: {
+    minWidth: 34,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
   },
-  rowBody: { flex: 1, gap: 3 },
-  rowTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
-  rowDesc:  { fontSize: 12, color: '#64748B', lineHeight: 18 },
+  orderText: { color: '#155DFC', fontSize: 12, fontWeight: '900' },
+
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  metaPill: {
+    minHeight: 28,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+  },
+  metaText: { fontSize: 11, color: '#475569', fontWeight: '800' },
+
+  infoBlock: { borderLeftWidth: 3, borderLeftColor: '#155DFC', paddingLeft: 10, gap: 4 },
+  infoLabel: { color: '#64748B', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  infoText: { color: '#334155', fontSize: 13, lineHeight: 20, fontWeight: '600' },
+
+  exampleBlock: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, gap: 7 },
+  exampleKr: { color: '#0F172A', fontSize: 15, lineHeight: 22, fontWeight: '800' },
+  exampleMn: { color: '#64748B', fontSize: 13, lineHeight: 20 },
+
+  noteBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 11,
+  },
+  noteText: { flex: 1, color: '#92400E', fontSize: 12, lineHeight: 18, fontWeight: '600' },
 });
 
 export default GrammarScreen;

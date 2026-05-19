@@ -25,6 +25,10 @@ export type RootDrawerParamList = {
   LessonGrammar: undefined;
   LessonVocabulary: undefined;
   LessonBooks: undefined;
+  BookReader: {
+    title: string;
+    url: string;
+  };
   Exam: undefined;
   Progress: undefined;
   ExamReview: {

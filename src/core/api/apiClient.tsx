@@ -3,9 +3,14 @@ import { Platform } from 'react-native';
 
 import { logError } from '../../shared/lib/errors';
 
+// true = бодит утас, false = emulator
+const USE_REAL_DEVICE = true;
+
 export const getBaseUrl = (): string => {
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api';
+    return USE_REAL_DEVICE
+      ? 'http://192.168.1.57:5000/api'
+      : 'http://10.0.2.2:5000/api';
   }
 
   return 'http://localhost:5000/api';
@@ -168,6 +173,7 @@ export const ENDPOINTS = {
   LESSONS: {
     CATEGORIES: '/lesson-categories',
     LIST: '/lessons',
+    GRAMMAR: '/korean-grammar-lessons',
     BY_CATEGORY: (slug: string) => `/lessons/category/${slug}`,
     DETAIL: (id: string) => `/lessons/${id}`,
     PROGRESS: '/lessons/progress',

@@ -163,7 +163,7 @@ const determineLevelFromRules = async (examType: 'TOPIK_I' | 'TOPIK_II', totalSc
 const getRandomLevelTestExam = async (examType: LevelTestExamType) => {
   const { data: mockTests, error: testError } = await supabaseAdmin
     .from('mock_test_bank')
-    .select('*')
+    .select('*, mock_test_questions(count)')
     .eq('is_active', true)
     .eq('exam_type', examType)
     .order('test_number', { ascending: false });
@@ -172,26 +172,18 @@ const getRandomLevelTestExam = async (examType: LevelTestExamType) => {
     return { error: 'Шалгалт олдсонгүй' as const };
   }
 
-  const availableTests: MockTestRow[] = [];
-
-  for (const mockTest of mockTests as MockTestRow[]) {
-    const { count, error: countError } = await supabaseAdmin
-      .from('mock_test_questions')
-      .select('*', { count: 'exact', head: true })
-      .eq('mock_test_id', mockTest.id);
-
-    if (!countError && count && count >= mockTest.total_questions) {
-      availableTests.push(mockTest);
-    }
-  }
+  const availableTests = (mockTests as any[]).filter(test => {
+    const count = test.mock_test_questions[0]?.count ?? 0;
+    return count >= test.total_questions;
+  });
 
   if (availableTests.length === 0) {
     return { error: 'Шалгалтын асуултууд олдсонгүй' as const };
   }
 
-  return {
-    exam: availableTests[Math.floor(Math.random() * availableTests.length)],
-  };
+  const { mock_test_questions: _mqc, ...exam } = availableTests[Math.floor(Math.random() * availableTests.length)];
+
+  return { exam: exam as MockTestRow };
 };
 
 const createLevelTestSessionPayload = async (
@@ -258,7 +250,7 @@ export const getExams = async (_req: AuthRequest, res: Response) => {
   try {
     const { data: exams, error } = await supabase
       .from('mock_test_bank')
-      .select('*')
+      .select('*, mock_test_questions(count)')
       .eq('is_active', true)
       .order('exam_type', { ascending: true })
       .order('test_number', { ascending: false });
@@ -267,18 +259,12 @@ export const getExams = async (_req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: error.message });
     }
 
-    const examsWithQuestions = [];
-
-    for (const exam of exams || []) {
-      const { count, error: countError } = await supabase
-        .from('mock_test_questions')
-        .select('*', { count: 'exact', head: true })
-        .eq('mock_test_id', exam.id);
-
-      if (!countError && count && count >= exam.total_questions) {
-        examsWithQuestions.push(exam);
-      }
-    }
+    const examsWithQuestions = (exams || [])
+      .filter(exam => {
+        const count = (exam.mock_test_questions as any)[0]?.count ?? 0;
+        return count >= exam.total_questions;
+      })
+      .map(({ mock_test_questions: _mqc, ...exam }) => exam);
 
     return res.json({
       success: true,
@@ -325,7 +311,17 @@ export const startExam = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const premiumCheck = await getPremiumProfile(userId);
+    const [premiumCheck, examResult, questionsResult] = await Promise.all([
+      getPremiumProfile(userId),
+      supabaseAdmin.from('mock_test_bank').select('*').eq('id', examId).eq('is_active', true).single<MockTestRow>(),
+      supabaseAdmin
+        .from('mock_test_questions')
+        .select('id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url')
+        .eq('mock_test_id', examId)
+        .order('section', { ascending: true })
+        .order('question_number', { ascending: true }),
+    ]);
+
     if ('error' in premiumCheck) {
       return res.status(premiumCheck.requiresPremium ? 403 : 500).json({
         success: false,
@@ -334,24 +330,12 @@ export const startExam = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { data: exam, error: examError } = await supabaseAdmin
-      .from('mock_test_bank')
-      .select('*')
-      .eq('id', examId)
-      .eq('is_active', true)
-      .single<MockTestRow>();
-
+    const { data: exam, error: examError } = examResult;
     if (examError || !exam) {
       return res.status(404).json({ success: false, error: 'Шалгалт олдсонгүй' });
     }
 
-    const { data: questions, error: questionsError } = await supabaseAdmin
-      .from('mock_test_questions')
-      .select('id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url')
-      .eq('mock_test_id', examId)
-      .order('section', { ascending: true })
-      .order('question_number', { ascending: true });
-
+    const { data: questions, error: questionsError } = questionsResult;
     if (questionsError || !questions || questions.length === 0) {
       return res.status(404).json({ success: false, error: 'Шалгалтын асуултууд олдсонгүй' });
     }
@@ -440,59 +424,6 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
     return res.json({
       success: true,
       ...payload,
-    });
-
-    await supabaseAdmin
-      .from('level_test_sessions')
-      .update({
-        status: 'abandoned',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId)
-      .eq('status', 'in_progress');
-
-    const { data: session, error: sessionError } = await supabaseAdmin
-      .from('level_test_sessions')
-      .insert({
-        user_id: userId,
-        exam_id: randomTest.id,
-        status: 'in_progress',
-        started_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (sessionError || !session) {
-      return res.status(500).json({ success: false, error: 'Session үүсгэхэд алдаа гарлаа' });
-    }
-
-    const { data: questions, error: questionsError } = await supabaseAdmin
-      .from('mock_test_questions')
-      .select('id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url')
-      .eq('mock_test_id', randomTest.id)
-      .order('section', { ascending: true })
-      .order('question_number', { ascending: true });
-
-    if (questionsError || !questions || questions.length === 0) {
-      return res.status(404).json({ success: false, error: 'Шалгалтын асуултууд олдсонгүй' });
-    }
-
-    return res.json({
-      success: true,
-      session: {
-        id: session.id,
-        started_at: session.started_at,
-      },
-      test: {
-        id: randomTest.id,
-        title: randomTest.title,
-        exam_type: randomTest.exam_type,
-        duration: randomTest.duration,
-        total_questions: randomTest.total_questions,
-        listening_questions: randomTest.listening_questions,
-        reading_questions: randomTest.reading_questions,
-      },
-      questions: shuffleOptions(questions as QuestionRow[]),
     });
   } catch (error) {
     console.error('Start level test error:', error);
