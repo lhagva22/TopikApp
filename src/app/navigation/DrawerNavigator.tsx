@@ -1,5 +1,5 @@
 import React from 'react';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import { createDrawerNavigator, type DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { StyleSheet, View } from 'react-native';
@@ -79,14 +79,19 @@ const PaymentScreenWrapper = () => {
 
 const PaymentCheckoutScreenWrapper = PaymentCheckoutScreen;
 
+const renderDrawerContent = (props: DrawerContentComponentProps) => (
+  <CustomDrawerContent {...props} />
+);
+
 export function DrawerNavigator() {
   return (
     <Drawer.Navigator
       detachInactiveScreens={true}
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      drawerContent={renderDrawerContent}
       screenOptions={{
         headerShown: false,
         freezeOnBlur: true,
+        lazy: true,
         drawerType: 'front',
         drawerStyle: {
           width: '80%',

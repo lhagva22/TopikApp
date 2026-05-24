@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Image,
@@ -59,9 +60,18 @@ export function ExamReviewScreen({ navigation, route }: Props) {
     }
   }, [resultId]);
 
-  useEffect(() => {
-    loadResultDetail().catch(() => undefined);
-  }, [loadResultDetail]);
+  useFocusEffect(
+    useCallback(() => {
+      loadResultDetail().catch(() => undefined);
+
+      return () => {
+        setResultDetail(null);
+        setReviewFilter('incorrect');
+        setError(null);
+        setLoading(true);
+      };
+    }, [loadResultDetail]),
+  );
 
   const visibleReviewQuestions = resultDetail
     ? reviewFilter === 'incorrect'
@@ -70,11 +80,6 @@ export function ExamReviewScreen({ navigation, route }: Props) {
     : [];
 
   const handleBackPress = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-
     navigation.navigate('Progress');
   };
 

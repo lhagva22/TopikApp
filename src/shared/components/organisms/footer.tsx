@@ -27,9 +27,22 @@ const Footer = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
 
-  if (!SCREENS_WITH_FOOTER.includes(route.name)) return null;
+  if (!SCREENS_WITH_FOOTER.includes(route.name)) {
+    return null;
+  }
 
   const activeId = menuItems.find((m) => m.screenName === route.name)?.id ?? 1;
+  const handleNavigation = (screenName: string) => {
+    if (screenName === 'Home') {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+      return;
+    }
+
+    navigation.navigate(screenName);
+  };
 
   return (
     <View style={styles.container}>
@@ -41,7 +54,7 @@ const Footer = () => {
           <TouchableOpacity
             key={item.id}
             style={styles.tab}
-            onPress={() => navigation.navigate(item.screenName)}
+            onPress={() => handleNavigation(item.screenName)}
             activeOpacity={0.7}
           >
             <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>

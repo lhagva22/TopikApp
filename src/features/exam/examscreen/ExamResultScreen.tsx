@@ -73,9 +73,16 @@ const ExamResultScreen = () => {
     ? 'Алдсан асуултын тайлбар харах'
     : 'Бүх асуултын тайлбар харах';
 
+  const handleGoHome = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  };
+
   const handleContinueTopikII = () => {
     if (!nextLevelTest) {
-      navigation.navigate('Home');
+      handleGoHome();
       return;
     }
 
@@ -250,7 +257,7 @@ const ExamResultScreen = () => {
           <TouchableOpacity
             style={styles.primaryBtn}
             activeOpacity={0.85}
-            onPress={nextLevelTest ? handleContinueTopikII : () => navigation.navigate('Home')}
+            onPress={nextLevelTest ? handleContinueTopikII : handleGoHome}
           >
             <Icon name={nextLevelTest ? 'play-outline' : 'home-outline'} size={18} color="#fff" />
             <Text style={styles.primaryBtnText}>
@@ -261,7 +268,7 @@ const ExamResultScreen = () => {
           <TouchableOpacity
             style={styles.secondaryBtn}
             activeOpacity={0.85}
-            onPress={() => navigation.navigate('Home')}
+            onPress={handleGoHome}
           >
             <Icon name="layers-outline" size={18} color="#155DFC" />
             <Text style={styles.secondaryBtnText}>Түвшнүүд харах</Text>

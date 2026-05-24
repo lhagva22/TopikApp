@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -15,12 +15,12 @@ const MENU_ITEMS = [
 
 const CustomDrawerContent = (props) => {
   const { showPayment, openPayment, closePayment } = usePaymentModal();
-  const { isAuthenticated, hasAccess, user, getDaysRemaining, getSubscriptionProgress } = useAppStore();
-  const { logout } = useAuthStore();
-
-  const daysRemaining = getDaysRemaining();
-  const progress = getSubscriptionProgress();
-  const isPaid = hasAccess('paid');
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
+  const user = useAppStore((state) => state.user);
+  const isPaid = useAppStore((state) => state.hasAccess('paid'));
+  const daysRemaining = useAppStore((state) => state.getDaysRemaining());
+  const progress = useAppStore((state) => state.getSubscriptionProgress());
+  const logout = useAuthStore((state) => state.logout);
 
   const handlePress = (item) => {
     if (item.screen === 'Payment') { openPayment(); return; }
@@ -133,19 +133,21 @@ const CustomDrawerContent = (props) => {
         )}
       </View>
 
-      <Payment
-        visible={showPayment}
-        onClose={closePayment}
-        onSelectPlan={(item) => {
-          closePayment();
-          props.navigation.closeDrawer();
-          requestAnimationFrame(() => {
-            props.navigation.navigate('PaymentCheckout', {
-              planId: item.id, planTitle: item.title, planPrice: item.price, planMonths: item.months,
+      {showPayment ? (
+        <Payment
+          visible
+          onClose={closePayment}
+          onSelectPlan={(item) => {
+            closePayment();
+            props.navigation.closeDrawer();
+            requestAnimationFrame(() => {
+              props.navigation.navigate('PaymentCheckout', {
+                planId: item.id, planTitle: item.title, planPrice: item.price, planMonths: item.months,
+              });
             });
-          });
-        }}
-      />
+          }}
+        />
+      ) : null}
     </View>
   );
 };
@@ -288,4 +290,4 @@ const styles = StyleSheet.create({
   logoutBtnText: { fontSize: 14, fontWeight: '700', color: '#EF4444' },
 });
 
-export default CustomDrawerContent;
+export default memo(CustomDrawerContent);

@@ -111,16 +111,13 @@ export function Progress() {
   const [chartMetric, setChartMetric] = useState<ChartMetric>('total');
   const [chartWidth, setChartWidth] = useState(0);
 
-  const canGoBack = navigation.canGoBack();
-  const progressEntryIcon = canGoBack ? 'arrow-back' : 'home-outline';
+  const progressEntryIcon = 'home-outline';
 
   const handleBackPress = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-
-    navigation.navigate('Home');
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
   };
 
   useFocusEffect(

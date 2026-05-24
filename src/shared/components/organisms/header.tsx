@@ -16,7 +16,7 @@ const SCREEN_META: Record<string, { title: string; icon: string }> = {
   Dictionary: { title: 'Үгийн сан',    icon: 'library-outline' },
 };
 
-const Header = ({ title, onSearchPress }: HeaderProps) => {
+const Header = ({ title }: HeaderProps) => {
   const navigation = useNavigation<DrawerNavigationProp<any>>();
   const route = useRoute();
 
@@ -40,13 +40,7 @@ const Header = ({ title, onSearchPress }: HeaderProps) => {
         <Text style={styles.screenTitle}>{screenTitle}</Text>
       </View>
 
-      <TouchableOpacity
-        onPress={onSearchPress}
-        style={styles.iconBtn}
-        activeOpacity={0.7}
-      >
-        <Icon name="search-outline" size={20} color="#0F172A" />
-      </TouchableOpacity>
+      <View style={styles.rightPlaceholder} />
     </View>
   );
 };
@@ -76,6 +70,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  rightPlaceholder: {
+    width: 38,
+    height: 38,
   },
   titleWrap: {
     alignItems: 'center',
