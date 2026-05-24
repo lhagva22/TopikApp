@@ -48,11 +48,13 @@ const Dictionary = () => {
           setError(getErrorMessage(loadError, 'Үгийн сан ачаалах үед алдаа гарлаа.'));
         }
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {setIsLoading(false);}
       }
     };
 
-    const tid = setTimeout(() => void loadWords(), 250);
+    const tid = setTimeout(() => {
+      loadWords().catch(() => undefined);
+    }, 250);
 
     return () => {
       isMounted = false;
@@ -61,7 +63,7 @@ const Dictionary = () => {
   }, [query]);
 
   const loadMore = async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore) {return;}
 
     try {
       setIsLoadingMore(true);
@@ -82,7 +84,7 @@ const Dictionary = () => {
   };
 
   const countLabel = useMemo(() => {
-    if (query.trim()) return `"${query}" - ${words.length}/${total} үг`;
+    if (query.trim()) {return `"${query}" - ${words.length}/${total} үг`;}
     return `Нийт ${total} үг (${words.length} харуулж байна)`;
   }, [query, total, words.length]);
 
@@ -195,7 +197,9 @@ const Dictionary = () => {
 
       {!isLoading && !error && hasMore && (
         <TouchableOpacity
-          onPress={() => void loadMore()}
+          onPress={() => {
+            loadMore().catch(() => undefined);
+          }}
           disabled={isLoadingMore}
           activeOpacity={0.75}
           style={[styles.loadMoreButton, isLoadingMore && styles.loadMoreButtonDisabled]}

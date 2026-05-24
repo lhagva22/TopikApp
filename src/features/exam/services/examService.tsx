@@ -36,14 +36,14 @@
 //       return { success: false, error: 'Network error' };
 //     }
 //   },
-  
+
 //   // Шалгалт эхлүүлэх
 //   startExam: async (examId: string): Promise<StartExamResponse> => {
 //     try {
 //       const token = await getToken();
 //       console.log('📤 Starting exam with ID:', examId);
 //       console.log('📤 API URL:', `${API_URL}/exam/${examId}/start`);
-      
+
 //       const response = await fetch(`${API_URL}/exam/${examId}/start`, {
 //         method: 'POST',
 //         headers: {
@@ -51,7 +51,7 @@
 //           'Content-Type': 'application/json',
 //         },
 //       });
-      
+
 //       const data = await response.json();
 //       console.log('📥 Start exam response:', data);
 //       return data;
@@ -60,7 +60,7 @@
 //       return { success: false, error: 'Network error' };
 //     }
 //   },
-  
+
 //   // Шалгалт дуусгах
 //   submitExam: async (sessionId: string, answers: any[], timeSpent: number): Promise<SubmitExamResponse> => {
 //     try {

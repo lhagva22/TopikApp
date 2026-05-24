@@ -22,7 +22,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
 
   console.log('✅ Token belongs to user:', user.id);
   console.log('✅ User email:', user.email);
-  
+
   req.user = user;
   req.userId = user.id;
   next();

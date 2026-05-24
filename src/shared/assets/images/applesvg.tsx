@@ -1,5 +1,5 @@
-import * as React from "react"
-import Svg, { Path } from "react-native-svg"
+import * as React from 'react';
+import Svg, { Path } from 'react-native-svg';
 import type { AppleIconProps } from './types';
 
 function SvgComponent(props: AppleIconProps) {
@@ -21,7 +21,7 @@ function SvgComponent(props: AppleIconProps) {
         fill="#000"
       />
     </Svg>
-  )
+  );
 }
 
-export default SvgComponent
+export default SvgComponent;

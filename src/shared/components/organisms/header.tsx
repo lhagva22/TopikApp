@@ -20,7 +20,7 @@ const Header = ({ title }: HeaderProps) => {
   const navigation = useNavigation<DrawerNavigationProp<any>>();
   const route = useRoute();
 
-  if (!SCREENS_WITH_HEADER.includes(route.name)) return null;
+  if (!SCREENS_WITH_HEADER.includes(route.name)) {return null;}
 
   const meta = SCREEN_META[route.name];
   const screenTitle = meta?.title ?? title ?? 'TOPIK';

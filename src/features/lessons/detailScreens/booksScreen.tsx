@@ -30,7 +30,7 @@ const LEVEL_THEME: Record<string, { color: string; bg: string }> = {
 };
 
 const getLevelTheme = (level?: string) => {
-  if (!level) return null;
+  if (!level) {return null;}
   return LEVEL_THEME[level.toLowerCase()] ?? { color: '#155DFC', bg: '#EFF6FF' };
 };
 
@@ -49,25 +49,25 @@ const BooksScreen = () => {
         setIsLoading(true);
         setError(null);
         const response = await lessonApi.getLessonsByCategory('books');
-        if (!response.success) throw new Error(response.error || 'Номын жагсаалт ачаалах боломжгүй байна.');
-        if (!isMounted) return;
+        if (!response.success) {throw new Error(response.error || 'Номын жагсаалт ачаалах боломжгүй байна.');}
+        if (!isMounted) {return;}
         const next = (response.lessons || []).filter(
           (item) => item.contentType === 'book' || item.contentType === 'pdf' || Boolean(item.contentUrl),
         );
         setBooks(next);
       } catch (e) {
-        if (isMounted) setError(getErrorMessage(e, 'Номын жагсаалт ачаалах үед алдаа гарлаа.'));
+        if (isMounted) {setError(getErrorMessage(e, 'Номын жагсаалт ачаалах үед алдаа гарлаа.'));}
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {setIsLoading(false);}
       }
     };
-    void load();
+    load().catch(() => undefined);
     return () => { isMounted = false; };
   }, []);
 
   const filteredBooks = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return books;
+    if (!q) {return books;}
     return books.filter((b) =>
       `${b.title} ${b.description} ${b.level ?? ''}`.toLowerCase().includes(q),
     );
@@ -75,7 +75,7 @@ const BooksScreen = () => {
 
   const handleOpenBook = (book: LessonContent) => {
     const url = sanitizeUrl(book.contentUrl);
-    if (!url) return;
+    if (!url) {return;}
     navigation.navigate('BookReader', {
       title: book.title,
       url,
@@ -144,10 +144,10 @@ const BooksScreen = () => {
       {/* Error */}
       {!isLoading && error && (
         <View style={styles.stateCard}>
-          <View style={[styles.stateIconBox, { backgroundColor: '#FEF2F2' }]}>
+          <View style={[styles.stateIconBox, styles.errorIconBox]}>
             <Icon name="alert-circle-outline" size={26} color="#EF4444" />
           </View>
-          <Text style={[styles.stateTitle, { color: '#EF4444' }]}>Алдаа гарлаа</Text>
+          <Text style={[styles.stateTitle, styles.errorTitle]}>Алдаа гарлаа</Text>
           <Text style={styles.stateDesc}>{error}</Text>
         </View>
       )}
@@ -310,7 +310,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
+  errorIconBox: { backgroundColor: '#FEF2F2' },
   stateTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  errorTitle: { color: '#EF4444' },
   stateDesc:  { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20 },
 
   cardList: { gap: 10 },

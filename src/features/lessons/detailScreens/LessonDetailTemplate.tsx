@@ -125,7 +125,7 @@ const LessonDetailTemplate = ({
             return (
               <Pressable
                 key={lesson.id}
-                onPress={() => void handleOpenContent(lesson.contentUrl)}
+                onPress={() => handleOpenContent(lesson.contentUrl).catch(() => undefined)}
                 disabled={!canOpen}
                 style={({ pressed }) => [
                   styles.lessonCard,

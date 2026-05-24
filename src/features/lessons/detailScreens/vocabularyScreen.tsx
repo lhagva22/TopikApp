@@ -18,28 +18,28 @@ const VocabularyScreen = () => {
         setIsLoading(true);
         setError(null);
         const response = await lessonApi.getLessonsByCategory('vocabulary');
-        if (!response.success) throw new Error(response.error || 'Үгийн сангийн өгөгдөл ачаалах боломжгүй байна.');
-        if (isMounted) setLessons(response.lessons || []);
+        if (!response.success) {throw new Error(response.error || 'Үгийн сангийн өгөгдөл ачаалах боломжгүй байна.');}
+        if (isMounted) {setLessons(response.lessons || []);}
       } catch (e) {
-        if (isMounted) setError(getErrorMessage(e, 'Үгийн сангийн өгөгдөл ачаалах үед алдаа гарлаа.'));
+        if (isMounted) {setError(getErrorMessage(e, 'Үгийн сангийн өгөгдөл ачаалах үед алдаа гарлаа.'));}
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {setIsLoading(false);}
       }
     };
-    void load();
+    load().catch(() => undefined);
     return () => { isMounted = false; };
   }, []);
 
   const filteredLessons = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return lessons;
+    if (!q) {return lessons;}
     return lessons.filter((l) => `${l.title} ${l.description}`.toLowerCase().includes(q));
   }, [lessons, query]);
 
   const handleOpen = async (lesson: LessonContent) => {
-    if (!lesson.contentUrl) return;
+    if (!lesson.contentUrl) {return;}
     const supported = await Linking.canOpenURL(lesson.contentUrl);
-    if (supported) await Linking.openURL(lesson.contentUrl);
+    if (supported) {await Linking.openURL(lesson.contentUrl);}
   };
 
   return (
@@ -102,10 +102,10 @@ const VocabularyScreen = () => {
       {/* Error */}
       {!isLoading && error && (
         <View style={styles.stateCard}>
-          <View style={[styles.stateIconBox, { backgroundColor: '#FEF2F2' }]}>
+          <View style={[styles.stateIconBox, styles.errorIconBox]}>
             <Icon name="alert-circle-outline" size={26} color="#EF4444" />
           </View>
-          <Text style={[styles.stateTitle, { color: '#EF4444' }]}>Алдаа гарлаа</Text>
+          <Text style={[styles.stateTitle, styles.errorTitle]}>Алдаа гарлаа</Text>
           <Text style={styles.stateDesc}>{error}</Text>
         </View>
       )}
@@ -129,7 +129,7 @@ const VocabularyScreen = () => {
           {filteredLessons.map((lesson, idx) => (
             <TouchableOpacity
               key={lesson.id}
-              onPress={() => void handleOpen(lesson)}
+              onPress={() => handleOpen(lesson).catch(() => undefined)}
               activeOpacity={0.7}
               style={[styles.row, idx < filteredLessons.length - 1 && styles.rowBorder]}
             >
@@ -225,7 +225,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
+  errorIconBox: { backgroundColor: '#FEF2F2' },
   stateTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  errorTitle: { color: '#EF4444' },
   stateDesc:  { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20 },
 
   listCard: {

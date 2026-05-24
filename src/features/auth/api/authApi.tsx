@@ -11,27 +11,27 @@ import {
 } from '../types';
 
 export const authApi = {
-  login: (data: LoginRequest) => 
+  login: (data: LoginRequest) =>
     post<AuthResponse>(ENDPOINTS.AUTH.LOGIN, data),
 
   googleLogin: (data: GoogleLoginRequest) =>
     post<AuthResponse>(ENDPOINTS.AUTH.GOOGLE, data),
-  
-  register: (data: RegisterRequest) => 
+
+  register: (data: RegisterRequest) =>
     post<AuthResponse>(ENDPOINTS.AUTH.REGISTER, data),
-  
-  getProfile: () => 
+
+  getProfile: () =>
     get<AuthResponse>(ENDPOINTS.AUTH.PROFILE),
-  
-  logout: () => 
+
+  logout: () =>
     post<AuthResponse>(ENDPOINTS.AUTH.LOGOUT),
-  
-  forgotPassword: (data: ForgotPasswordRequest) => 
+
+  forgotPassword: (data: ForgotPasswordRequest) =>
     post<AuthResponse>(ENDPOINTS.AUTH.FORGOT_PASSWORD, data),
 
   verifyResetOtp: (data: VerifyResetOtpRequest) =>
     post<AuthResponse>(ENDPOINTS.AUTH.VERIFY_RESET_OTP, data),
-  
-  resetPassword: (data: ResetPasswordRequest) => 
+
+  resetPassword: (data: ResetPasswordRequest) =>
     post<AuthResponse>(ENDPOINTS.AUTH.RESET_PASSWORD, data),
 };

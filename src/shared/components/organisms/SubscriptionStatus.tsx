@@ -1,12 +1,12 @@
-import React from "react";
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-} from "react-native";
-import { Card } from "../molecules/card";
-import Icon from "react-native-vector-icons/Ionicons";
-import { useAppStore } from "../../../app/store";
+} from 'react-native';
+import { Card } from '../molecules/card';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { useAppStore } from '../../../app/store';
 import type { CustomProgressProps, StatusType } from './types';
 
 
@@ -14,11 +14,11 @@ export const CustomProgress = ({ value, color, style }: CustomProgressProps) => 
   const clampedValue = Math.min(Math.max(value, 0), 100);
   return (
     <View style={[customProgressStyles.container, style]}>
-      <View 
+      <View
         style={[
-          customProgressStyles.fill, 
-          { width: `${clampedValue}%`, backgroundColor: color }
-        ]} 
+          customProgressStyles.fill,
+          { width: `${clampedValue}%`, backgroundColor: color },
+        ]}
       />
     </View>
   );
@@ -27,12 +27,12 @@ export const CustomProgress = ({ value, color, style }: CustomProgressProps) => 
 const customProgressStyles = StyleSheet.create({
   container: {
     height: 8,
-    backgroundColor: "#e5e7eb",
+    backgroundColor: '#e5e7eb',
     borderRadius: 4,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   fill: {
-    height: "100%",
+    height: '100%',
     borderRadius: 4,
   },
 });
@@ -46,37 +46,37 @@ export function SubscriptionStatus() {
   }
 
   // Subscription мэдээлэл
-  const subscriptionEndDate = user.subscription_end_date 
-    ? new Date(user.subscription_end_date) 
+  const subscriptionEndDate = user.subscription_end_date
+    ? new Date(user.subscription_end_date)
     : null;
-  const subscriptionStartDate = user.subscription_start_date 
-    ? new Date(user.subscription_start_date) 
+  const subscriptionStartDate = user.subscription_start_date
+    ? new Date(user.subscription_start_date)
     : null;
 
   const { daysRemaining, totalDays, daysUsed, progress } = getSubscriptionStatus();
 
   // ✅ formatDate - Date | null төрлийг хүлээн авах
   const formatDate = (date: Date | null) => {
-    if (!date) return "";
-    return date.toLocaleDateString("mn-MN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+    if (!date) {return '';}
+    return date.toLocaleDateString('mn-MN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
   };
 
   const getStatusType = (): StatusType => {
-    if (daysRemaining <= 0) return "danger";
-    if (daysRemaining <= 7) return "warning";
-    if (daysRemaining <= 14) return "caution";
-    return "success";
+    if (daysRemaining <= 0) {return 'danger';}
+    if (daysRemaining <= 7) {return 'warning';}
+    if (daysRemaining <= 14) {return 'caution';}
+    return 'success';
   };
 
   const getProgressColor = () => {
-    if (progress >= 90) return "#ef4444";
-    if (progress >= 75) return "#f97316";
-    if (progress >= 50) return "#eab308";
-    return "#22c55e";
+    if (progress >= 90) {return '#ef4444';}
+    if (progress >= 75) {return '#f97316';}
+    if (progress >= 50) {return '#eab308';}
+    return '#22c55e';
   };
 
   const statusType = getStatusType();
@@ -84,10 +84,10 @@ export function SubscriptionStatus() {
 
   const getStatusStyle = () => {
     switch (statusType) {
-      case "success": return styles.cardSuccess;
-      case "caution": return styles.cardCaution;
-      case "warning": return styles.cardWarning;
-      case "danger": return styles.cardDanger;
+      case 'success': return styles.cardSuccess;
+      case 'caution': return styles.cardCaution;
+      case 'warning': return styles.cardWarning;
+      case 'danger': return styles.cardDanger;
       default: return styles.cardSuccess;
     }
   };
@@ -166,122 +166,122 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   cardSuccess: {
-    backgroundColor: "#f0fdf4",
-    borderColor: "#bbf7d0",
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
   },
   cardCaution: {
-    backgroundColor: "#fefce8",
-    borderColor: "#fef08a",
+    backgroundColor: '#fefce8',
+    borderColor: '#fef08a',
   },
   cardWarning: {
-    backgroundColor: "#fff7ed",
-    borderColor: "#fed7aa",
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
   },
   cardDanger: {
-    backgroundColor: "#fef2f2",
-    borderColor: "#fecaca",
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
   },
   expiredCard: {
     padding: 16,
-    backgroundColor: "#fef2f2",
-    borderColor: "#fecaca",
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
     borderWidth: 1,
   },
   expiredContent: {
-    alignItems: "center",
+    alignItems: 'center',
   },
   expiredTitle: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#dc2626",
+    fontWeight: '600',
+    color: '#dc2626',
     marginBottom: 8,
   },
   expiredText: {
     fontSize: 12,
-    color: "#dc2626",
-    textAlign: "center",
+    color: '#dc2626',
+    textAlign: 'center',
   },
   container: {
     gap: 12,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "#111827",
+    fontWeight: '500',
+    color: '#111827',
   },
   headerValue: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
+    fontWeight: '600',
+    color: '#111827',
   },
   progressSection: {
     gap: 8,
   },
   progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   progressLabel: {
     fontSize: 12,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   progressValue: {
     fontSize: 12,
-    fontWeight: "500",
-    color: "#111827",
+    fontWeight: '500',
+    color: '#111827',
   },
   statsGrid: {
-    flexDirection: "row",
+    flexDirection: 'row',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
+    borderTopColor: '#e5e7eb',
   },
   statItem: {
     flex: 1,
-    alignItems: "center",
+    alignItems: 'center',
     gap: 4,
   },
   statItemBorder: {
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderLeftColor: "#e5e7eb",
-    borderRightColor: "#e5e7eb",
+    borderLeftColor: '#e5e7eb',
+    borderRightColor: '#e5e7eb',
   },
   statValue: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#111827",
+    fontWeight: 'bold',
+    color: '#111827',
   },
   statValueWarning: {
-    color: "#dc2626",
+    color: '#dc2626',
   },
   statLabel: {
     fontSize: 10,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   datesContainer: {
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
+    borderTopColor: '#e5e7eb',
     gap: 4,
   },
   dateRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   dateLabel: {
     fontSize: 10,
-    color: "#6b7280",
+    color: '#6b7280',
   },
   dateValue: {
     fontSize: 10,
-    fontWeight: "500",
-    color: "#4b5563",
+    fontWeight: '500',
+    color: '#4b5563',
   },
 });

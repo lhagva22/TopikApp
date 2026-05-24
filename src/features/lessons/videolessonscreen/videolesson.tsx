@@ -17,14 +17,14 @@ type VideoLessonGroup = {
 
 const getLessonLevel = (lesson: VideoLesson) => {
   const normalized = `${lesson.level || ''} ${lesson.title} ${lesson.description}`.toLowerCase();
-  if (normalized.includes('topik ii')) return 'Дунд шат';
-  if (normalized.includes('grammar') || normalized.includes('дүрэм')) return 'Бүх шат';
+  if (normalized.includes('topik ii')) {return 'Дунд шат';}
+  if (normalized.includes('grammar') || normalized.includes('дүрэм')) {return 'Бүх шат';}
   return 'Анхан шат';
 };
 
 const getBadgeLabel = (lesson: VideoLesson) => {
-  if (lesson.category?.title) return lesson.category.title;
-  if ((lesson.level || '').toUpperCase().includes('TOPIK II')) return 'TOPIK II';
+  if (lesson.category?.title) {return lesson.category.title;}
+  if ((lesson.level || '').toUpperCase().includes('TOPIK II')) {return 'TOPIK II';}
   return 'TOPIK I';
 };
 
@@ -51,17 +51,17 @@ const Videolesson = () => {
           lessonApi.getVideoLessons(),
         ]);
 
-        if (!categoriesResponse.success) throw new Error(categoriesResponse.error || 'Видео ангилал ачаалах боломжгүй байна.');
-        if (!lessonsResponse.success) throw new Error(lessonsResponse.error || 'Видео хичээл ачааллах боломжгүй байна.');
+        if (!categoriesResponse.success) {throw new Error(categoriesResponse.error || 'Видео ангилал ачаалах боломжгүй байна.');}
+        if (!lessonsResponse.success) {throw new Error(lessonsResponse.error || 'Видео хичээл ачааллах боломжгүй байна.');}
 
         if (isMounted) {
           setCategories(categoriesResponse.categories || []);
           setLessons((lessonsResponse.lessons || []).filter((item) => Boolean(item.contentUrl)));
         }
       } catch (error) {
-        if (isMounted) setLoadError(getErrorMessage(error, 'Видео хичээл ачааллах үед алдаа гарлаа.'));
+        if (isMounted) {setLoadError(getErrorMessage(error, 'Видео хичээл ачааллах үед алдаа гарлаа.'));}
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {setIsLoading(false);}
       }
     };
 
@@ -70,7 +70,7 @@ const Videolesson = () => {
   }, []);
 
   const filteredLessons = useMemo(() => {
-    if (selectedCategorySlug === 'all') return lessons;
+    if (selectedCategorySlug === 'all') {return lessons;}
     return lessons.filter((lesson) => lesson.category?.slug === selectedCategorySlug);
   }, [lessons, selectedCategorySlug]);
 
@@ -87,7 +87,7 @@ const Videolesson = () => {
     });
 
     const groups = Array.from(categoryMap.values()).filter((g) => g.lessons.length > 0);
-    if (uncategorized.length > 0) groups.push({ category: null, lessons: uncategorized });
+    if (uncategorized.length > 0) {groups.push({ category: null, lessons: uncategorized });}
     return groups;
   }, [categories, filteredLessons]);
 

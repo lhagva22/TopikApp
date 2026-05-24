@@ -29,19 +29,19 @@ const GUEST_USER = {
 };
 
 const calculateDaysRemaining = (endDate?: string | null): number => {
-  if (!endDate) return 0;
+  if (!endDate) {return 0;}
   const diffTime = new Date(endDate).getTime() - new Date().getTime();
   return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 };
 
 const calculateTotalDays = (startDate?: string | null, endDate?: string | null): number => {
-  if (!startDate || !endDate) return 0;
+  if (!startDate || !endDate) {return 0;}
   const diffTime = new Date(endDate).getTime() - new Date(startDate).getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
 const calculateDaysUsed = (startDate?: string | null, endDate?: string | null): number => {
-  if (!startDate) return 0;
+  if (!startDate) {return 0;}
   const diffTime = new Date().getTime() - new Date(startDate).getTime();
   const daysUsed = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
   const totalDays = calculateTotalDays(startDate, endDate);
@@ -70,7 +70,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isInitialized: false,
 
   initAuth: async () => {
-    if (get().isInitialized) return;
+    if (get().isInitialized) {return;}
 
     set({ isLoading: true });
 
@@ -149,26 +149,26 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   getDaysRemaining: () => {
     const { user } = get();
-    if (!get().hasAccess('paid')) return 0;
+    if (!get().hasAccess('paid')) {return 0;}
     return calculateDaysRemaining(user?.subscription_end_date);
   },
 
   getTotalDays: () => {
     const { user } = get();
-    if (!get().hasAccess('paid')) return 0;
+    if (!get().hasAccess('paid')) {return 0;}
     return calculateTotalDays(user?.subscription_start_date, user?.subscription_end_date);
   },
 
   getDaysUsed: () => {
     const { user } = get();
-    if (!get().hasAccess('paid')) return 0;
+    if (!get().hasAccess('paid')) {return 0;}
     return calculateDaysUsed(user?.subscription_start_date, user?.subscription_end_date);
   },
 
   getSubscriptionProgress: () => {
     const totalDays = get().getTotalDays();
     const daysUsed = get().getDaysUsed();
-    if (totalDays === 0) return 0;
+    if (totalDays === 0) {return 0;}
     return Math.round((daysUsed / totalDays) * 100);
   },
 

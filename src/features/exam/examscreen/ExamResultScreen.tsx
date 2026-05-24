@@ -158,7 +158,7 @@ const ExamResultScreen = () => {
         </View>
 
         <View style={styles.sectionRow}>
-          <View style={[styles.sectionIconBox, { backgroundColor: '#EFF6FF' }]}>
+          <View style={[styles.sectionIconBox, styles.listeningIconBox]}>
             <Icon name="volume-high-outline" size={18} color="#155DFC" />
           </View>
           <View style={styles.sectionInfo}>
@@ -169,7 +169,8 @@ const ExamResultScreen = () => {
                   <View
                     style={[
                       styles.sectionBarFill,
-                      { width: `${Math.round((listeningScore / listeningMaxScore) * 100)}%` as any, backgroundColor: '#155DFC' },
+                      { width: `${Math.round((listeningScore / listeningMaxScore) * 100)}%` as any },
+                      styles.listeningBarFill,
                     ]}
                   />
                 </View>
@@ -184,7 +185,7 @@ const ExamResultScreen = () => {
         <View style={styles.divider} />
 
         <View style={styles.sectionRow}>
-          <View style={[styles.sectionIconBox, { backgroundColor: '#F5F3FF' }]}>
+          <View style={[styles.sectionIconBox, styles.readingIconBox]}>
             <Icon name="book-outline" size={18} color="#8B5CF6" />
           </View>
           <View style={styles.sectionInfo}>
@@ -195,7 +196,8 @@ const ExamResultScreen = () => {
                   <View
                     style={[
                       styles.sectionBarFill,
-                      { width: `${Math.round((readingScore / readingMaxScore) * 100)}%` as any, backgroundColor: '#8B5CF6' },
+                      { width: `${Math.round((readingScore / readingMaxScore) * 100)}%` as any },
+                      styles.readingBarFill,
                     ]}
                   />
                 </View>
@@ -444,6 +446,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  listeningIconBox: { backgroundColor: '#EFF6FF' },
+  readingIconBox: { backgroundColor: '#F5F3FF' },
   sectionInfo: { flex: 1 },
   sectionLabel: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6 },
   sectionBarWrap: {},
@@ -457,6 +461,8 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 3,
   },
+  listeningBarFill: { backgroundColor: '#155DFC' },
+  readingBarFill: { backgroundColor: '#8B5CF6' },
   sectionScore: {
     fontSize: 16,
     fontWeight: '800',

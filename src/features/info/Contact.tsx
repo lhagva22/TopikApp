@@ -79,7 +79,7 @@ const Contact = () => {
       {/* Hours */}
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionAccent, { backgroundColor: '#F59E0B' }]} />
+          <View style={[styles.sectionAccent, styles.hoursAccent]} />
           <Text style={styles.sectionTitle}>Ажлын цаг</Text>
         </View>
 
@@ -97,17 +97,17 @@ const Contact = () => {
       {/* Social */}
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionAccent, { backgroundColor: '#EC4899' }]} />
+          <View style={[styles.sectionAccent, styles.socialAccent]} />
           <Text style={styles.sectionTitle}>Биднийг дагаарай</Text>
         </View>
 
         <View style={styles.socialRow}>
-          <TouchableOpacity style={[styles.socialBtn, { backgroundColor: '#1877F2' }]} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.socialBtn, styles.facebookButton]} activeOpacity={0.8}>
             <Icon name="logo-facebook" size={20} color="#fff" />
             <Text style={styles.socialBtnText}>Facebook</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.socialBtn, { backgroundColor: '#E1306C' }]} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.socialBtn, styles.instagramButton]} activeOpacity={0.8}>
             <Icon name="logo-instagram" size={20} color="#fff" />
             <Text style={styles.socialBtnText}>Instagram</Text>
           </TouchableOpacity>
@@ -169,6 +169,8 @@ const styles = StyleSheet.create({
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   sectionAccent: { width: 4, height: 18, borderRadius: 2, backgroundColor: '#155DFC' },
+  hoursAccent: { backgroundColor: '#F59E0B' },
+  socialAccent: { backgroundColor: '#EC4899' },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', letterSpacing: -0.2 },
 
   /* Contact */
@@ -205,6 +207,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
   },
+  facebookButton: { backgroundColor: '#1877F2' },
+  instagramButton: { backgroundColor: '#E1306C' },
   socialBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });
 

@@ -8,7 +8,7 @@ import {
   startExam,
   startLevelTestMockTest,
   submitExam,
-  submitLevelTest
+  submitLevelTest,
 } from '../controllers/examController';
 
 const router = Router();

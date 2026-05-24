@@ -234,7 +234,7 @@ export const ExamInterface = () => {
       await startExam();
     };
 
-    void initExam();
+    initExam().catch(() => undefined);
   }, [duration, examId, initialQuestions, initialSessionId, startExam, stopAudioPlayback]);
 
   const formatTime = (seconds: number) => {
@@ -244,7 +244,7 @@ export const ExamInterface = () => {
   };
 
   const handleAnswerSelect = (answerText: string) => {
-    if (hasSubmitted) return;
+    if (hasSubmitted) {return;}
     const currentQ = questions[currentQuestion];
     setAnswers((prev) => ({
       ...prev,
@@ -331,10 +331,10 @@ export const ExamInterface = () => {
   ]);
 
   const handleAutoSubmit = useCallback(() => {
-    if (hasSubmitted) return;
+    if (hasSubmitted) {return;}
     stopAudioPlayback(true);
     Alert.alert('Хугацаа дууссан', 'Шалгалтын хугацаа дууссан тул автоматаар дуусгаж байна.', [
-      { text: 'OK', onPress: () => void handleSubmit() },
+      { text: 'OK', onPress: () => handleSubmit().catch(() => undefined) },
     ]);
   }, [handleSubmit, hasSubmitted, stopAudioPlayback]);
 
@@ -459,7 +459,7 @@ export const ExamInterface = () => {
       <View style={styles.centerContainer}>
         <Icon name="alert-circle-outline" size={48} color="#EF4444" />
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => void startExam()}>
+        <TouchableOpacity style={styles.retryButton} onPress={() => startExam().catch(() => undefined)}>
           <Text style={styles.retryButtonText}>Дахин оролдох</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -679,7 +679,7 @@ export const ExamInterface = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalConfirmButton}
-                onPress={() => void handleSubmit()}
+                onPress={() => handleSubmit().catch(() => undefined)}
                 disabled={isSubmitting || hasSubmitted}
               >
                 {isSubmitting ? (

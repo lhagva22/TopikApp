@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { Request, Response } from 'express';  
+import { Request, Response } from 'express';
 import { supabase, supabaseAdmin } from '../config/supabase';
 import { AuthRequest } from '../types';
 
@@ -115,7 +115,7 @@ export const register = async (req: Request, res: Response) => {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } }
+    options: { data: { name } },
   });
 
   if (error) {
@@ -140,7 +140,7 @@ export const register = async (req: Request, res: Response) => {
           name: name,
           status: 'registered',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
 
       if (profileError) {
@@ -154,18 +154,18 @@ export const register = async (req: Request, res: Response) => {
         .update({
           email: email,
           name: name,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', data.user.id);
-      
+
       if (updateError) {
         console.error('Profile update error:', updateError);
       }
     }
   }
 
-  res.status(201).json({ 
-    success: true, 
+  res.status(201).json({
+    success: true,
     user: {
       id: data.user?.id,
       email: data.user?.email,
@@ -317,7 +317,7 @@ export const login = async (req: Request, res: Response) => {
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
-    password
+    password,
   });
 
   if (error) {
@@ -333,7 +333,7 @@ export const login = async (req: Request, res: Response) => {
       .eq('id', data.user.id)
       .single();
     profile = profileData;
-    
+
     // Хэрэв profile байхгүй бол үүсгэх
     if (!profileData) {
       const { data: newProfile, error: createError } = await supabase
@@ -344,11 +344,11 @@ export const login = async (req: Request, res: Response) => {
           name: data.user.user_metadata?.name || email?.split('@')[0],
           status: 'registered',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .select()
         .single();
-      
+
       if (!createError && newProfile) {
         profile = newProfile;
       }
@@ -359,8 +359,8 @@ export const login = async (req: Request, res: Response) => {
     }
   }
 
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     user: {
       id: data.user?.id,
       email: data.user?.email,
@@ -372,7 +372,7 @@ export const login = async (req: Request, res: Response) => {
       subscription_months: profile?.subscription_months,
       ...getAuthInfo(data.user),
     },
-    session: data.session 
+    session: data.session,
   });
 };
 
@@ -381,7 +381,7 @@ export const login = async (req: Request, res: Response) => {
 export const getProfile = async (req: AuthRequest, res: Response) => {
   const userId = req.userId;
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
+
   if (!userId) {
     return res.status(401).json({ error: 'Хэрэглэгч олдсонгүй' });
   }
@@ -396,9 +396,9 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
   // Profile байхгүй бол үүсгэх
   if (profileError && profileError.code === 'PGRST116') {
     console.log('⚠️ Profile not found, creating new profile for user:', userId);
-    
+
     const { data: { user: authUser } } = await supabase.auth.getUser(token || '');
-    
+
     const { data: newProfile, error: createError } = await supabaseAdmin
       .from('profiles')
       .insert({
@@ -407,16 +407,16 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
         name: authUser?.user_metadata?.name || authUser?.email?.split('@')[0] || 'User',
         status: 'registered',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .select()
       .single();
-    
+
     if (createError) {
       console.error('❌ Failed to create profile:', createError);
       return res.status(500).json({ error: 'Профайл үүсгэхэд алдаа гарлаа' });
     }
-    
+
     profile = newProfile;
   } else if (profileError) {
     console.error('❌ Profile fetch error:', profileError);
@@ -432,8 +432,8 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 
   const { data: { user: authUser } } = await supabase.auth.getUser(token || '');
 
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     user: {
       id: profile.id,
       email: profile.email,
@@ -444,7 +444,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
       subscription_end_date: profile.subscription_end_date,
       subscription_months: profile.subscription_months,
       ...getAuthInfo(authUser),
-    }
+    },
   });
 };
 export const upgradeToPaid = async (req: AuthRequest, res: Response) => {
@@ -491,7 +491,7 @@ export const upgradeToPaid = async (req: AuthRequest, res: Response) => {
       subscription_start_date: startDate.toISOString(),
       subscription_end_date: endDate.toISOString(),
       subscription_months: hasActiveSubscription ? (existingProfile.subscription_months ?? 0) + months : months,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
     .eq('id', userId)
     .select('id, name, status, subscription_start_date, subscription_end_date, subscription_months')
@@ -517,6 +517,6 @@ export const upgradeToPaid = async (req: AuthRequest, res: Response) => {
       subscription_start_date: data.subscription_start_date,
       subscription_end_date: data.subscription_end_date,
       subscription_months: data.subscription_months,
-    }
+    },
   });
 };

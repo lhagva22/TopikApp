@@ -44,7 +44,7 @@ const LessonCategoryScreen = ({ routeName }: LessonCategoryScreenProps) => {
       }
     };
 
-    void loadLessons();
+    loadLessons().catch(() => undefined);
 
     return () => {
       isMounted = false;

@@ -1,15 +1,15 @@
-import React from "react";
+import React from 'react';
 import {
   View,
   StyleSheet,
   ViewStyle,
-} from "react-native";
+} from 'react-native';
 import AppText from '../atoms/AppText';
 import type { CardHeaderProps, CardProps, CardTitleProps } from './types';
 
 // ==================== CONSTANTS ====================
 const SHADOW_STYLE: ViewStyle = {
-  shadowColor: "#0f172a",
+  shadowColor: '#0f172a',
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.08,
   shadowRadius: 10,
@@ -45,7 +45,7 @@ export const Card = ({ style, children, ...props }: CardProps) => (
 
 export const CardHeader = ({
   children,
-  variant = "medium",
+  variant = 'medium',
   containerStyle,
   style,
   ...props
@@ -63,7 +63,7 @@ export const CardHeader = ({
 
 export const CardTitle = ({
   children,
-  variant = "small",
+  variant = 'small',
   style,
   containerStyle,
   ...props
@@ -82,7 +82,7 @@ export const CardTitle = ({
 // ==================== STYLES ====================
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 18,
     padding: SPACING.card.padding,
     marginBottom: SPACING.card.marginBottom,

@@ -117,9 +117,9 @@ export const lessonApi = {
   getKoreanGrammarLessons: (filters: KoreanGrammarLessonFilters = {}) => {
     const params = new URLSearchParams();
 
-    if (filters.level) params.append('level', filters.level);
-    if (filters.topikLevel) params.append('topikLevel', filters.topikLevel);
-    if (filters.category) params.append('category', filters.category);
+    if (filters.level) {params.append('level', filters.level);}
+    if (filters.topikLevel) {params.append('topikLevel', filters.topikLevel);}
+    if (filters.category) {params.append('category', filters.category);}
 
     const query = params.toString();
     return get<KoreanGrammarLessonsResponse>(`${ENDPOINTS.LESSONS.GRAMMAR}${query ? `?${query}` : ''}`);

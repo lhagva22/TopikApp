@@ -64,7 +64,7 @@ const ExamScreen = () => {
     useCallback(() => {
       const clearSession = async () => {
         const old = await AsyncStorage.getItem('current_exam_session');
-        if (old) await AsyncStorage.removeItem('current_exam_session');
+        if (old) {await AsyncStorage.removeItem('current_exam_session');}
       };
       clearSession().catch(() => undefined);
       loadData().catch(() => undefined);
@@ -118,8 +118,8 @@ const ExamScreen = () => {
     );
   }
 
-  const ExamCard = ({ exam, theme }: { exam: any; theme: typeof TOPIK_I_THEME }) => (
-    <View style={[styles.examCard, { borderLeftColor: theme.color }]}>
+  const renderExamCard = (exam: any, theme: typeof TOPIK_I_THEME) => (
+    <View key={exam.id} style={[styles.examCard, { borderLeftColor: theme.color }]}>
       <View style={styles.examCardTop}>
         <View style={styles.examCardLeft}>
           <Text style={styles.examTitle}>{exam.title}</Text>
@@ -195,9 +195,7 @@ const ExamScreen = () => {
             <Text style={[styles.groupTitle, { color: TOPIK_I_THEME.color }]}>TOPIK I</Text>
             <Text style={styles.groupSub}>Анхан шат</Text>
           </View>
-          {filteredTopikI.map((exam) => (
-            <ExamCard key={exam.id} exam={exam} theme={TOPIK_I_THEME} />
-          ))}
+          {filteredTopikI.map((exam) => renderExamCard(exam, TOPIK_I_THEME))}
         </>
       )}
 
@@ -209,9 +207,7 @@ const ExamScreen = () => {
             <Text style={[styles.groupTitle, { color: TOPIK_II_THEME.color }]}>TOPIK II</Text>
             <Text style={styles.groupSub}>Дунд / Гүнзгий шат</Text>
           </View>
-          {filteredTopikII.map((exam) => (
-            <ExamCard key={exam.id} exam={exam} theme={TOPIK_II_THEME} />
-          ))}
+          {filteredTopikII.map((exam) => renderExamCard(exam, TOPIK_II_THEME))}
         </>
       )}
 

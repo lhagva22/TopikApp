@@ -16,10 +16,10 @@ export const useExam = () => {
 
   const canStartExam = (_exam: ExamBank) => {
     if (!hasAccess('paid')) {
-      return { 
-        allowed: false, 
-        error: 'Premium шаардлагатай', 
-        requiresPayment: true 
+      return {
+        allowed: false,
+        error: 'Premium шаардлагатай',
+        requiresPayment: true,
       };
     }
     return { allowed: true };
@@ -41,7 +41,7 @@ export const useExam = () => {
     currentSession: store.currentSession,
     currentQuestions: store.currentQuestions,
     currentTest: store.currentTest,
-    
+
     // Store actions
     getExams: store.getExams,
     startExam,
@@ -49,12 +49,12 @@ export const useExam = () => {
     resetSession: store.resetSession,
     clearError: store.clearError,
     reset: store.reset,
-    
+
     // Custom actions
     loadExams: store.getExams,  // ✅ alias
     canStartExam,
     getGroupedExams,
-    
+
     // Status
     canTakeExam: hasAccess('paid'),
   };

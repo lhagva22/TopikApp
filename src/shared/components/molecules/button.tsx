@@ -1,28 +1,28 @@
 // shared/components/molecules/button.tsx
-import React from "react";
+import React from 'react';
 import {
   StyleSheet,
-} from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
+} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import AppText from '../atoms/AppText';
 import { ProtectedTouchable } from './protectedTouchable';
 import type { ButtonProps } from './types';
 
-const Button = ({ 
-  icon, 
-  iconSize = 20, 
-  title, 
-  onPress, 
-  style, 
-  textStyle, 
+const Button = ({
+  icon,
+  iconSize = 20,
+  title,
+  onPress,
+  style,
+  textStyle,
   iconStyle,
   requiredStatus = 'paid',
-  onPaymentRequired
+  onPaymentRequired,
 }: ButtonProps) => {
   return (
-    <ProtectedTouchable 
-      style={[styles.button, style]} 
-      onPress={onPress} 
+    <ProtectedTouchable
+      style={[styles.button, style]}
+      onPress={onPress}
       onPaymentRequired={onPaymentRequired}
       requiredStatus={requiredStatus}
       activeOpacity={0.7}
@@ -36,7 +36,7 @@ const Button = ({
       )}
       <AppText
         variant="button"
-        style={[styles.buttonText, textStyle, icon ? { marginLeft: 8 } : {}]}
+        style={[styles.buttonText, textStyle, icon && styles.textWithIcon]}
       >
         {title}
       </AppText>
@@ -48,16 +48,19 @@ export default Button;
 
 const styles = StyleSheet.create({
   button: {
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     padding: 10,
     borderRadius: 10,
-    backgroundColor: "#155DFC",
+    backgroundColor: '#155DFC',
   },
   buttonText: {
-    color: "#fff",
+    color: '#fff',
     letterSpacing: -0.2,
+  },
+  textWithIcon: {
+    marginLeft: 8,
   },
   icon: {},
 });

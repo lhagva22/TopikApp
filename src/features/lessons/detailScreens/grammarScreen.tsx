@@ -125,6 +125,8 @@ const GrammarCard = React.memo(({ lesson }: { lesson: KoreanGrammarLesson }) => 
   );
 });
 
+const GrammarSeparator = () => <View style={styles.separator} />;
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 const GrammarScreen = () => {
@@ -147,17 +149,17 @@ const GrammarScreen = () => {
         if (!response.success) {
           throw new Error(response.error || 'Дүрмийн мэдээлэл ачааллах боломжгүй байна.');
         }
-        if (isMounted) setLessons(response.lessons || []);
+        if (isMounted) {setLessons(response.lessons || []);}
       } catch (e) {
         if (isMounted) {
           setError(getErrorMessage(e, 'Дүрмийн мэдээлэл ачааллах үед алдаа гарлаа.'));
         }
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {setIsLoading(false);}
       }
     };
 
-    void load();
+    load().catch(() => undefined);
     return () => { isMounted = false; };
   }, []);
 
@@ -174,8 +176,8 @@ const GrammarScreen = () => {
       const matchesLevel = selectedLevel === 'all' || lesson.level === selectedLevel;
       const matchesTopik = selectedTopik === 'all' || lesson.topikLevel === selectedTopik;
       const matchesCategory = selectedCategory === 'all' || lesson.category === selectedCategory;
-      if (!matchesLevel || !matchesTopik || !matchesCategory) return false;
-      if (!q) return true;
+      if (!matchesLevel || !matchesTopik || !matchesCategory) {return false;}
+      if (!q) {return true;}
       return normalize(
         [lesson.grammarPattern, lesson.meaningMn, lesson.formRule,
          lesson.exampleKr, lesson.exampleMn, lesson.noteMn,
@@ -249,7 +251,7 @@ const GrammarScreen = () => {
             )}
             contentContainerStyle={styles.chipRow}
           />
-          
+
         </View>
 
         {!isLoading && !error && (
@@ -318,7 +320,7 @@ const GrammarScreen = () => {
       maxToRenderPerBatch={8}
       windowSize={10}
       initialNumToRender={10}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      ItemSeparatorComponent={GrammarSeparator}
     />
   );
 };

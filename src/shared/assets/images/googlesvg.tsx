@@ -1,6 +1,6 @@
-import * as React from "react"
-import { View } from "react-native"
-import Svg, { Path, SvgProps } from "react-native-svg"
+import * as React from 'react';
+import { View } from 'react-native';
+import Svg, { Path, SvgProps } from 'react-native-svg';
 
 
 
@@ -32,7 +32,7 @@ function SvgComponent(props: SvgProps) {
       />
     </Svg>
     </View>
-  )
+  );
 }
 
-export default SvgComponent
+export default SvgComponent;

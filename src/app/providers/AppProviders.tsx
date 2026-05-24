@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
 
 import { ProgressProvider } from '../../features/progress';
 import { SuccessToast } from '../../shared/components/feedback';
@@ -16,7 +17,7 @@ function AppToastHost() {
 
 export function AppProviders() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <ProgressProvider>
           <NavigationContainer>
@@ -28,3 +29,9 @@ export function AppProviders() {
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});
