@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   register,
   login,
+  logout,
   googleLogin,
   forgotPassword,
   verifyResetOtp,
@@ -16,6 +17,7 @@ const router = Router();
 
 router.post('/register', register);
 router.post('/login', login);
+router.post('/logout', logout);
 router.post('/google', googleLogin);
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-reset-otp', verifyResetOtp);

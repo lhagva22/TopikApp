@@ -16,7 +16,7 @@ LISTENING_PDF = DOWNLOADS / "52nd TOPIK II Listening Text.pdf"
 ANSWER_PDF = DOWNLOADS / "52nd TOPIK II Answer Sheets.pdf"
 LISTENING_AUDIO = DOWNLOADS / "52nd-TOPIK-II-Listening-Audio-File-64k-mono.mp3"
 
-OUTPUT_SQL = ROOT / "backend" / "sql" / "mock_tests" / "topik_ii_52.sql"
+OUTPUT_SQL = ROOT / "backend" / "sql" / "seeds" / "mock_tests" / "topik_ii" / "topik_ii_52.sql"
 ASSETS_ROOT = ROOT / "topik_ii_52_assets"
 UPLOAD_ROOT = ASSETS_ROOT / "upload" / "topik-ii-52"
 BACKEND_MEDIA_ROOT = ROOT / "backend" / "public" / "topik-ii-52"

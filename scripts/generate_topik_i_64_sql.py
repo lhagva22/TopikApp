@@ -23,7 +23,7 @@ LISTENING_PDF = DOWNLOADS / "64th-TOPIK-I-Listening-Transcript.pdf"
 READING_PDF = DOWNLOADS / "64th-TOPIK-I-Reading-Test-Paper.pdf"
 LISTENING_AUDIO = DOWNLOADS / "64-TOPIK-I-Listening-Audio-File.mp3"
 
-OUTPUT_SQL = ROOT / "backend" / "sql" / "mock_tests" / "topik_i_64.sql"
+OUTPUT_SQL = ROOT / "backend" / "sql" / "seeds" / "mock_tests" / "topik_i" / "topik_i_64.sql"
 ASSETS_ROOT = ROOT / "topik_i_64_assets"
 UPLOAD_ROOT = ASSETS_ROOT / "upload" / "topik-i-64"
 OCR_CACHE_ROOT = ASSETS_ROOT / "ocr_cache"

@@ -6,7 +6,15 @@ const { spawn } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_ENV_FILE = path.join(ROOT, 'backend', '.env');
-const DEFAULT_MANIFEST = path.join(ROOT, 'backend', 'sql', 'mock_tests', 'topik_96_asset_manifest.json');
+const DEFAULT_MANIFEST = path.join(
+  ROOT,
+  'backend',
+  'sql',
+  'seeds',
+  'mock_tests',
+  'manifests',
+  'topik_96_asset_manifest.json',
+);
 const DEFAULT_BUCKET = 'mock test files';
 const DEFAULT_MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 

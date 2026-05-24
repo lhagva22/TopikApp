@@ -14,7 +14,7 @@ export const useExam = () => {
     return await store.startExam(examId);
   };
 
-  const canStartExam = (exam: ExamBank) => {
+  const canStartExam = (_exam: ExamBank) => {
     if (!hasAccess('paid')) {
       return { 
         allowed: false, 

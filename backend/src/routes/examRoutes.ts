@@ -4,6 +4,7 @@ import { protect } from '../middleware/authMiddleware';
 import {
   getExams,
   getExamById,
+  getExamResults,
   startExam,
   startLevelTestMockTest,
   submitExam,
@@ -17,6 +18,7 @@ router.get('/exams', getExams);
 router.get('/exams/:examId', getExamById);
 
 // Protected routes
+router.get('/exam-results', protect, getExamResults);
 router.post('/exam/:examId/start', protect, startExam);
 router.post('/exam/submit', protect, submitExam);
 router.post('/level-test/start', protect, startLevelTestMockTest);

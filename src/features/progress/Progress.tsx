@@ -21,6 +21,7 @@ import { ProtectedTouchable } from '../../shared/components/molecules/protectedT
 import { SubscriptionStatus } from '../../shared/components/organisms/SubscriptionStatus';
 import { useProgress } from './index';
 import { lessonCategorySlugMap, type LessonCategorySlug } from '../lessons/lessonCategories';
+import { buildWeakAreas, getScorePercentage, getSectionAccuracy } from './model/progressMetrics';
 import type { ProgressRecommendation, ProgressSection } from './model/types';
 
 type ProgressNavigationProp = DrawerScreenProps<RootDrawerParamList, 'Progress'>['navigation'];
@@ -28,12 +29,7 @@ type TrendMode = 'chart' | 'list';
 type TimePeriod = 'all' | 'week' | 'month';
 type ProgressSource = 'level_test' | 'mock';
 type TopikExamType = 'all' | 'TOPIK I' | 'TOPIK II';
-
-const getScorePercentage = (score: number, maxScore: number) =>
-  Math.round((score / Math.max(maxScore, 1)) * 100);
-
-const getSectionAccuracy = (section: ProgressSection) =>
-  section.totalQuestions > 0 ? Math.round((section.correctAnswers / section.totalQuestions) * 100) : 0;
+type ChartMetric = 'total' | 'listening' | 'reading';
 
 const getDurationLabel = (durationInSeconds: number) => `${Math.round(durationInSeconds / 60)} мин`;
 
@@ -50,6 +46,29 @@ const getPeriodLabel = (period: TimePeriod) => {
 };
 
 const getChartLabel = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
+
+const getChartMetricLabel = (metric: ChartMetric) => {
+  if (metric === 'listening') {
+    return 'Сонсгол';
+  }
+
+  if (metric === 'reading') {
+    return 'Уншлага';
+  }
+
+  return 'Нийт';
+};
+
+const getChartMetricPercentage = (result: { totalScore: number; maxScore: number; sections: ProgressSection[] }, metric: ChartMetric) => {
+  if (metric === 'total') {
+    return getScorePercentage(result.totalScore, result.maxScore);
+  }
+
+  const sectionName = metric === 'listening' ? 'Сонсгол' : 'Уншлага';
+  const section = result.sections.find((item) => item.name === sectionName);
+
+  return section ? getSectionAccuracy(section) : 0;
+};
 
 const isLessonCategorySlug = (slug?: string | null): slug is LessonCategorySlug =>
   Boolean(slug && Object.prototype.hasOwnProperty.call(lessonCategorySlugMap, slug));
@@ -89,6 +108,7 @@ export function Progress() {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
   const [progressSource, setProgressSource] = useState<ProgressSource>('level_test');
   const [topikExamType, setTopikExamType] = useState<TopikExamType>('all');
+  const [chartMetric, setChartMetric] = useState<ChartMetric>('total');
   const [chartWidth, setChartWidth] = useState(0);
 
   const canGoBack = navigation.canGoBack();
@@ -166,38 +186,7 @@ export function Progress() {
 
   const improvementRate = getImprovementRate();
 
-  const weakAreas = Object.entries(
-    filteredResults.reduce<Record<string, { correct: number; total: number }>>((acc, result) => {
-      result.sections.forEach((section) => {
-        if (!acc[section.name]) {
-          acc[section.name] = { correct: 0, total: 0 };
-        }
-
-        acc[section.name].correct += section.correctAnswers;
-        acc[section.name].total += section.totalQuestions;
-      });
-
-      return acc;
-    }, {}),
-  )
-    .map(([category, stats]) => ({
-      category,
-      accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-      errors: stats.total - stats.correct,
-    }))
-    .sort((left, right) => left.accuracy - right.accuracy || right.errors - left.errors);
-
-  const errorFrequency = Object.entries(
-    filteredResults.reduce<Record<string, number>>((acc, result) => {
-      result.sections.forEach((section) => {
-        const errors = section.totalQuestions - section.correctAnswers;
-        acc[section.name] = (acc[section.name] || 0) + errors;
-      });
-      return acc;
-    }, {}),
-  )
-    .map(([category, count]) => ({ category, count }))
-    .sort((left, right) => right.count - left.count);
+  const weakAreas = buildWeakAreas(filteredResults);
 
   const latestResultPercentage = latestResult
     ? getScorePercentage(latestResult.totalScore, latestResult.maxScore)
@@ -217,8 +206,8 @@ export function Progress() {
   const latestWeakSection = latestSections.slice().sort((left, right) => left.accuracy - right.accuracy)[0] || null;
 
   const focusArea = weakAreas[0]?.category || null;
-  const focusAccuracy = weakAreas[0]?.accuracy ?? null;
   const periodLabel = getPeriodLabel(timePeriod);
+  const selectedResultsLabel = `${topikExamType === 'all' ? 'TOPIK бүгд' : topikExamType} · ${periodLabel}`;
   const resultMatchedRecommendations = latestResult
     ? recommendations.filter(
         (recommendation) => recommendation.content && recommendation.resultId === latestResult.id,
@@ -262,7 +251,7 @@ export function Progress() {
     .slice()
     .reverse()
     .map((result) => ({
-      value: getScorePercentage(result.totalScore, result.maxScore),
+      value: getChartMetricPercentage(result, chartMetric),
       label: getChartLabel(new Date(result.date)),
     }));
 
@@ -273,6 +262,28 @@ export function Progress() {
   const nextStepSummary = focusArea
     ? `${focusArea} дээр төвлөрөөд, дараа нь шинэ mock test өгвөл ахиц хамгийн ойлгомжтой харагдана.`
     : 'Сүүлийн шалгалтынхаа review-г хийж дуусаад дараагийн mock test-ээр ахицаа шалгаарай.';
+
+  const progressInsight = (() => {
+    const weakestArea = weakAreas[0];
+
+    if (!weakestArea) {
+      return 'Одоогоор ахицийг тайлбарлах хангалттай үр дүн алга.';
+    }
+
+    const areaSummary = `${weakestArea.category} хэсэгт ${weakestArea.correct}/${weakestArea.total} зөв (${weakestArea.accuracy}%), ${weakestArea.errors} алдаатай байна.`;
+
+    if (filteredResults.length < 2) {
+      return `${areaSummary} Дараагийн шалгалтын дараа өсөлт, бууралтыг харьцуулж чадна.`;
+    }
+
+    if (latestChange === null || latestChange === 0) {
+      return `${areaSummary} Нийт дүн өмнөх шалгалттай ойролцоо байна.`;
+    }
+
+    return latestChange > 0
+      ? `${areaSummary} Сүүлийн нийт дүн өмнөхөөс ${latestChange}% өссөн байна.`
+      : `${areaSummary} Сүүлийн нийт дүн өмнөхөөс ${Math.abs(latestChange)}% буурсан байна.`;
+  })();
 
   const recommendationSummary = primaryRecommendation?.reason?.trim();
 
@@ -482,7 +493,7 @@ export function Progress() {
             <View style={styles.cardHeaderRow}>
               <View style={styles.sectionHeaderTight}>
                 <View style={styles.sectionAccent} />
-                <Text style={styles.sectionTitle}>Сүүлийн шалгалт</Text>
+                <Text style={styles.sectionTitle}>Сүүлийн шалгалтын дүн</Text>
               </View>
               <Text style={styles.blockMeta}>
                 {latestResult ? new Date(latestResult.date).toLocaleDateString('mn-MN') : ''}
@@ -550,9 +561,9 @@ export function Progress() {
             <View style={styles.cardHeaderRow}>
               <View style={styles.sectionHeaderTight}>
                 <View style={styles.sectionAccent} />
-                <Text style={styles.sectionTitle}>Өөрчлөлт</Text>
+                <Text style={styles.sectionTitle}>Сонгосон хугацааны нийт дүн</Text>
               </View>
-              <Text style={styles.blockMeta}>{periodLabel}</Text>
+              <Text style={styles.blockMeta}>{selectedResultsLabel}</Text>
             </View>
 
             <View style={[styles.changeBanner, { backgroundColor: changeSurface }]}>
@@ -578,6 +589,14 @@ export function Progress() {
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Дундаж хугацаа</Text>
                 <Text style={styles.statValue}>{avgStudyTime} мин</Text>
+              </View>
+            </View>
+
+            <View style={styles.insightCard}>
+              <Icon name="analytics-outline" size={18} color="#155DFC" />
+              <View style={styles.insightBody}>
+                <Text style={styles.insightTitle}>Автомат тайлбар</Text>
+                <Text style={styles.insightText}>{progressInsight}</Text>
               </View>
             </View>
 
@@ -610,33 +629,55 @@ export function Progress() {
             </View>
 
             {viewMode === 'chart' ? (
-              chartData.length > 0 ? (
-                <View
-                  style={styles.chartWrap}
-                  onLayout={(event) => {
-                    const nextWidth = Math.floor(event.nativeEvent.layout.width);
-                    if (nextWidth !== chartWidth) {
-                      setChartWidth(nextWidth);
-                    }
-                  }}
-                >
-                  <LineChart
-                    data={chartData}
-                    width={Math.max(chartWidth - 16, 240)}
-                    height={220}
-                    color="#155DFC"
-                    dataPointsColor="#155DFC"
-                    textColor="#64748B"
-                    thickness={3}
-                    hideRules={false}
-                    showVerticalLines={false}
-                  />
+              <>
+                <View style={styles.metricRow}>
+                  {(['total', 'listening', 'reading'] as const).map((metric) => {
+                    const active = chartMetric === metric;
+                    return (
+                      <TouchableOpacity
+                        key={metric}
+                        style={[styles.metricBtn, active && styles.metricBtnActive]}
+                        onPress={() => setChartMetric(metric)}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[styles.metricText, active && styles.metricTextActive]}>
+                          {getChartMetricLabel(metric)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-              ) : (
-                <View style={styles.innerEmpty}>
-                  <Text style={styles.innerEmptyText}>Энэ хугацаанд харуулах trend алга.</Text>
-                </View>
-              )
+
+                <Text style={styles.chartMetricCaption}>{`${getChartMetricLabel(chartMetric)} гүйцэтгэл (%)`}</Text>
+
+                {chartData.length > 0 ? (
+                  <View
+                    style={styles.chartWrap}
+                    onLayout={(event) => {
+                      const nextWidth = Math.floor(event.nativeEvent.layout.width);
+                      if (nextWidth !== chartWidth) {
+                        setChartWidth(nextWidth);
+                      }
+                    }}
+                  >
+                    <LineChart
+                      data={chartData}
+                      width={Math.max(chartWidth - 16, 240)}
+                      height={220}
+                      color="#155DFC"
+                      dataPointsColor="#155DFC"
+                      textColor="#64748B"
+                      thickness={3}
+                      hideRules={false}
+                      showVerticalLines={false}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.innerEmpty}>
+                    <Text style={styles.innerEmptyText}>Энэ хугацаанд харуулах trend алга.</Text>
+                  </View>
+                )}
+              </>
             ) : (
               <View style={styles.listGap}>
                 {filteredResults.map((result) => {
@@ -680,9 +721,9 @@ export function Progress() {
             <View style={styles.cardHeaderRow}>
               <View style={styles.sectionHeaderTight}>
                 <View style={styles.sectionAccent} />
-                <Text style={styles.sectionTitle}>Сул хэсэг</Text>
+                <Text style={styles.sectionTitle}>Сонгосон хугацааны сул хэсэг</Text>
               </View>
-              {focusAccuracy !== null ? <Text style={styles.blockMeta}>{focusAccuracy}%</Text> : null}
+              <Text style={styles.blockMeta}>{selectedResultsLabel}</Text>
             </View>
 
             <View style={styles.focusCard}>
@@ -690,7 +731,7 @@ export function Progress() {
               <Text style={styles.focusTitle}>{focusArea || 'Тодорхойгүй'}</Text>
               <Text style={styles.focusDesc}>
                 {focusArea
-                  ? `${focusArea} дээр алдаа арай өндөр байна. Энэ хэсгийн тайлбар, review-д түрүүлж анхаарвал хамгийн үр дүнтэй.`
+                  ? `${focusArea} хамгийн бага зөв хариултын хувьтай байна. Энэ хэсгийн review-д түрүүлж анхаарвал хамгийн үр дүнтэй.`
                   : 'Одоогоор сул хэсгийг тодорхойлоход хангалттай өгөгдөл алга.'}
               </Text>
             </View>
@@ -702,23 +743,15 @@ export function Progress() {
                     <Text style={styles.weakLabel}>{area.category}</Text>
                     <Text style={styles.weakValue}>{area.accuracy}%</Text>
                   </View>
+                  <Text style={styles.weakMeta}>
+                    {`${area.correct}/${area.total} зөв · ${area.errors} алдсан · ${area.accuracy}%`}
+                  </Text>
                   <View style={styles.weakTrack}>
                     <View style={[styles.weakFill, { width: `${area.accuracy}%` }]} />
                   </View>
                 </View>
               ))}
             </View>
-
-            {errorFrequency.length > 0 ? (
-              <View style={styles.errorChipRow}>
-                {errorFrequency.slice(0, 2).map((item) => (
-                  <View key={item.category} style={styles.errorChip}>
-                    <Text style={styles.errorChipLabel}>{item.category}</Text>
-                    <Text style={styles.errorChipValue}>{item.count} алдаа</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
           </View>
 
           <View style={styles.card}>
@@ -1015,6 +1048,20 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 11, color: '#64748B', fontWeight: '600' },
   statValue: { fontSize: 18, color: '#0F172A', fontWeight: '800' },
+  insightCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 14,
+    padding: 12,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+    marginBottom: 14,
+  },
+  insightBody: { flex: 1, gap: 4 },
+  insightTitle: { fontSize: 11, fontWeight: '800', color: '#155DFC', textTransform: 'uppercase' },
+  insightText: { fontSize: 12, lineHeight: 18, color: '#334155', fontWeight: '600' },
   subsectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1037,6 +1084,20 @@ const styles = StyleSheet.create({
   toggleBtnActive: { backgroundColor: '#155DFC' },
   toggleText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
   toggleTextActive: { color: '#fff' },
+  metricRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  metricBtn: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 999,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 8,
+  },
+  metricBtnActive: { backgroundColor: '#EFF6FF', borderColor: '#93C5FD' },
+  metricText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+  metricTextActive: { color: '#155DFC' },
+  chartMetricCaption: { marginBottom: 8, fontSize: 11, color: '#64748B', fontWeight: '600' },
   chartWrap: { borderRadius: 12, overflow: 'hidden', width: '100%' },
   innerEmpty: {
     backgroundColor: '#F8FAFC',
@@ -1085,20 +1146,9 @@ const styles = StyleSheet.create({
   weakHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   weakLabel: { fontSize: 12, color: '#374151', fontWeight: '700' },
   weakValue: { fontSize: 12, color: '#155DFC', fontWeight: '800' },
+  weakMeta: { fontSize: 11, color: '#64748B', fontWeight: '600' },
   weakTrack: { height: 8, backgroundColor: '#F1F5F9', borderRadius: 999, overflow: 'hidden' },
   weakFill: { height: '100%', borderRadius: 999, backgroundColor: '#155DFC' },
-  errorChipRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  errorChip: {
-    flex: 1,
-    borderRadius: 12,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    padding: 10,
-    gap: 4,
-  },
-  errorChipLabel: { fontSize: 11, color: '#991B1B', fontWeight: '700' },
-  errorChipValue: { fontSize: 12, color: '#B91C1C', fontWeight: '800' },
 
   nextStepCallout: {
     flexDirection: 'row',

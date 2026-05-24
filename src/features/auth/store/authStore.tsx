@@ -131,10 +131,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       await authApi.logout();
-      set(await createGuestState());
     } catch (error) {
       logError('Logout error', error);
-      set({ isLoading: false });
+    } finally {
+      set(await createGuestState());
     }
   },
 

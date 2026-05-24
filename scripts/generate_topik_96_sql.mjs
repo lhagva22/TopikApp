@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..');
-const OUTPUT_DIR = path.join(ROOT, 'backend', 'sql', 'mock_tests');
+const OUTPUT_DIR = path.join(ROOT, 'backend', 'sql', 'seeds', 'mock_tests');
 
 const STORAGE_BASE_URL =
   'https://ywtxdfwntobzegrlyplw.supabase.co/storage/v1/object/public/mock%20test%20files';
@@ -26,7 +26,7 @@ const EXAMS = [
     audioFileName: '96th TOPIK I Listening Audio File.mp3',
     listeningPageUrl: 'https://www.topikguide.com/mock-tests/96-TOPIK-I-Listening-Mock-Test.html',
     readingPageUrl: 'https://www.topikguide.com/mock-tests/96-TOPIK-I-Reading-Mock-Test.html',
-    outputSqlPath: path.join(OUTPUT_DIR, 'topik_i_96.sql'),
+    outputSqlPath: path.join(OUTPUT_DIR, 'topik_i', 'topik_i_96.sql'),
   },
   {
     examType: 'TOPIK_II',
@@ -41,7 +41,7 @@ const EXAMS = [
     audioFileName: '96th TOPIK II Listening Audio.mp3',
     listeningPageUrl: 'https://www.topikguide.com/mock-tests/96-TOPIK-II-Listening-Mock-Test.html',
     readingPageUrl: 'https://www.topikguide.com/mock-tests/96-TOPIK-II-Reading-Mock-Test.html',
-    outputSqlPath: path.join(OUTPUT_DIR, 'topik_ii_96.sql'),
+    outputSqlPath: path.join(OUTPUT_DIR, 'topik_ii', 'topik_ii_96.sql'),
   },
 ];
 
@@ -503,7 +503,11 @@ COMMIT;
 }
 
 async function main() {
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  await Promise.all([
+    fs.mkdir(path.join(OUTPUT_DIR, 'topik_i'), { recursive: true }),
+    fs.mkdir(path.join(OUTPUT_DIR, 'topik_ii'), { recursive: true }),
+    fs.mkdir(path.join(OUTPUT_DIR, 'manifests'), { recursive: true }),
+  ]);
 
   const assetManifest = {
     generated_at: new Date().toISOString(),
@@ -547,7 +551,7 @@ async function main() {
     });
   }
 
-  const manifestPath = path.join(OUTPUT_DIR, 'topik_96_asset_manifest.json');
+  const manifestPath = path.join(OUTPUT_DIR, 'manifests', 'topik_96_asset_manifest.json');
   await fs.writeFile(manifestPath, `${JSON.stringify(assetManifest, null, 2)}\n`, 'utf8');
 }
 

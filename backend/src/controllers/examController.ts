@@ -58,8 +58,23 @@ type LevelTestHistoryResult = {
     | null;
 };
 
+type ExamResultListRow = {
+  id: string;
+  mock_test_id: string;
+  exam_type: 'TOPIK_I' | 'TOPIK_II';
+  total_score: number | null;
+  listening_score: number | null;
+  reading_score: number | null;
+  completed_at: string | null;
+  mock_test_bank:
+    | { title: string | null }
+    | { title: string | null }[]
+    | null;
+};
+
 const LEVEL_TEST_UNLOCK_SCORE = 140;
 const LEVEL_TEST_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+const getExamMaxScore = (examType: 'TOPIK_I' | 'TOPIK_II') => (examType === 'TOPIK_I' ? 200 : 300);
 
 const getPremiumProfile = async (userId: string) => {
   const { data: profile, error } = await supabaseAdmin
@@ -236,6 +251,24 @@ const shuffleOptions = (questions: QuestionRow[]) =>
     };
   });
 
+const normalizeSubmittedAnswers = (answers: SubmittedAnswer[]) =>
+  Array.from(
+    answers.reduce((uniqueAnswers, answer) => {
+      uniqueAnswers.set(answer.questionId, answer);
+      return uniqueAnswers;
+    }, new Map<string, SubmittedAnswer>()).values(),
+  );
+
+const isSubmittedAnswerArray = (answers: unknown): answers is SubmittedAnswer[] =>
+  Array.isArray(answers) &&
+  answers.every(
+    (answer) =>
+      typeof answer === 'object' &&
+      answer !== null &&
+      typeof (answer as SubmittedAnswer).questionId === 'string' &&
+      typeof (answer as SubmittedAnswer).selectedAnswer === 'string',
+  );
+
 const scoreAnswers = (questions: QuestionRow[], answers: SubmittedAnswer[]) => {
   let totalScore = 0;
   let listeningScore = 0;
@@ -333,7 +366,8 @@ const getRandomLevelTestExam = async (examType: LevelTestExamType) => {
     return { error: 'Шалгалтын асуултууд олдсонгүй' as const };
   }
 
-  const { mock_test_questions: _mqc, ...exam } = availableTests[Math.floor(Math.random() * availableTests.length)];
+  const exam = { ...availableTests[Math.floor(Math.random() * availableTests.length)] };
+  delete exam.mock_test_questions;
 
   return { exam: exam as MockTestRow };
 };
@@ -425,6 +459,65 @@ export const getExams = async (_req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error('Get exams error:', error);
+    return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
+  }
+};
+
+export const getExamResults = async (req: AuthRequest, res: Response) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй' });
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('level_test_results')
+      .select(
+        `
+          id,
+          mock_test_id,
+          exam_type,
+          total_score,
+          listening_score,
+          reading_score,
+          completed_at,
+          mock_test_bank:mock_test_id (
+            title
+          )
+        `,
+      )
+      .eq('user_id', userId)
+      .order('completed_at', { ascending: false, nullsFirst: false });
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+
+    const results = ((data || []) as ExamResultListRow[]).map((result) => {
+      const test = Array.isArray(result.mock_test_bank)
+        ? result.mock_test_bank[0] || null
+        : result.mock_test_bank;
+      const maxScore = getExamMaxScore(result.exam_type);
+      const totalScore = result.total_score || 0;
+
+      return {
+        id: result.id,
+        exam_id: result.mock_test_id,
+        exam_title: test?.title || 'TOPIK шалгалт',
+        exam_type: result.exam_type,
+        total_score: totalScore,
+        max_score: maxScore,
+        listening_score: result.listening_score || 0,
+        reading_score: result.reading_score || 0,
+        percentage: Math.round((totalScore / maxScore) * 100),
+        completed_at: result.completed_at,
+      };
+    });
+
+    return res.json({ success: true, results, total: results.length });
+  } catch (error) {
+    console.error('Get exam results error:', error);
     return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
   }
 };
@@ -637,6 +730,10 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ success: false, error: 'Session ID олдсонгүй' });
   }
 
+  if (!isSubmittedAnswerArray(answers)) {
+    return res.status(400).json({ success: false, error: 'answers must be an array of submitted answers' });
+  }
+
   try {
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('level_test_sessions')
@@ -676,6 +773,7 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
       return res.status(500).json({ success: false, error: 'Асуултуудыг ачаалахад алдаа гарлаа' });
     }
 
+    const submittedAnswers = normalizeSubmittedAnswers(answers || []);
     const {
       totalScore,
       listeningScore,
@@ -688,14 +786,14 @@ export const submitExam = async (req: AuthRequest, res: Response) => {
       readingMaxScore,
     } = scoreAnswers(
       questions as QuestionRow[],
-      answers || [],
+      submittedAnswers,
     );
 
     const completedAt = new Date().toISOString();
-    const listeningAnswers = (answers || []).filter((answer) =>
+    const listeningAnswers = submittedAnswers.filter((answer) =>
       questions.some((question) => question.id === answer.questionId && question.section === 'listening'),
     );
-    const readingAnswers = (answers || []).filter((answer) =>
+    const readingAnswers = submittedAnswers.filter((answer) =>
       questions.some((question) => question.id === answer.questionId && question.section === 'reading'),
     );
 
@@ -771,6 +869,10 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ success: false, error: 'Хүсэлт буруу байна' });
   }
 
+  if (!isSubmittedAnswerArray(answers)) {
+    return res.status(400).json({ success: false, error: 'answers must be an array of submitted answers' });
+  }
+
   try {
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('level_test_sessions')
@@ -806,6 +908,7 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
       return res.status(500).json({ success: false, error: 'Асуултуудыг ачаалахад алдаа гарлаа' });
     }
 
+    const submittedAnswers = normalizeSubmittedAnswers(answers || []);
     const {
       totalScore,
       listeningScore,
@@ -818,7 +921,7 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
       readingMaxScore,
     } = scoreAnswers(
       questions as QuestionRow[],
-      answers || [],
+      submittedAnswers,
     );
 
     const completedAt = new Date().toISOString();
@@ -835,10 +938,10 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
         adjusted_score: totalScore,
         listening_score: listeningScore,
         reading_score: readingScore,
-        listening_answers: (answers || []).filter((answer) =>
+        listening_answers: submittedAnswers.filter((answer) =>
           questions.some((question) => question.id === answer.questionId && question.section === 'listening'),
         ),
-        reading_answers: (answers || []).filter((answer) =>
+        reading_answers: submittedAnswers.filter((answer) =>
           questions.some((question) => question.id === answer.questionId && question.section === 'reading'),
         ),
         time_spent_listening: exam.listening_questions > 0 ? timeSpent || 0 : 0,

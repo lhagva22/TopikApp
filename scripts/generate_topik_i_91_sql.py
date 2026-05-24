@@ -21,7 +21,7 @@ LISTENING_PDF = DOWNLOADS / "91st-TOPIK-I-Listening-Transcript.pdf"
 READING_PDF = DOWNLOADS / "91st-TOPIK-I-Reading-Test-Paper.pdf"
 LISTENING_AUDIO = DOWNLOADS / "91-TOPIK-I-Listening-Audio-File-64k-mono.mp3"
 
-OUTPUT_SQL = ROOT / "backend" / "sql" / "mock_tests" / "topik_i_91.sql"
+OUTPUT_SQL = ROOT / "backend" / "sql" / "seeds" / "mock_tests" / "topik_i" / "topik_i_91.sql"
 ASSETS_ROOT = ROOT / "topik_i_91_assets"
 UPLOAD_ROOT = ASSETS_ROOT / "upload" / "topik-i-91"
 

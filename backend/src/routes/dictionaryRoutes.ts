@@ -12,9 +12,9 @@ import {
 const router = Router();
 
 router.get('/dictionary/search', searchDictionary);
-router.get('/dictionary/:id', getDictionaryWord);
 router.get('/dictionary/bookmarks', protect, getBookmarks);
 router.post('/dictionary/bookmarks', protect, addBookmark);
 router.delete('/dictionary/bookmarks/:wordId', protect, removeBookmark);
+router.get('/dictionary/:id', getDictionaryWord);
 
 export default router;

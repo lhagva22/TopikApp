@@ -6,6 +6,10 @@ import { AuthRequest } from '../types';
 const PASSWORD_RESET_TOKEN_TTL_MS = 10 * 60 * 1000;
 const passwordResetTokens = new Map<string, { userId: string; email: string; expiresAt: number }>();
 
+export const logout = async (_req: Request, res: Response) => {
+  return res.json({ success: true });
+};
+
 const getAuthInfo = (user: any) => {
   const providers = Array.isArray(user?.app_metadata?.providers)
     ? user.app_metadata.providers

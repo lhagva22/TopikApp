@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
 import { supabaseAdmin } from '../config/supabase';
-import { qpayService, type QPayDeeplink, type QPayInvoiceResponse, type QPayPaymentCheckResponse } from '../services/qpayService';
+import { qpayService, type QPayDeeplink } from '../services/qpayService';
 import type { AuthRequest } from '../types';
 
 type PaymentPlan = {

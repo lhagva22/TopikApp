@@ -19,7 +19,7 @@ LISTENING_PDF = DOWNLOADS / "83rd-TOPIK-II-Listening-Transcript.pdf"
 READING_PDF = DOWNLOADS / "83rd-TOPIK-II-Reading-Test-Paper.pdf"
 LISTENING_AUDIO = DOWNLOADS / "83-TOPIK-II-Listening-Audio-File.mp3"
 
-OUTPUT_SQL = ROOT / "backend" / "sql" / "mock_tests" / "topik_ii_83.sql"
+OUTPUT_SQL = ROOT / "backend" / "sql" / "seeds" / "mock_tests" / "topik_ii" / "topik_ii_83.sql"
 OCR_CACHE_ROOT = ROOT / "topik_ii_83_assets" / "ocr_cache"
 
 STORAGE_BASE_URL = "https://ywtxdfwntobzegrlyplw.supabase.co/storage/v1/object/public/mock%20test%20files"

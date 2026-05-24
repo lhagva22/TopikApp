@@ -110,6 +110,17 @@ type RecommendationRow = {
   learning_contents: RecommendationContentRow;
 };
 
+type LessonProgressRow = {
+  content_id: string;
+  completed: boolean;
+  progress_percent: number | null;
+  completed_at: string | null;
+  learning_contents:
+    | { category_id: string | null }
+    | { category_id: string | null }[]
+    | null;
+};
+
 type QuestionRow = {
   id: string;
   mock_test_id: string;
@@ -276,27 +287,6 @@ const mapResultSummary = (result: ResultRow, testMeta?: TestMeta) => ({
   level: getSingleRelation(result.level_test_sessions)?.final_level_name || undefined,
 });
 
-const joinExplanationParts = (...parts: Array<string | null | undefined>) => {
-  const seen = new Set<string>();
-
-  return parts
-    .map((part) => (typeof part === 'string' ? part.trim() : ''))
-    .filter((part) => {
-      if (!part || seen.has(part)) {
-        return false;
-      }
-
-      seen.add(part);
-      return true;
-    })
-    .join(' ');
-};
-
-const getOptionExplanation = (
-  _question?: Pick<QuestionRow, 'options'>,
-  _answerText?: string | null,
-) => null;
-
 const loadReviewQuestions = async (mockTestId: string) => {
   const { data, error } = await supabaseAdmin
     .from('mock_test_questions')
@@ -394,6 +384,40 @@ const loadRecommendations = async (userId: string, resultIds: string[]) => {
     });
 };
 
+const loadLessonProgress = async (userId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('lesson_progress')
+    .select(
+      `
+        content_id,
+        completed,
+        progress_percent,
+        completed_at,
+        learning_contents:content_id (
+          category_id
+        )
+      `,
+    )
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return ((data || []) as LessonProgressRow[]).map((progress) => {
+    const content = getSingleRelation(progress.learning_contents);
+
+    return {
+      categoryId: content?.category_id || '',
+      lessonId: progress.content_id,
+      completed: Boolean(progress.completed),
+      score: progress.progress_percent ?? undefined,
+      completedDate: progress.completed_at || undefined,
+    };
+  });
+};
+
 const getExplanationText = (
   question: QuestionRow,
   _selectedAnswer: string | null,
@@ -459,10 +483,13 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
     );
     const mockTestIds = [...new Set(visibleResults.map((result) => result.mock_test_id).filter(Boolean))];
     const questionMetaByTest = await buildQuestionMetaByTest(mockTestIds);
-    const recommendations = await loadRecommendations(
-      userId,
-      visibleResults.map((result) => result.id),
-    );
+    const [recommendations, lessonProgress] = await Promise.all([
+      loadRecommendations(
+        userId,
+        visibleResults.map((result) => result.id),
+      ),
+      loadLessonProgress(userId),
+    ]);
 
     const examResults = mockResults.map((result) =>
       mapResultSummary(result, questionMetaByTest.get(result.mock_test_id)),
@@ -475,7 +502,7 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
       success: true,
       examResults,
       levelTestResults: levelTestExamResults,
-      lessonProgress: [],
+      lessonProgress,
       recommendations,
     });
   } catch (error) {
@@ -570,8 +597,6 @@ export const getProgressResultDetail = async (req: AuthRequest, res: Response) =
     const reviewQuestions = typedQuestions.map((question) => {
       const selectedAnswer = answerMap.get(question.id) ?? null;
       const isCorrect = selectedAnswer === question.correct_answer_text;
-      const selectedOptionExplanation = getOptionExplanation(question, selectedAnswer);
-      const correctOptionExplanation = getOptionExplanation(question, question.correct_answer_text);
 
       return {
         id: question.id,

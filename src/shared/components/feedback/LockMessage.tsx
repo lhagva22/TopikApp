@@ -55,7 +55,6 @@ export function LockMessage({
   reason,
   onClose,
   onLoginClick,
-  onPricingClick,
 }: LockMessageProps) {
   const content = getContent(reason);
 

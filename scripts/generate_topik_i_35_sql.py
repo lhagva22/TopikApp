@@ -12,7 +12,7 @@ DOWNLOADS = Path.home() / "Downloads"
 PAPERS_PDF = DOWNLOADS / "35th-TOPIK-I-Papers.pdf"
 LISTENING_PDF = DOWNLOADS / "35th TOPIK I Listening Text.pdf"
 ANSWER_PDF = DOWNLOADS / "35th-TOPIK-I-Answer-Sheet.pdf"
-OUTPUT_SQL = ROOT / "backend" / "sql" / "mock_tests" / "topik_i_35.sql"
+OUTPUT_SQL = ROOT / "backend" / "sql" / "seeds" / "mock_tests" / "topik_i" / "topik_i_35.sql"
 
 MOCK_TEST_ID_SQL = (
     "(SELECT id FROM mock_test_bank "
