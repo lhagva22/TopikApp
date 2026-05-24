@@ -17,6 +17,7 @@ import { getErrorMessage } from '../../../shared/lib/errors';
 import { LevelCard } from '../components/LevelCard';
 import { LEVELS } from '../constants/levels';
 import { useHome } from '../hooks/useHome';
+import type { LevelTestExamType } from '../types';
 
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
@@ -48,10 +49,8 @@ const HomeScreen = () => {
     setShowLevelTestInfo(true);
   };
 
-  const handleConfirmLevelTestStart = async () => {
-    setShowLevelTestInfo(false);
-
-    const result = await startLevelTest();
+  const beginLevelTest = async (examType: LevelTestExamType) => {
+    const result = await startLevelTest(examType);
     if (result.success && result.data) {
       const { test, session, questions } = result.data;
 
@@ -78,8 +77,19 @@ const HomeScreen = () => {
     );
   };
 
+  const handleConfirmLevelTestStart = async () => {
+    setShowLevelTestInfo(false);
+    await beginLevelTest('TOPIK_I');
+  };
+
+  const handleContinueTopikII = async () => {
+    setActionError(null);
+    await beginLevelTest('TOPIK_II');
+  };
+
   const currentLevel =
     userLevel && userLevel > 0 ? LEVELS.find((level) => level.levelValue === userLevel) : undefined;
+  const canContinueTopikII = userLevel === 2;
 
   return (
     <View style={styles.screen}>
@@ -163,6 +173,18 @@ const HomeScreen = () => {
               <Icon name="play" size={16} color="#155DFC" />
               <Text style={styles.testBtnText}>Шалгалт эхлүүлэх</Text>
             </TouchableOpacity>
+
+            {canContinueTopikII ? (
+              <TouchableOpacity
+                style={[styles.continueBtn, startingLevelTest && styles.testBtnDisabled]}
+                onPress={handleContinueTopikII}
+                activeOpacity={0.85}
+                disabled={startingLevelTest}
+              >
+                <Icon name="arrow-forward-circle-outline" size={18} color="#fff" />
+                <Text style={styles.continueBtnText}>TOPIK II үргэлжлүүлж өгөх</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
@@ -195,7 +217,7 @@ const HomeScreen = () => {
               2. Эхлээд санамсаргүй TOPIK I mock test эхэлнэ.
             </Text>
             <Text style={styles.modalText}>
-              3. Хэрэв 140-аас дээш оноо авбал TOPIK II шат нээгдэнэ.
+              3. Хэрэв 140 буюу түүнээс дээш оноо авбал TOPIK II шат нээгдэнэ.
             </Text>
             <Text style={styles.modalText}>
               4. Энэ дүрэм зөвхөн түвшин тогтоох үед үйлчилнэ. Энгийн mock test-д
@@ -400,6 +422,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#155DFC',
+  },
+  continueBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    paddingVertical: 13,
+    marginTop: 10,
+  },
+  continueBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 
   modalOverlay: {

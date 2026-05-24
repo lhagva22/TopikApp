@@ -8,13 +8,15 @@ export interface Level {
   levelValue: number;
 }
 
+export type LevelTestExamType = 'TOPIK_I' | 'TOPIK_II';
+
 export interface LevelTestStartResponse {
   success: boolean;
   session?: { id: string; started_at: string };
   test?: {
     id: string;
     title: string;
-    exam_type: 'TOPIK_I' | 'TOPIK_II';
+    exam_type: LevelTestExamType;
     duration: number;
     total_questions: number;
     listening_questions: number;
@@ -29,7 +31,7 @@ export interface LevelTestData {
   test: {
     id: string;
     title: string;
-    exam_type: 'TOPIK_I' | 'TOPIK_II';
+    exam_type: LevelTestExamType;
     duration: number;
     total_questions: number;
     listening_questions: number;

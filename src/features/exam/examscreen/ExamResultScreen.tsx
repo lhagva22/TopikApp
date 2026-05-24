@@ -228,7 +228,7 @@ const ExamResultScreen = () => {
           {currentExamType === 'TOPIK_I' && nextLevelTest ? (
             <View style={styles.levelTestNotice}>
               <Icon name="trending-up-outline" size={18} color="#155DFC" />
-              <Text style={styles.levelTestNoticeText}>140-аас дээш оноо авсан тул TOPIK II үргэлжлүүлж өгч болно.</Text>
+              <Text style={styles.levelTestNoticeText}>140 буюу түүнээс дээш оноо авсан тул TOPIK II үргэлжлүүлж өгч болно.</Text>
             </View>
           ) : null}
         </View>

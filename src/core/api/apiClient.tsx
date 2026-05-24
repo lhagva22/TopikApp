@@ -4,12 +4,12 @@ import { Platform } from 'react-native';
 import { logError } from '../../shared/lib/errors';
 
 // true = бодит утас, false = emulator
-const USE_REAL_DEVICE = true;
+const USE_REAL_DEVICE = false;
 
 export const getBaseUrl = (): string => {
   if (Platform.OS === 'android') {
     return USE_REAL_DEVICE
-      ? 'http://192.168.1.57:5000/api'
+      ? 'http://10.39.170.75:5000/api'
       : 'http://10.0.2.2:5000/api';
   }
 

@@ -4,7 +4,7 @@ import { useAppStore } from '../../../app/store';
 import { getErrorMessage } from '../../../shared/lib/errors';
 import { authApi } from '../../auth/api/authApi';
 import { homeApi } from '../api/homeApi';
-import { StartLevelTestResult } from '../types';
+import type { LevelTestExamType, StartLevelTestResult } from '../types';
 
 export const useHome = () => {
   const { user, hasAccess } = useAppStore();
@@ -35,11 +35,11 @@ export const useHome = () => {
     }
   }, [hasAccess, user?.current_level, user?.id]);
 
-  const startLevelTest = async (): Promise<StartLevelTestResult> => {
+  const startLevelTest = async (examType: LevelTestExamType = 'TOPIK_I'): Promise<StartLevelTestResult> => {
     setStartingLevelTest(true);
 
     try {
-      const response = await homeApi.startLevelTest();
+      const response = await homeApi.startLevelTest(examType);
 
       if (response.success && response.session && response.test && response.questions) {
         return {

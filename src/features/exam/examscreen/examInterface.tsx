@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Dimensions,
   Image,
   Modal,
@@ -20,6 +21,7 @@ import type { VideoRef } from 'react-native-video';
 import { useAppStore } from '../../../app/store';
 import { resolveApiAssetUrl } from '../../../core/api/apiClient';
 import { InlineMessage } from '../../../shared/components/feedback';
+import { useScreenshotPrevention } from '../../../shared/hooks/useScreenshotPrevention';
 import { getErrorMessage, logError } from '../../../shared/lib/errors';
 import { authApi } from '../../auth/api/authApi';
 import { examApi } from '../api/examApi';
@@ -60,6 +62,7 @@ export const ExamInterface = () => {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  useScreenshotPrevention(Boolean(sessionId) && !hasSubmitted);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioPlayerRef = useRef<VideoRef | null>(null);
   const allowExitRef = useRef(false);
@@ -410,6 +413,16 @@ export const ExamInterface = () => {
         stopAudioPlayback(true);
       };
     }, [stopAudioPlayback]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        requestExitExam();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [requestExitExam]),
   );
 
   useEffect(() => {

@@ -27,6 +27,7 @@ type ProgressNavigationProp = DrawerScreenProps<RootDrawerParamList, 'Progress'>
 type TrendMode = 'chart' | 'list';
 type TimePeriod = 'all' | 'week' | 'month';
 type ProgressSource = 'level_test' | 'mock';
+type TopikExamType = 'all' | 'TOPIK I' | 'TOPIK II';
 
 const getScorePercentage = (score: number, maxScore: number) =>
   Math.round((score / Math.max(maxScore, 1)) * 100);
@@ -87,6 +88,7 @@ export function Progress() {
   const [viewMode, setViewMode] = useState<TrendMode>('chart');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
   const [progressSource, setProgressSource] = useState<ProgressSource>('level_test');
+  const [topikExamType, setTopikExamType] = useState<TopikExamType>('all');
   const [chartWidth, setChartWidth] = useState(0);
 
   const canGoBack = navigation.canGoBack();
@@ -108,10 +110,13 @@ export function Progress() {
   );
 
   const activeResults = progressSource === 'level_test' ? levelTestResults : examResults;
-  const totalExams = activeResults.length;
+  const examTypeResults =
+    topikExamType === 'all'
+      ? activeResults
+      : activeResults.filter((result) => result.examType === topikExamType);
   const totalAvailableResults = examResults.length + levelTestResults.length;
 
-  const filteredResults = activeResults.filter((result) => {
+  const filteredResults = examTypeResults.filter((result) => {
     if (timePeriod === 'all') {
       return true;
     }
@@ -131,7 +136,7 @@ export function Progress() {
   const hasFilteredResults = filteredResults.length > 0;
   const latestResult = filteredResults[0] ?? null;
   const previousResult = filteredResults[1] ?? null;
-  const trendResults = filteredResults.slice(0, 6);
+  const trendResults = filteredResults;
   const totalStudyTime = filteredResults.reduce((sum, result) => sum + result.duration, 0);
   const avgStudyTime = hasFilteredResults ? Math.round(totalStudyTime / filteredResults.length / 60) : 0;
   const periodAverageScore = hasFilteredResults
@@ -178,8 +183,9 @@ export function Progress() {
     .map(([category, stats]) => ({
       category,
       accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+      errors: stats.total - stats.correct,
     }))
-    .sort((left, right) => left.accuracy - right.accuracy);
+    .sort((left, right) => left.accuracy - right.accuracy || right.errors - left.errors);
 
   const errorFrequency = Object.entries(
     filteredResults.reduce<Record<string, number>>((acc, result) => {
@@ -210,8 +216,8 @@ export function Progress() {
 
   const latestWeakSection = latestSections.slice().sort((left, right) => left.accuracy - right.accuracy)[0] || null;
 
-  const focusArea = latestWeakSection?.name || weakAreas[0]?.category || null;
-  const focusAccuracy = latestWeakSection?.accuracy ?? weakAreas[0]?.accuracy ?? null;
+  const focusArea = weakAreas[0]?.category || null;
+  const focusAccuracy = weakAreas[0]?.accuracy ?? null;
   const periodLabel = getPeriodLabel(timePeriod);
   const resultMatchedRecommendations = latestResult
     ? recommendations.filter(
@@ -417,6 +423,26 @@ export function Progress() {
         })}
       </View>
 
+      <View style={styles.filterRow}>
+        {([
+          ['all', 'TOPIK бүгд'],
+          ['TOPIK I', 'TOPIK I'],
+          ['TOPIK II', 'TOPIK II'],
+        ] as const).map(([key, label]) => {
+          const active = topikExamType === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              style={[styles.filterPill, active && styles.filterPillActive]}
+              onPress={() => setTopikExamType(key)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <InlineMessage message={error} containerStyle={styles.message} />
 
       {isLoading && totalAvailableResults > 0 ? (
@@ -437,14 +463,17 @@ export function Progress() {
           </View>
           <Text style={styles.emptyTitle}>Энэ хугацаанд шалгалт алга</Text>
           <Text style={styles.emptyDesc}>
-            {`${periodLabel} өгсөн шалгалт олдсонгүй. Бүх хугацааны дүнгээ харах эсвэл шинэ mock test өгч үр дүнгээ нэмээрэй.`}
+            {`${topikExamType === 'all' ? '' : `${topikExamType} - `}${periodLabel} өгсөн шалгалт олдсонгүй. Шүүлтээ өөрчлөх эсвэл шинэ mock test өгч үр дүнгээ нэмээрэй.`}
           </Text>
           <TouchableOpacity
             style={styles.resetFilterBtn}
-            onPress={() => setTimePeriod('all')}
+            onPress={() => {
+              setTimePeriod('all');
+              setTopikExamType('all');
+            }}
             activeOpacity={0.85}
           >
-            <Text style={styles.resetFilterText}>Бүх хугацааг харах</Text>
+            <Text style={styles.resetFilterText}>Бүх шалгалтыг харах</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -553,7 +582,9 @@ export function Progress() {
             </View>
 
             <View style={styles.subsectionHeader}>
-              <Text style={styles.subsectionTitle}>Бүх шалгалтууд</Text>
+              <Text style={styles.subsectionTitle}>
+                {topikExamType === 'all' ? 'Бүх шалгалтууд' : `${topikExamType} шалгалтууд`}
+              </Text>
               <View style={styles.toggleRow}>
                 {(['chart', 'list'] as const).map((mode) => {
                   const active = viewMode === mode;
@@ -628,7 +659,9 @@ export function Progress() {
                         <Text style={styles.listItemTitle} numberOfLines={1}>
                           {result.examTitle}
                         </Text>
-                        <Text style={styles.listItemDate}>{new Date(result.date).toLocaleDateString('mn-MN')}</Text>
+                        <Text style={styles.listItemDate}>
+                          {result.examType} · {new Date(result.date).toLocaleDateString('mn-MN')}
+                        </Text>
                       </View>
                       <View style={styles.listItemRight}>
                         <Text style={styles.listItemScore}>
