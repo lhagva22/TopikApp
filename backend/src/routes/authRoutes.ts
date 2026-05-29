@@ -5,6 +5,7 @@ import {
   login,
   logout,
   googleLogin,
+  refreshSession,
   forgotPassword,
   verifyResetOtp,
   resetPassword,
@@ -19,6 +20,7 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/logout', logout);
 router.post('/google', googleLogin);
+router.post('/refresh', refreshSession);
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-reset-otp', verifyResetOtp);
 router.post('/reset-password', resetPassword);

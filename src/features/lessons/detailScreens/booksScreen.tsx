@@ -89,13 +89,19 @@ const BooksScreen = () => {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
+      <TouchableOpacity onPress={() => navigation.navigate('Lesson')} style={styles.backBtn}>
+        <Icon name="arrow-back" size={20} color="#0F172A" />
+      </TouchableOpacity>
+
       {/* Hero */}
       <View style={styles.hero}>
         <View style={styles.heroIconBox}>
-          <Icon name="library-outline" size={28} color="#60A5FA" />
+          <Icon name="library-outline" size={20} color="#60A5FA" />
         </View>
-        <Text style={styles.heroTitle}>Ном сурах бичиг</Text>
-        <Text style={styles.heroDesc}>TOPIK бэлтгэлд зориулсан ном, гарын авлагууд</Text>
+        <View style={styles.heroText}>
+          <Text style={styles.heroTitle}>Ном сурах бичиг</Text>
+          <Text style={styles.heroDesc}>TOPIK бэлтгэлд зориулсан ном, гарын авлагууд</Text>
+        </View>
       </View>
 
       {/* Search */}
@@ -242,24 +248,38 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F8FAFC' },
   content: { padding: 16, paddingBottom: 36 },
 
-  hero: {
-    backgroundColor: '#0F172A',
-    borderRadius: 22,
-    padding: 24,
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     marginBottom: 14,
-    gap: 10,
+    gap: 12,
   },
   heroIconBox: {
-    width: 58,
-    height: 58,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitle: { fontSize: 20, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.3 },
-  heroDesc:  { fontSize: 13, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
+  heroText: { flex: 1, gap: 3 },
+  heroTitle: { fontSize: 15, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.2 },
+  heroDesc:  { fontSize: 12, color: '#64748B', lineHeight: 17 },
 
   searchCard: {
     flexDirection: 'row',

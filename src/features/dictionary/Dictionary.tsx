@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import { getErrorMessage } from '../../shared/lib/errors';
@@ -21,19 +21,25 @@ const Dictionary = () => {
   const [words, setWords] = useState<DictionaryWord[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasLoadedWords, setHasLoadedWords] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+    let loadingTid: ReturnType<typeof setTimeout> | null = null;
 
     const loadWords = async () => {
       try {
-        setIsLoading(true);
+        loadingTid = setTimeout(() => {
+          if (isMounted) {
+            setIsLoading(true);
+          }
+        }, 180);
         setError(null);
 
-        const response = await dictionaryApi.searchWords(query, { limit: PAGE_SIZE, offset: 0 });
+        const response = await dictionaryApi.searchCachedWords(query, { limit: PAGE_SIZE, offset: 0 });
         if (!response.success) {
           throw new Error(response.error || 'Үгийн сан ачаалах боломжгүй байна.');
         }
@@ -42,32 +48,40 @@ const Dictionary = () => {
           setWords(response.words || []);
           setTotal(response.total || 0);
           setHasMore(Boolean(response.hasMore));
+          setHasLoadedWords(true);
         }
       } catch (loadError) {
         if (isMounted) {
           setError(getErrorMessage(loadError, 'Үгийн сан ачаалах үед алдаа гарлаа.'));
         }
       } finally {
-        if (isMounted) {setIsLoading(false);}
+        if (loadingTid) {
+          clearTimeout(loadingTid);
+        }
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    const tid = setTimeout(() => {
-      loadWords().catch(() => undefined);
-    }, 250);
+    loadWords().catch(() => undefined);
 
     return () => {
       isMounted = false;
-      clearTimeout(tid);
+      if (loadingTid) {
+        clearTimeout(loadingTid);
+      }
     };
   }, [query]);
 
   const loadMore = async () => {
-    if (isLoadingMore || !hasMore) {return;}
+    if (isLoadingMore || !hasMore) {
+      return;
+    }
 
     try {
       setIsLoadingMore(true);
-      const response = await dictionaryApi.searchWords(query, { limit: PAGE_SIZE, offset: words.length });
+      const response = await dictionaryApi.searchCachedWords(query, { limit: PAGE_SIZE, offset: words.length });
 
       if (!response.success) {
         throw new Error(response.error || 'Үг нэмж ачаалах боломжгүй байна.');
@@ -84,22 +98,25 @@ const Dictionary = () => {
   };
 
   const countLabel = useMemo(() => {
-    if (query.trim()) {return `"${query}" - ${words.length}/${total} үг`;}
-    return `Нийт ${total} үг (${words.length} харуулж байна)`;
-  }, [query, total, words.length]);
+    if (query.trim()) {
+      return `"${query}" - ${total} үр дүн`;
+    }
 
-  return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
+    return `Нийт ${total} үг`;
+  }, [query, total]);
+
+  const listData = hasLoadedWords && !isLoading && !error ? words : [];
+
+  const renderHeader = () => (
+    <>
       <View style={styles.hero}>
         <View style={styles.heroIconBox}>
-          <Icon name="library-outline" size={28} color="#60A5FA" />
+          <Icon name="library-outline" size={20} color="#60A5FA" />
         </View>
-        <Text style={styles.heroTitle}>Үгийн сан</Text>
+        <View style={styles.heroText}>
+          <Text style={styles.heroTitle}>Үгийн сан</Text>
+          <Text style={styles.heroDesc}>Солонгос үгийн жагсаалт, утга тайлбартай</Text>
+        </View>
       </View>
 
       <View style={styles.searchCard}>
@@ -121,7 +138,7 @@ const Dictionary = () => {
         )}
       </View>
 
-      {!isLoading && !error && (
+      {hasLoadedWords && !isLoading && !error && words.length > 0 && (
         <View style={styles.countRow}>
           <View style={styles.sectionAccent} />
           <Text style={styles.countText}>{countLabel}</Text>
@@ -134,11 +151,15 @@ const Dictionary = () => {
             <Icon name="hourglass-outline" size={26} color="#94A3B8" />
           </View>
           <Text style={styles.stateTitle}>Ачааллаж байна...</Text>
-          <Text style={styles.stateDesc}>Эхний {PAGE_SIZE} үгийг татаж байна.</Text>
+          <Text style={styles.stateDesc}>Эхний {PAGE_SIZE} үгийг бэлдэж байна.</Text>
         </View>
       )}
+    </>
+  );
 
-      {!isLoading && error && (
+  const renderEmpty = () => {
+    if (!isLoading && error) {
+      return (
         <View style={styles.stateCard}>
           <View style={[styles.stateIconBox, styles.errorIconBox]}>
             <Icon name="alert-circle-outline" size={26} color="#EF4444" />
@@ -146,9 +167,11 @@ const Dictionary = () => {
           <Text style={[styles.stateTitle, styles.errorText]}>Алдаа гарлаа</Text>
           <Text style={styles.stateDesc}>{error}</Text>
         </View>
-      )}
+      );
+    }
 
-      {!isLoading && !error && words.length === 0 && (
+    if (hasLoadedWords && !isLoading && !error && words.length === 0) {
+      return (
         <View style={styles.stateCard}>
           <View style={styles.stateIconBox}>
             <Icon name="search-outline" size={26} color="#94A3B8" />
@@ -158,57 +181,84 @@ const Dictionary = () => {
             {query.trim() ? `"${query}" гэсэн үг олдсонгүй. Өөр үг хайна уу.` : 'Хайх үгээ дээрх талбарт бичнэ үү.'}
           </Text>
         </View>
-      )}
+      );
+    }
 
-      {!isLoading && !error && words.length > 0 && (
-        <View style={styles.listCard}>
-          {words.map((word, idx) => {
-            const levelTheme = word.level != null ? LEVEL_THEME[word.level] : null;
+    return null;
+  };
 
-            return (
-              <View key={word.id} style={[styles.wordRow, idx < words.length - 1 && styles.wordRowBorder]}>
-                <View style={styles.wordIconBox}>
-                  <Icon name="text-outline" size={16} color="#155DFC" />
-                </View>
-                <View style={styles.wordBody}>
-                  <View style={styles.wordTitleRow}>
-                    <Text style={styles.wordKorean}>{word.koreanWord}</Text>
-                    {levelTheme && (
-                      <View style={[styles.levelBadge, { backgroundColor: levelTheme.bg }]}>
-                        <Text style={[styles.levelBadgeText, { color: levelTheme.color }]}>
-                          {levelTheme.label}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  {!!word.mongolianMeaning && <Text style={styles.wordMeaning}>{word.mongolianMeaning}</Text>}
-                  {!!word.exampleSentence && (
-                    <View style={styles.exampleWrap}>
-                      <Icon name="chatbubble-outline" size={11} color="#94A3B8" style={styles.exampleIcon} />
-                      <Text style={styles.wordExample}>{word.exampleSentence}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            );
-          })}
+  const renderFooter = () => {
+    if (!hasLoadedWords || isLoading || error || !hasMore) {
+      return null;
+    }
+
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          loadMore().catch(() => undefined);
+        }}
+        disabled={isLoadingMore}
+        activeOpacity={0.75}
+        style={[styles.loadMoreButton, isLoadingMore && styles.loadMoreButtonDisabled]}
+      >
+        <Icon name="chevron-down-outline" size={16} color="#155DFC" />
+        <Text style={styles.loadMoreText}>{isLoadingMore ? 'Ачааллаж байна...' : 'Цааш үзэх'}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderWord = ({ item, index }: { item: DictionaryWord; index: number }) => {
+    const levelTheme = item.level != null ? LEVEL_THEME[item.level] : null;
+
+    return (
+      <View style={[styles.wordRow, index < words.length - 1 && styles.wordRowBorder]}>
+        <View style={styles.wordIconBox}>
+          <Icon name="text-outline" size={16} color="#155DFC" />
         </View>
-      )}
+        <View style={styles.wordBody}>
+          <View style={styles.wordTitleRow}>
+            <Text style={styles.wordKorean}>{item.koreanWord}</Text>
+            {levelTheme && (
+              <View style={[styles.levelBadge, { backgroundColor: levelTheme.bg }]}>
+                <Text style={[styles.levelBadgeText, { color: levelTheme.color }]}>{levelTheme.label}</Text>
+              </View>
+            )}
+          </View>
+          {!!item.mongolianMeaning && <Text style={styles.wordMeaning}>{item.mongolianMeaning}</Text>}
+          {!!item.exampleSentence && (
+            <View style={styles.exampleWrap}>
+              <Icon name="chatbubble-outline" size={11} color="#94A3B8" style={styles.exampleIcon} />
+              <Text style={styles.wordExample}>{item.exampleSentence}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
 
-      {!isLoading && !error && hasMore && (
-        <TouchableOpacity
-          onPress={() => {
-            loadMore().catch(() => undefined);
-          }}
-          disabled={isLoadingMore}
-          activeOpacity={0.75}
-          style={[styles.loadMoreButton, isLoadingMore && styles.loadMoreButtonDisabled]}
-        >
-          <Icon name="chevron-down-outline" size={16} color="#155DFC" />
-          <Text style={styles.loadMoreText}>{isLoadingMore ? 'Ачааллаж байна...' : 'Цааш үзэх'}</Text>
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+  return (
+    <FlatList
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      data={listData}
+      keyExtractor={(item) => item.id}
+      renderItem={renderWord}
+      ListHeaderComponent={renderHeader}
+      ListEmptyComponent={renderEmpty}
+      ListFooterComponent={renderFooter}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      initialNumToRender={14}
+      maxToRenderPerBatch={16}
+      windowSize={7}
+      removeClippedSubviews
+      onEndReached={() => {
+        if (hasMore && !isLoadingMore && !isLoading && !error) {
+          loadMore().catch(() => undefined);
+        }
+      }}
+      onEndReachedThreshold={0.35}
+    />
   );
 };
 
@@ -217,23 +267,26 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 36 },
 
   hero: {
-    backgroundColor: '#0F172A',
-    borderRadius: 22,
-    padding: 24,
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     marginBottom: 14,
-    gap: 10,
+    gap: 12,
   },
   heroIconBox: {
-    width: 58,
-    height: 58,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitle: { fontSize: 20, fontWeight: '800', color: '#F8FAFC' },
-  heroDesc: { fontSize: 13, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
+  heroText: { flex: 1, gap: 3 },
+  heroTitle: { fontSize: 15, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.2 },
+  heroDesc: { fontSize: 12, color: '#64748B', lineHeight: 17 },
 
   searchCard: {
     flexDirection: 'row',
@@ -290,24 +343,16 @@ const styles = StyleSheet.create({
   stateTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
   stateDesc: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20 },
 
-  listCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
   wordRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#E2E8F0',
   },
   wordRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   wordIconBox: {

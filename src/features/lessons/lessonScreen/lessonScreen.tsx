@@ -136,7 +136,7 @@ const LessonScreen = () => {
           return (
             <ProtectedTouchable
               key={item.slug}
-              requiredStatus="registered"
+              requiredStatus="guest"
               onPress={() => handleLessonPress(item.route)}
               activeOpacity={0.82}
               style={styles.cardWrapper}

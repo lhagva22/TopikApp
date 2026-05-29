@@ -30,8 +30,24 @@ interface ProgressDetailResponse {
   error?: string;
 }
 
+const resultDetailCache = new Map<string, ProgressDetailResponse>();
+
 export const progressApi = {
   getProgress: () => apiRequest<ProgressResponse>(ENDPOINTS.PROGRESS.SUMMARY),
-  getResultDetail: (id: string) =>
-    apiRequest<ProgressDetailResponse>(ENDPOINTS.PROGRESS.DETAIL(id)),
+  getResultDetail: async (id: string, force = false) => {
+    if (!force) {
+      const cached = resultDetailCache.get(id);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    const response = await apiRequest<ProgressDetailResponse>(ENDPOINTS.PROGRESS.DETAIL(id));
+
+    if (response.success && response.detail) {
+      resultDetailCache.set(id, response);
+    }
+
+    return response;
+  },
 };

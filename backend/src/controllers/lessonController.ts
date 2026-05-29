@@ -2,6 +2,25 @@ import { Request, Response } from 'express';
 
 import { supabaseAdmin } from '../config/supabase';
 
+const GRAMMAR_VERSION_KEY = 'korean_grammar_lessons';
+const GRAMMAR_COLUMNS = `
+  id,
+  sort_order,
+  level,
+  topik_level,
+  category,
+  grammar_pattern,
+  meaning_mn,
+  form_rule,
+  example_kr,
+  example_mn,
+  note_mn,
+  is_active,
+  created_at,
+  updated_at
+`;
+const GRAMMAR_SYNC_PAGE_SIZE = 1000;
+
 const mapCategory = (item: any) => ({
   id: String(item.id),
   slug: item.slug || '',
@@ -50,6 +69,82 @@ const mapGrammarLesson = (item: any) => ({
   createdAt: item.created_at || null,
   updatedAt: item.updated_at || null,
 });
+
+const getAppDataVersion = async (key: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('app_data_versions')
+    .select('version, updated_at')
+    .eq('key', key)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (data) {
+    return data;
+  }
+
+  const { data: inserted, error: insertError } = await supabaseAdmin
+    .from('app_data_versions')
+    .insert({ key, version: 1 })
+    .select('version, updated_at')
+    .single();
+
+  if (insertError) {
+    throw insertError;
+  }
+
+  return inserted;
+};
+
+const getGrammarMeta = async () => {
+  const [countResult, version] = await Promise.all([
+    supabaseAdmin
+      .from('korean_grammar_lessons')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true),
+    getAppDataVersion(GRAMMAR_VERSION_KEY),
+  ]);
+
+  if (countResult.error) {
+    throw countResult.error;
+  }
+
+  return {
+    total: countResult.count || 0,
+    version: version.version,
+    updatedAt: version.updated_at || null,
+  };
+};
+
+const fetchAllGrammarLessons = async () => {
+  const lessons: any[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('korean_grammar_lessons')
+      .select(GRAMMAR_COLUMNS)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .range(offset, offset + GRAMMAR_SYNC_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = data || [];
+    lessons.push(...page);
+
+    if (page.length < GRAMMAR_SYNC_PAGE_SIZE) {
+      return lessons;
+    }
+
+    offset += GRAMMAR_SYNC_PAGE_SIZE;
+  }
+};
 
 export const getLessonCategories = async (_req: Request, res: Response) => {
   try {
@@ -169,24 +264,7 @@ export const getKoreanGrammarLessons = async (req: Request, res: Response) => {
   try {
     let query = supabaseAdmin
       .from('korean_grammar_lessons')
-      .select(
-        `
-          id,
-          sort_order,
-          level,
-          topik_level,
-          category,
-          grammar_pattern,
-          meaning_mn,
-          form_rule,
-          example_kr,
-          example_mn,
-          note_mn,
-          is_active,
-          created_at,
-          updated_at
-        `,
-      )
+      .select(GRAMMAR_COLUMNS)
       .eq('is_active', true);
 
     if (typeof level === 'string' && level.trim()) {
@@ -216,6 +294,32 @@ export const getKoreanGrammarLessons = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get Korean grammar lessons error:', error);
     return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
+  }
+};
+
+export const getKoreanGrammarSyncMeta = async (_req: Request, res: Response) => {
+  try {
+    const meta = await getGrammarMeta();
+    return res.json({ success: true, meta });
+  } catch (error: any) {
+    console.error('Get Korean grammar sync meta error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+};
+
+export const syncKoreanGrammarLessons = async (_req: Request, res: Response) => {
+  try {
+    const lessons = (await fetchAllGrammarLessons()).map(mapGrammarLesson);
+    const meta = await getGrammarMeta();
+
+    return res.json({
+      success: true,
+      lessons,
+      meta,
+    });
+  } catch (error: any) {
+    console.error('Sync Korean grammar lessons error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
 };
 

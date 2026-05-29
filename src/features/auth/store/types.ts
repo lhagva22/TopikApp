@@ -18,4 +18,5 @@ export interface AuthState {
 
 export type AuthSession = {
   access_token: string;
+  refresh_token?: string;
 };

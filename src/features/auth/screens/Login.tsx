@@ -97,7 +97,7 @@ const Login = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} removeClippedSubviews={false}>
       <TouchableOpacity onPress={handleGoBack}>
         <Icon name="arrow-back-outline" size={24} color="#333" />
       </TouchableOpacity>

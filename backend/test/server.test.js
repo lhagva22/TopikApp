@@ -7,6 +7,7 @@ const database = require('../dist/config/supabase.js');
 const originalSupabaseFrom = database.supabase.from.bind(database.supabase);
 const originalAdminFrom = database.supabaseAdmin.from.bind(database.supabaseAdmin);
 const originalGetUser = database.supabase.auth.getUser.bind(database.supabase.auth);
+const originalSignInWithPassword = database.supabase.auth.signInWithPassword.bind(database.supabase.auth);
 
 const makeQuery = (result) => {
   const query = {
@@ -67,6 +68,7 @@ describe('backend API', () => {
     database.supabase.from = originalSupabaseFrom;
     database.supabaseAdmin.from = originalAdminFrom;
     database.supabase.auth.getUser = originalGetUser;
+    database.supabase.auth.signInWithPassword = originalSignInWithPassword;
   });
 
   it('responds from the health endpoint', async () => {
@@ -112,6 +114,21 @@ describe('backend API', () => {
 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { success: true });
+  });
+
+  it('returns JSON when the login provider fails unexpectedly', async () => {
+    database.supabase.auth.signInWithPassword = async () => {
+      throw new Error('provider offline');
+    };
+
+    const response = await fetch(`${origin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'student@example.com', password: 'password' }),
+    });
+
+    assert.equal(response.status, 500);
+    assert.deepEqual(await response.json(), { error: 'Server error while signing in.' });
   });
 
   it('serves public exam, learning, video, and dictionary content', async () => {

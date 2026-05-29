@@ -3,6 +3,88 @@ import { Response } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import type { AuthRequest } from '../types';
 
+const DICTIONARY_COLUMNS = 'id, korean_word, mongolian_meaning, example_sentence, level, created_at';
+const DICTIONARY_SYNC_PAGE_SIZE = 1000;
+const DICTIONARY_VERSION_KEY = 'dictionary_words';
+
+const mapDictionaryWord = (item: any) => ({
+  id: String(item.id),
+  koreanWord: item.korean_word || '',
+  mongolianMeaning: item.mongolian_meaning || '',
+  exampleSentence: item.example_sentence || '',
+  level: item.level || null,
+  createdAt: item.created_at || null,
+});
+
+const getDictionaryMeta = async () => {
+  const [countResult, versionResult] = await Promise.all([
+    supabaseAdmin
+      .from('dictionary_words')
+      .select('id', { count: 'exact', head: true }),
+    supabaseAdmin
+      .from('app_data_versions')
+      .select('version, updated_at')
+      .eq('key', DICTIONARY_VERSION_KEY)
+      .maybeSingle(),
+  ]);
+
+  if (countResult.error) {
+    throw countResult.error;
+  }
+
+  if (versionResult.error) {
+    throw versionResult.error;
+  }
+
+  let version = versionResult.data;
+
+  if (!version) {
+    const { data, error } = await supabaseAdmin
+      .from('app_data_versions')
+      .insert({ key: DICTIONARY_VERSION_KEY, version: 1 })
+      .select('version, updated_at')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    version = data;
+  }
+
+  return {
+    total: countResult.count || 0,
+    version: version.version,
+    updatedAt: version.updated_at || null,
+  };
+};
+
+const fetchAllDictionaryWords = async () => {
+  const words: any[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('dictionary_words')
+      .select(DICTIONARY_COLUMNS)
+      .order('korean_word', { ascending: true })
+      .range(offset, offset + DICTIONARY_SYNC_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = data || [];
+    words.push(...page);
+
+    if (page.length < DICTIONARY_SYNC_PAGE_SIZE) {
+      return words;
+    }
+
+    offset += DICTIONARY_SYNC_PAGE_SIZE;
+  }
+};
+
 export const searchDictionary = async (req: AuthRequest, res: Response) => {
   const query = String(req.query.q || '').trim();
   const limitParam = Number(req.query.limit);
@@ -15,7 +97,7 @@ export const searchDictionary = async (req: AuthRequest, res: Response) => {
   try {
     let request = supabaseAdmin
       .from('dictionary_words')
-      .select('id, korean_word, mongolian_meaning, example_sentence, level, created_at', { count: 'exact' })
+      .select(DICTIONARY_COLUMNS, { count: 'exact' })
       .order('korean_word', { ascending: true })
       .range(offset, offset + limit - 1);
 
@@ -31,14 +113,7 @@ export const searchDictionary = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: error.message });
     }
 
-    const words = (data || []).map((item: any) => ({
-      id: String(item.id),
-      koreanWord: item.korean_word || '',
-      mongolianMeaning: item.mongolian_meaning || '',
-      exampleSentence: item.example_sentence || '',
-      level: item.level || null,
-      createdAt: item.created_at || null,
-    }));
+    const words = (data || []).map(mapDictionaryWord);
 
     return res.json({
       success: true,
@@ -51,6 +126,32 @@ export const searchDictionary = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Search dictionary error:', error);
     return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
+  }
+};
+
+export const getDictionarySyncMeta = async (_req: AuthRequest, res: Response) => {
+  try {
+    const meta = await getDictionaryMeta();
+    return res.json({ success: true, meta });
+  } catch (error: any) {
+    console.error('Get dictionary sync meta error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+};
+
+export const syncDictionary = async (_req: AuthRequest, res: Response) => {
+  try {
+    const words = (await fetchAllDictionaryWords()).map(mapDictionaryWord);
+    const meta = await getDictionaryMeta();
+
+    return res.json({
+      success: true,
+      words,
+      meta,
+    });
+  } catch (error: any) {
+    console.error('Sync dictionary error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
 };
 
@@ -78,14 +179,7 @@ export const getDictionaryWord = async (req: AuthRequest, res: Response) => {
 
     return res.json({
       success: true,
-      word: {
-        id: String(data.id),
-        koreanWord: data.korean_word || '',
-        mongolianMeaning: data.mongolian_meaning || '',
-        exampleSentence: data.example_sentence || '',
-        level: data.level || null,
-        createdAt: data.created_at || null,
-      },
+      word: mapDictionaryWord(data),
     });
   } catch (error) {
     console.error('Get dictionary word error:', error);
@@ -128,14 +222,7 @@ export const getBookmarks = async (req: AuthRequest, res: Response) => {
       id: String(item.id),
       createdAt: item.created_at || null,
       word: item.dictionary_words
-        ? {
-            id: String(item.dictionary_words.id),
-            koreanWord: item.dictionary_words.korean_word || '',
-            mongolianMeaning: item.dictionary_words.mongolian_meaning || '',
-            exampleSentence: item.dictionary_words.example_sentence || '',
-            level: item.dictionary_words.level || null,
-            createdAt: item.dictionary_words.created_at || null,
-          }
+          ? mapDictionaryWord(item.dictionary_words)
         : null,
     }));
 

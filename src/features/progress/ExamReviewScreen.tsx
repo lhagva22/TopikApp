@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
@@ -29,13 +29,19 @@ export function ExamReviewScreen({ navigation, route }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [resultDetail, setResultDetail] = useState<ExamResultDetail | null>(null);
   const [reviewFilter, setReviewFilter] = useState<'incorrect' | 'all'>('incorrect');
+  const resultDetailRef = useRef<ExamResultDetail | null>(null);
 
-  const loadResultDetail = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    resultDetailRef.current = resultDetail;
+  }, [resultDetail]);
+
+  const loadResultDetail = useCallback(async (force = false) => {
+    const hasCurrentDetail = !!resultDetailRef.current;
+    setLoading(force || !hasCurrentDetail);
     setError(null);
 
     try {
-      const response = await progressApi.getResultDetail(resultId);
+      const response = await progressApi.getResultDetail(resultId, force);
 
       if (response.success && response.detail) {
         setResultDetail({
@@ -49,11 +55,15 @@ export function ExamReviewScreen({ navigation, route }: Props) {
         return;
       }
 
-      setResultDetail(null);
+      if (!resultDetailRef.current) {
+        setResultDetail(null);
+      }
       setError(getErrorMessage(response.error, 'Шалгалтын review мэдээлэл ачааллагдсангүй.'));
     } catch (detailError) {
       logError('Error loading exam review', detailError);
-      setResultDetail(null);
+      if (!resultDetailRef.current) {
+        setResultDetail(null);
+      }
       setError(getErrorMessage(detailError, 'Шалгалтын review мэдээлэл ачааллагдсангүй.'));
     } finally {
       setLoading(false);
@@ -64,12 +74,7 @@ export function ExamReviewScreen({ navigation, route }: Props) {
     useCallback(() => {
       loadResultDetail().catch(() => undefined);
 
-      return () => {
-        setResultDetail(null);
-        setReviewFilter('incorrect');
-        setError(null);
-        setLoading(true);
-      };
+      return undefined;
     }, [loadResultDetail]),
   );
 
@@ -92,7 +97,7 @@ export function ExamReviewScreen({ navigation, route }: Props) {
         <RefreshControl
           refreshing={loading && !!resultDetail}
           onRefresh={() => {
-            loadResultDetail().catch(() => undefined);
+            loadResultDetail(true).catch(() => undefined);
           }}
         />
       }
@@ -131,7 +136,7 @@ export function ExamReviewScreen({ navigation, route }: Props) {
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
-              loadResultDetail().catch(() => undefined);
+              loadResultDetail(true).catch(() => undefined);
             }}
             activeOpacity={0.8}
           >

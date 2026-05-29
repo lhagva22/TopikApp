@@ -1,36 +1,31 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+const FACEBOOK_URL = 'https://www.facebook.com/profile.php?id=61586005296076';
+
 const CONTACT_ITEMS = [
-  {
-    icon: 'mail-outline',
-    color: '#155DFC',
-    bg: '#EFF6FF',
-    label: 'Имэйл',
-    lines: ['info@topik.mn', 'support@topik.mn'],
-  },
   {
     icon: 'call-outline',
     color: '#059669',
     bg: '#ECFDF5',
     label: 'Утас',
-    lines: ['+976 9999-9999', '+976 8888-8888'],
+    lines: ['9000-4547'],
   },
   {
-    icon: 'location-outline',
-    color: '#8B5CF6',
-    bg: '#F5F3FF',
-    label: 'Хаяг',
-    lines: ['Улаанбаатар хот, Сүхбаатар дүүрэг', 'Peace Avenue 17-01'],
+    icon: 'logo-facebook',
+    color: '#1877F2',
+    bg: '#EFF6FF',
+    label: 'Facebook',
+    lines: ['BrightRise'],
   },
 ];
 
 const HOURS = [
   { day: 'Даваа — Баасан', time: '09:00 — 18:00', closed: false },
-  { day: 'Бямба',          time: '10:00 — 15:00', closed: false },
-  { day: 'Ням',            time: 'Амралттай',     closed: true  },
+  { day: 'Бямба',          time: 'Амарна',         closed: true  },
+  { day: 'Ням',            time: 'Амарна',         closed: true  },
 ];
 
 const Contact = () => {
@@ -102,7 +97,11 @@ const Contact = () => {
         </View>
 
         <View style={styles.socialRow}>
-          <TouchableOpacity style={[styles.socialBtn, styles.facebookButton]} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={[styles.socialBtn, styles.facebookButton]}
+            activeOpacity={0.8}
+            onPress={() => Linking.openURL(FACEBOOK_URL)}
+          >
             <Icon name="logo-facebook" size={20} color="#fff" />
             <Text style={styles.socialBtnText}>Facebook</Text>
           </TouchableOpacity>

@@ -58,9 +58,9 @@ const About = () => {
         <View style={styles.heroIconBox}>
           <Icon name="school-outline" size={32} color="#60A5FA" />
         </View>
-        <Text style={styles.heroTitle}>Шинэ эхлэл нархан сургууль</Text>
+        <Text style={styles.heroTitle}>BrightRise</Text>
         <Text style={styles.heroDesc}>
-          Ахлах ангидаа Солонгос улсад шилжин суралцах боломжтой Монгол улсын цорын ганц сургууль юм.
+          New Beginning Education Center & Bright Rise Teenagers Club — өсвөр үе, сурагчдад зориулсан боловсрол, сургалт, хөгжлийн хөтөлбөрүүд.
         </Text>
       </View>
 
@@ -84,7 +84,7 @@ const About = () => {
           <Text style={styles.sectionTitle}>Бидний зорилго</Text>
         </View>
         <Text style={styles.goalText}>
-          Монгол хүн бүрт Солонгос хэл суралцах, TOPIK шалгалтад амжилттай тэнцэх боломжийг бүрдүүлэх.
+          BrightRise нь өсвөр үе болон сурагчдад зориулсан боловсрол, сургалт, хөгжлийн хөтөлбөрүүдийг хэрэгжүүлж, Монгол хүн бүрт Солонгос хэл суралцах, TOPIK шалгалтад амжилттай тэнцэх боломжийг бүрдүүлэхийг зорьдог.
         </Text>
       </View>
 

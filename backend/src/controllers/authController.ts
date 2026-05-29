@@ -10,6 +10,30 @@ export const logout = async (_req: Request, res: Response) => {
   return res.json({ success: true });
 };
 
+export const refreshSession = async (req: Request, res: Response) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({ success: false, error: 'Refresh token олдсонгүй' });
+  }
+
+  const { data, error } = await supabase.auth.refreshSession({
+    refresh_token: refreshToken,
+  });
+
+  if (error || !data.session) {
+    return res.status(401).json({
+      success: false,
+      error: error?.message || 'Session сэргээх боломжгүй байна',
+    });
+  }
+
+  return res.json({
+    success: true,
+    session: data.session,
+  });
+};
+
 const getAuthInfo = (user: any) => {
   const providers = Array.isArray(user?.app_metadata?.providers)
     ? user.app_metadata.providers
@@ -315,65 +339,70 @@ export const login = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Имэйл, нууц үгээ оруулна уу' });
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  if (error) {
-    return res.status(401).json({ error: 'Имэйл эсвэл нууц үг буруу' });
-  }
+    if (error) {
+      return res.status(401).json({ error: 'Имэйл эсвэл нууц үг буруу' });
+    }
 
-  // Profile-с мэдээлэл авах
-  let profile = null;
-  if (data.user) {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-    profile = profileData;
-
-    // Хэрэв profile байхгүй бол үүсгэх
-    if (!profileData) {
-      const { data: newProfile, error: createError } = await supabase
+    // Profile-с мэдээлэл авах
+    let profile = null;
+    if (data.user) {
+      const { data: profileData } = await supabase
         .from('profiles')
-        .insert({
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.user_metadata?.name || email?.split('@')[0],
-          status: 'registered',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
+        .select('*')
+        .eq('id', data.user.id)
         .single();
+      profile = profileData;
 
-      if (!createError && newProfile) {
-        profile = newProfile;
+      // Хэрэв profile байхгүй бол үүсгэх
+      if (!profileData) {
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata?.name || email?.split('@')[0],
+            status: 'registered',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (!createError && newProfile) {
+          profile = newProfile;
+        }
+      }
+
+      if (profile) {
+        profile = await downgradeExpiredSubscription(profile);
       }
     }
 
-    if (profile) {
-      profile = await downgradeExpiredSubscription(profile);
-    }
+    res.json({
+      success: true,
+      user: {
+        id: data.user?.id,
+        email: data.user?.email,
+        name: profile?.name || data.user?.user_metadata?.name,
+        status: profile?.status || 'registered',
+        current_level: profile?.current_level || 0,
+        subscription_start_date: profile?.subscription_start_date,
+        subscription_end_date: profile?.subscription_end_date,
+        subscription_months: profile?.subscription_months,
+        ...getAuthInfo(data.user),
+      },
+      session: data.session,
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({ error: 'Server error while signing in.' });
   }
-
-  res.json({
-    success: true,
-    user: {
-      id: data.user?.id,
-      email: data.user?.email,
-      name: profile?.name || data.user?.user_metadata?.name,
-      status: profile?.status || 'registered',
-      current_level: profile?.current_level || 0,
-      subscription_start_date: profile?.subscription_start_date,
-      subscription_end_date: profile?.subscription_end_date,
-      subscription_months: profile?.subscription_months,
-      ...getAuthInfo(data.user),
-    },
-    session: data.session,
-  });
 };
 
 // backend/src/controllers/authController.ts

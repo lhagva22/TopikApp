@@ -109,6 +109,6 @@ export interface ProgressContextType {
   getTotalExamsTaken: () => number;
   getRecentResults: (limit?: number) => ExamResult[];
   getWeakAreas: () => WeakArea[];
-  reloadData: () => Promise<void>;
+  reloadData: (force?: boolean) => Promise<void>;
   clearAllData: () => Promise<void>;
 }

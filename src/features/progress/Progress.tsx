@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -20,8 +20,9 @@ import Button from '../../shared/components/molecules/button';
 import { ProtectedTouchable } from '../../shared/components/molecules/protectedTouchable';
 import { SubscriptionStatus } from '../../shared/components/organisms/SubscriptionStatus';
 import { useProgress } from './index';
+import { progressApi } from './api/progressApi';
 import { lessonCategorySlugMap, type LessonCategorySlug } from '../lessons/lessonCategories';
-import { buildWeakAreas, getScorePercentage, getSectionAccuracy } from './model/progressMetrics';
+import { getScorePercentage, getSectionAccuracy } from './model/progressMetrics';
 import type { ProgressRecommendation, ProgressSection } from './model/types';
 
 type ProgressNavigationProp = DrawerScreenProps<RootDrawerParamList, 'Progress'>['navigation'];
@@ -30,6 +31,17 @@ type TimePeriod = 'all' | 'week' | 'month';
 type ProgressSource = 'level_test' | 'mock';
 type TopikExamType = 'all' | 'TOPIK I' | 'TOPIK II';
 type ChartMetric = 'total' | 'listening' | 'reading';
+type RepeatedQuestionInsight = {
+  key: string;
+  sectionLabel: string;
+  questionNumber: number;
+  misses: number;
+  attempts: number;
+  latestResultId: string;
+  correctAnswer: string;
+};
+
+const REPEATED_QUESTION_PREVIEW_LIMIT = 5;
 
 const getDurationLabel = (durationInSeconds: number) => `${Math.round(durationInSeconds / 60)} мин`;
 
@@ -45,7 +57,7 @@ const getPeriodLabel = (period: TimePeriod) => {
   return 'бүх хугацаа';
 };
 
-const getChartLabel = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
+const getChartAttemptLabel = (attemptIndex: number) => `${attemptIndex + 1}`;
 
 const getChartMetricLabel = (metric: ChartMetric) => {
   if (metric === 'listening') {
@@ -68,6 +80,15 @@ const getChartMetricPercentage = (result: { totalScore: number; maxScore: number
   const section = result.sections.find((item) => item.name === sectionName);
 
   return section ? getSectionAccuracy(section) : 0;
+};
+
+const getResultSectionAccuracy = (
+  result: { sections: ProgressSection[] },
+  sectionName: string,
+) => {
+  const section = result.sections.find((item) => item.name === sectionName);
+
+  return section ? getSectionAccuracy(section) : null;
 };
 
 const isLessonCategorySlug = (slug?: string | null): slug is LessonCategorySlug =>
@@ -102,13 +123,24 @@ const getRecommendationTypeLabel = (contentType?: string | null) => {
 
 export function Progress() {
   const navigation = useNavigation<ProgressNavigationProp>();
-  const { examResults, levelTestResults, recommendations, isLoading, error, reloadData } = useProgress();
+  const {
+    examResults,
+    levelTestResults,
+    recommendations,
+    isLoading,
+    error,
+    reloadData,
+  } = useProgress();
 
   const [viewMode, setViewMode] = useState<TrendMode>('chart');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
   const [progressSource, setProgressSource] = useState<ProgressSource>('level_test');
   const [topikExamType, setTopikExamType] = useState<TopikExamType>('all');
   const [chartMetric, setChartMetric] = useState<ChartMetric>('total');
+  const [chartExamTitle, setChartExamTitle] = useState<string | null>(null);
+  const [repeatedQuestionInsights, setRepeatedQuestionInsights] = useState<RepeatedQuestionInsight[]>([]);
+  const [isLoadingRepeatedQuestions, setIsLoadingRepeatedQuestions] = useState(false);
+  const [showAllRepeatedQuestions, setShowAllRepeatedQuestions] = useState(false);
   const [chartWidth, setChartWidth] = useState(0);
 
   const progressEntryIcon = 'home-outline';
@@ -152,16 +184,7 @@ export function Progress() {
 
   const hasFilteredResults = filteredResults.length > 0;
   const latestResult = filteredResults[0] ?? null;
-  const previousResult = filteredResults[1] ?? null;
   const trendResults = filteredResults;
-  const totalStudyTime = filteredResults.reduce((sum, result) => sum + result.duration, 0);
-  const avgStudyTime = hasFilteredResults ? Math.round(totalStudyTime / filteredResults.length / 60) : 0;
-  const periodAverageScore = hasFilteredResults
-    ? Math.round(
-        filteredResults.reduce((sum, result) => sum + getScorePercentage(result.totalScore, result.maxScore), 0) /
-          filteredResults.length,
-      )
-    : 0;
 
   const getImprovementRate = () => {
     if (filteredResults.length < 2) {
@@ -183,16 +206,9 @@ export function Progress() {
 
   const improvementRate = getImprovementRate();
 
-  const weakAreas = buildWeakAreas(filteredResults);
-
   const latestResultPercentage = latestResult
     ? getScorePercentage(latestResult.totalScore, latestResult.maxScore)
     : 0;
-  const previousResultPercentage = previousResult
-    ? getScorePercentage(previousResult.totalScore, previousResult.maxScore)
-    : null;
-  const latestChange = previousResultPercentage === null ? null : latestResultPercentage - previousResultPercentage;
-
   const latestSections = latestResult
     ? latestResult.sections.map((section) => ({
         ...section,
@@ -202,7 +218,6 @@ export function Progress() {
 
   const latestWeakSection = latestSections.slice().sort((left, right) => left.accuracy - right.accuracy)[0] || null;
 
-  const focusArea = weakAreas[0]?.category || null;
   const periodLabel = getPeriodLabel(timePeriod);
   const selectedResultsLabel = `${topikExamType === 'all' ? 'TOPIK бүгд' : topikExamType} · ${periodLabel}`;
   const resultMatchedRecommendations = latestResult
@@ -227,62 +242,133 @@ export function Progress() {
   ].slice(0, 2);
   const primaryRecommendation = visibleRecommendations[0] ?? null;
 
-  const changeColor =
-    latestChange === null ? '#155DFC' : latestChange > 0 ? '#059669' : latestChange < 0 ? '#EF4444' : '#155DFC';
-  const changeSurface =
-    latestChange === null ? '#EFF6FF' : latestChange > 0 ? '#ECFDF5' : latestChange < 0 ? '#FEF2F2' : '#EFF6FF';
-  const changeIcon =
-    latestChange === null ? 'analytics-outline' : latestChange > 0 ? 'trending-up-outline' : latestChange < 0 ? 'trending-down-outline' : 'remove-outline';
-  const changeValue = latestChange === null ? `${periodAverageScore}%` : `${latestChange > 0 ? '+' : ''}${latestChange}%`;
-  const changeLabel = latestChange === null ? 'Энэ хугацааны дундаж' : 'Өмнөх шалгалтаас';
-  const changeDescription =
-    latestChange === null
-      ? 'Харьцуулах өмнөх оролдлого цөөн байна. Дараагийн дүн орж ирэхэд өсөлт автоматаар харагдана.'
-      : latestChange > 0
-        ? `Сүүлийн шалгалтын дүн өмнөхөөс ${latestChange}% өссөн байна.`
-        : latestChange < 0
-          ? `Сүүлийн шалгалтын дүн өмнөхөөс ${Math.abs(latestChange)}% буурсан байна.`
-          : 'Сүүлийн хоёр шалгалтын дүн ойролцоо түвшинд байна.';
+  const chartExamGroups = useMemo(() => {
+    const groups = new Map<string, typeof trendResults>();
 
-  const chartData = trendResults
-    .slice()
-    .reverse()
-    .map((result) => ({
+    trendResults.forEach((result) => {
+      const group = groups.get(result.examTitle) ?? [];
+      group.push(result);
+      groups.set(result.examTitle, group);
+    });
+
+    return Array.from(groups.entries())
+      .map(([title, results]) => ({
+        title,
+        results: results.slice().sort((left, right) => left.date.getTime() - right.date.getTime()),
+        latestDate: Math.max(...results.map((result) => result.date.getTime())),
+      }))
+      .sort((left, right) => right.latestDate - left.latestDate);
+  }, [trendResults]);
+
+  useEffect(() => {
+    if (chartExamGroups.length === 0) {
+      if (chartExamTitle !== null) {
+        setChartExamTitle(null);
+      }
+      return;
+    }
+
+    if (!chartExamGroups.some((group) => group.title === chartExamTitle)) {
+      setChartExamTitle(chartExamGroups[0].title);
+    }
+  }, [chartExamGroups, chartExamTitle]);
+
+  const selectedChartGroup =
+    chartExamGroups.find((group) => group.title === chartExamTitle) ?? chartExamGroups[0] ?? null;
+  const chartData =
+    selectedChartGroup?.results.map((result, index) => ({
       value: getChartMetricPercentage(result, chartMetric),
-      label: getChartLabel(new Date(result.date)),
-    }));
+      label: getChartAttemptLabel(index),
+    })) ?? [];
+  const selectedChartResultIds = selectedChartGroup?.results.map((result) => result.id).join('|') ?? '';
+  const selectedChartAttemptCount = selectedChartGroup?.results.length ?? 0;
+  const visibleRepeatedQuestionInsights = showAllRepeatedQuestions
+    ? repeatedQuestionInsights
+    : repeatedQuestionInsights.slice(0, REPEATED_QUESTION_PREVIEW_LIMIT);
+  const hiddenRepeatedQuestionCount = Math.max(
+    0,
+    repeatedQuestionInsights.length - visibleRepeatedQuestionInsights.length,
+  );
 
-  const latestSummary = latestWeakSection
-    ? `${latestWeakSection.name} хэсэг одоогоор хамгийн сул байна. Эхлээд энэ хэсгийн тайлбараа review хийгээрэй.`
-    : 'Сүүлийн шалгалтынхаа ерөнхий дүн болон хэсэг тус бүрийн гүйцэтгэлийг эндээс харна.';
+  useEffect(() => {
+    setShowAllRepeatedQuestions(false);
+  }, [selectedChartResultIds]);
 
-  const nextStepSummary = focusArea
-    ? `${focusArea} дээр төвлөрөөд, дараа нь шинэ mock test өгвөл ахиц хамгийн ойлгомжтой харагдана.`
-    : 'Сүүлийн шалгалтынхаа review-г хийж дуусаад дараагийн mock test-ээр ахицаа шалгаарай.';
+  useEffect(() => {
+    const resultIds = selectedChartResultIds ? selectedChartResultIds.split('|') : [];
 
-  const progressInsight = (() => {
-    const weakestArea = weakAreas[0];
-
-    if (!weakestArea) {
-      return 'Одоогоор ахицийг тайлбарлах хангалттай үр дүн алга.';
+    if (resultIds.length < 2) {
+      setRepeatedQuestionInsights([]);
+      setIsLoadingRepeatedQuestions(false);
+      return;
     }
 
-    const areaSummary = `${weakestArea.category} хэсэгт ${weakestArea.correct}/${weakestArea.total} зөв (${weakestArea.accuracy}%), ${weakestArea.errors} алдаатай байна.`;
+    let cancelled = false;
+    setIsLoadingRepeatedQuestions(true);
 
-    if (filteredResults.length < 2) {
-      return `${areaSummary} Дараагийн шалгалтын дараа өсөлт, бууралтыг харьцуулж чадна.`;
-    }
+    const loadRepeatedQuestions = async () => {
+      try {
+        const responses = await Promise.all(
+          resultIds.map((resultId) => progressApi.getResultDetail(resultId)),
+        );
+        const stats = new Map<string, RepeatedQuestionInsight>();
 
-    if (latestChange === null || latestChange === 0) {
-      return `${areaSummary} Нийт дүн өмнөх шалгалттай ойролцоо байна.`;
-    }
+        responses.forEach((response) => {
+          if (!response.success || !response.detail) {
+            return;
+          }
 
-    return latestChange > 0
-      ? `${areaSummary} Сүүлийн нийт дүн өмнөхөөс ${latestChange}% өссөн байна.`
-      : `${areaSummary} Сүүлийн нийт дүн өмнөхөөс ${Math.abs(latestChange)}% буурсан байна.`;
-  })();
+          const detail = response.detail;
 
-  const recommendationSummary = primaryRecommendation?.reason?.trim();
+          detail.reviewQuestions.forEach((question) => {
+            if (question.isCorrect) {
+              return;
+            }
+
+            const key = `${question.section}:${question.questionNumber}`;
+            const existing = stats.get(key);
+
+            stats.set(key, {
+              key,
+              sectionLabel: question.sectionLabel,
+              questionNumber: question.questionNumber,
+              misses: (existing?.misses ?? 0) + 1,
+              attempts: selectedChartAttemptCount,
+              latestResultId: detail.result.id,
+              correctAnswer: question.correctAnswer,
+            });
+          });
+        });
+
+        if (!cancelled) {
+          setRepeatedQuestionInsights(
+            Array.from(stats.values())
+              .filter((item) => item.misses > 1)
+              .sort((left, right) => right.misses - left.misses || left.questionNumber - right.questionNumber),
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setRepeatedQuestionInsights([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingRepeatedQuestions(false);
+        }
+      }
+    };
+
+    loadRepeatedQuestions().catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedChartAttemptCount, selectedChartResultIds]);
+
+      // const latestSummary = latestWeakSection
+      //   ? `${latestWeakSection.name} хэсэг одоогоор хамгийн сул байна. Эхлээд энэ хэсгийн тайлбараа review хийгээрэй.`
+      //   : 'Сүүлийн шалгалтынхаа ерөнхий дүн болон хэсэг тус бүрийн гүйцэтгэлийг эндээс харна.';
+
 
   const handleOpenRecommendation = async (recommendation: ProgressRecommendation) => {
     const content = recommendation.content;
@@ -324,10 +410,12 @@ export function Progress() {
           <Icon name={progressEntryIcon} size={20} color="#0F172A" />
         </TouchableOpacity>
         <View style={styles.hero}>
-          <View style={styles.heroIconBox}>
-            <Icon name="trending-up-outline" size={28} color="#60A5FA" />
+          <View style={styles.heroInner}>
+            <View style={styles.heroIconBox}>
+              <Icon name="trending-up-outline" size={20} color="#60A5FA" />
+            </View>
+            <Text style={styles.heroTitle}>Ахиц дэвшил</Text>
           </View>
-          <Text style={styles.heroTitle}>Ахиц дэвшил</Text>
         </View>
         <View style={styles.emptyCard}>
           <View style={styles.emptyIconBox}>
@@ -347,11 +435,15 @@ export function Progress() {
           <Icon name={progressEntryIcon} size={20} color="#0F172A" />
         </TouchableOpacity>
         <View style={styles.hero}>
-          <View style={styles.heroIconBox}>
-            <Icon name="trending-up-outline" size={28} color="#60A5FA" />
+          <View style={styles.heroInner}>
+            <View style={styles.heroIconBox}>
+              <Icon name="trending-up-outline" size={20} color="#60A5FA" />
+            </View>
+            <View style={styles.heroText}>
+              <Text style={styles.heroTitle}>Ахиц дэвшил</Text>
+              <Text style={styles.heroDesc}>Өгсөн шалгалтын үр дүн энд харагдана.</Text>
+            </View>
           </View>
-          <Text style={styles.heroTitle}>Ахиц дэвшил</Text>
-          <Text style={styles.heroDesc}>Өгсөн шалгалтын үр дүн энд харагдана.</Text>
         </View>
         <View style={styles.emptyCard}>
           <View style={styles.emptyIconBox}>
@@ -374,7 +466,7 @@ export function Progress() {
         <RefreshControl
           refreshing={isLoading && totalAvailableResults > 0}
           onRefresh={() => {
-            reloadData().catch(() => undefined);
+            reloadData(true).catch(() => undefined);
           }}
           tintColor="#155DFC"
         />
@@ -385,70 +477,113 @@ export function Progress() {
       </TouchableOpacity>
 
       <View style={styles.hero}>
-        <View style={styles.heroIconBox}>
-          <Icon name="trending-up-outline" size={28} color="#60A5FA" />
+        <View style={styles.heroInner}>
+          <View style={styles.heroIconBox}>
+            <Icon name="trending-up-outline" size={20} color="#60A5FA" />
+          </View>
+          <View style={styles.heroText}>
+            <Text style={styles.heroTitle}>Ахиц дэвшил</Text>
+            <Text style={styles.heroDesc}>Дүн, өөрчлөлт, сул хэсэг, дараагийн алхам</Text>
+          </View>
         </View>
-        <Text style={styles.heroTitle}>Ахиц дэвшил</Text>
-        <Text style={styles.heroDesc}>Сүүлийн дүн, өөрчлөлт, сул хэсэг, дараагийн алхмаа эндээс нэг дор харна.</Text>
       </View>
 
-      <View style={styles.filterRow}>
-        {([
-          ['level_test', 'Түвшин тогтоох'],
-          ['mock', 'Mock test'],
-        ] as const).map(([key, label]) => {
-          const active = progressSource === key;
-          return (
-            <TouchableOpacity
-              key={key}
-              style={[styles.filterPill, active && styles.filterPillActive]}
-              onPress={() => setProgressSource(key)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <View style={styles.filterCard}>
+        <View style={styles.filterCardRow}>
+          <View style={styles.filterCardLabelWrap}>
+            <Icon name="layers-outline" size={13} color="#94A3B8" />
+            <Text style={styles.filterCardLabel}>Төрөл</Text>
+          </View>
+          <View style={styles.filterSegment}>
+            {([
+              ['level_test', 'Түвшин тогтоох'],
+              ['mock', 'Mock test'],
+            ] as const).map(([key, label], index, arr) => {
+              const active = progressSource === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.filterSegmentBtn,
+                    index === 0 && styles.filterSegmentBtnFirst,
+                    index === arr.length - 1 && styles.filterSegmentBtnLast,
+                    active && styles.filterSegmentBtnActive,
+                  ]}
+                  onPress={() => setProgressSource(key)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.filterSegmentText, active && styles.filterSegmentTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
 
-      <View style={styles.filterRow}>
-        {([
-          ['all', 'Бүгд'],
-          ['month', 'Сар'],
-          ['week', '7 хоног'],
-        ] as const).map(([key, label]) => {
-          const active = timePeriod === key;
-          return (
-            <TouchableOpacity
-              key={key}
-              style={[styles.filterPill, active && styles.filterPillActive]}
-              onPress={() => setTimePeriod(key)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+        <View style={styles.filterCardDivider} />
 
-      <View style={styles.filterRow}>
-        {([
-          ['all', 'TOPIK бүгд'],
-          ['TOPIK I', 'TOPIK I'],
-          ['TOPIK II', 'TOPIK II'],
-        ] as const).map(([key, label]) => {
-          const active = topikExamType === key;
-          return (
-            <TouchableOpacity
-              key={key}
-              style={[styles.filterPill, active && styles.filterPillActive]}
-              onPress={() => setTopikExamType(key)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          );
-        })}
+        <View style={styles.filterCardRow}>
+          <View style={styles.filterCardLabelWrap}>
+            <Icon name="calendar-outline" size={13} color="#94A3B8" />
+            <Text style={styles.filterCardLabel}>Хугацаа</Text>
+          </View>
+          <View style={styles.filterSegment}>
+            {([
+              ['all', 'Бүгд'],
+              ['month', 'Сар'],
+              ['week', '7 хоног'],
+            ] as const).map(([key, label], index, arr) => {
+              const active = timePeriod === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.filterSegmentBtn,
+                    index === 0 && styles.filterSegmentBtnFirst,
+                    index === arr.length - 1 && styles.filterSegmentBtnLast,
+                    active && styles.filterSegmentBtnActive,
+                  ]}
+                  onPress={() => setTimePeriod(key)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.filterSegmentText, active && styles.filterSegmentTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.filterCardDivider} />
+
+        <View style={styles.filterCardRow}>
+          <View style={styles.filterCardLabelWrap}>
+            <Icon name="school-outline" size={13} color="#94A3B8" />
+            <Text style={styles.filterCardLabel}>TOPIK</Text>
+          </View>
+          <View style={styles.filterSegment}>
+            {([
+              ['all', 'Бүгд'],
+              ['TOPIK I', 'TOPIK I'],
+              ['TOPIK II', 'TOPIK II'],
+            ] as const).map(([key, label], index, arr) => {
+              const active = topikExamType === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.filterSegmentBtn,
+                    index === 0 && styles.filterSegmentBtnFirst,
+                    index === arr.length - 1 && styles.filterSegmentBtnLast,
+                    active && styles.filterSegmentBtnActive,
+                  ]}
+                  onPress={() => setTopikExamType(key)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.filterSegmentText, active && styles.filterSegmentTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
       </View>
 
       <InlineMessage message={error} containerStyle={styles.message} />
@@ -459,10 +594,6 @@ export function Progress() {
           <Text style={styles.refreshText}>Шинэчилж байна...</Text>
         </View>
       ) : null}
-
-      <View style={styles.subWrap}>
-        <SubscriptionStatus />
-      </View>
 
       {!hasFilteredResults ? (
         <View style={styles.emptyCard}>
@@ -492,7 +623,7 @@ export function Progress() {
                 <View style={styles.sectionAccent} />
                 <Text style={styles.sectionTitle}>Сүүлийн шалгалтын дүн</Text>
               </View>
-              <Text style={styles.blockMeta}>
+              <Text style={styles.blockMeta} numberOfLines={1}>
                 {latestResult ? new Date(latestResult.date).toLocaleDateString('mn-MN') : ''}
               </Text>
             </View>
@@ -520,8 +651,6 @@ export function Progress() {
                         <Text style={styles.infoPillText}>{getDurationLabel(latestResult.duration)}</Text>
                       </View>
                     </View>
-
-                    <Text style={styles.latestSummary}>{latestSummary}</Text>
                   </View>
                 </View>
 
@@ -558,48 +687,14 @@ export function Progress() {
             <View style={styles.cardHeaderRow}>
               <View style={styles.sectionHeaderTight}>
                 <View style={styles.sectionAccent} />
-                <Text style={styles.sectionTitle}>Сонгосон хугацааны нийт дүн</Text>
+                <Text style={styles.sectionTitle}>Шалгалт бүрийн гүйцэтгэл</Text>
               </View>
-              <Text style={styles.blockMeta}>{selectedResultsLabel}</Text>
-            </View>
-
-            <View style={[styles.changeBanner, { backgroundColor: changeSurface }]}>
-              <View style={styles.changeIconBox}>
-                <Icon name={changeIcon} size={20} color={changeColor} />
-              </View>
-              <View style={styles.changeBody}>
-                <Text style={[styles.changeValue, { color: changeColor }]}>{changeValue}</Text>
-                <Text style={styles.changeLabel}>{changeLabel}</Text>
-                <Text style={styles.changeDescription}>{changeDescription}</Text>
-              </View>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Энэ хугацааны дундаж</Text>
-                <Text style={styles.statValue}>{periodAverageScore}%</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Шалгалтын тоо</Text>
-                <Text style={styles.statValue}>{filteredResults.length}</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Дундаж хугацаа</Text>
-                <Text style={styles.statValue}>{avgStudyTime} мин</Text>
-              </View>
-            </View>
-
-            <View style={styles.insightCard}>
-              <Icon name="analytics-outline" size={18} color="#155DFC" />
-              <View style={styles.insightBody}>
-                <Text style={styles.insightTitle}>Автомат тайлбар</Text>
-                <Text style={styles.insightText}>{progressInsight}</Text>
-              </View>
+              <Text style={styles.blockMeta} numberOfLines={1}>{selectedResultsLabel}</Text>
             </View>
 
             <View style={styles.subsectionHeader}>
               <Text style={styles.subsectionTitle}>
-                {topikExamType === 'all' ? 'Бүх шалгалтууд' : `${topikExamType} шалгалтууд`}
+                {topikExamType === 'all' ? 'Сонгосон шалгалтууд' : `${topikExamType} гүйцэтгэл`}
               </Text>
               <View style={styles.toggleRow}>
                 {(['chart', 'list'] as const).map((mode) => {
@@ -627,6 +722,37 @@ export function Progress() {
 
             {viewMode === 'chart' ? (
               <>
+                {chartExamGroups.length > 1 ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chartExamRow}
+                  >
+                    {chartExamGroups.map((group) => {
+                      const active = selectedChartGroup?.title === group.title;
+
+                      return (
+                        <TouchableOpacity
+                          key={group.title}
+                          style={[styles.chartExamBtn, active && styles.chartExamBtnActive]}
+                          onPress={() => setChartExamTitle(group.title)}
+                          activeOpacity={0.75}
+                        >
+                          <Text
+                            style={[styles.chartExamText, active && styles.chartExamTextActive]}
+                            numberOfLines={1}
+                          >
+                            {group.title}
+                          </Text>
+                          <Text style={[styles.chartExamMeta, active && styles.chartExamMetaActive]}>
+                            {group.results.length} удаа
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                ) : null}
+
                 <View style={styles.metricRow}>
                   {(['total', 'listening', 'reading'] as const).map((metric) => {
                     const active = chartMetric === metric;
@@ -645,7 +771,11 @@ export function Progress() {
                   })}
                 </View>
 
-                <Text style={styles.chartMetricCaption}>{`${getChartMetricLabel(chartMetric)} гүйцэтгэл (%)`}</Text>
+                <Text style={styles.chartMetricCaption}>
+                  {selectedChartGroup
+                    ? `${selectedChartGroup.title} · ${getChartMetricLabel(chartMetric)} гүйцэтгэл · оролдлогоор (%)`
+                    : `${getChartMetricLabel(chartMetric)} гүйцэтгэл (%)`}
+                </Text>
 
                 {chartData.length > 0 ? (
                   <View
@@ -663,6 +793,8 @@ export function Progress() {
                       height={220}
                       color="#155DFC"
                       dataPointsColor="#155DFC"
+                      maxValue={100}
+                      noOfSections={5}
                       textColor="#64748B"
                       thickness={3}
                       hideRules={false}
@@ -674,6 +806,7 @@ export function Progress() {
                     <Text style={styles.innerEmptyText}>Энэ хугацаанд харуулах trend алга.</Text>
                   </View>
                 )}
+
               </>
             ) : (
               <View style={styles.listGap}>
@@ -681,6 +814,10 @@ export function Progress() {
                   const pct = getScorePercentage(result.totalScore, result.maxScore);
                   const scoreColor = pct >= 80 ? '#059669' : pct >= 60 ? '#155DFC' : '#EF4444';
                   const scoreBg = pct >= 80 ? '#ECFDF5' : pct >= 60 ? '#EFF6FF' : '#FEF2F2';
+                  const sectionSummaries = ([
+                    ['Сонсгол', getResultSectionAccuracy(result, 'Сонсгол')],
+                    ['Уншлага', getResultSectionAccuracy(result, 'Уншлага')],
+                  ] as const).filter(([, accuracy]) => accuracy !== null);
 
                   return (
                     <TouchableOpacity
@@ -700,6 +837,17 @@ export function Progress() {
                         <Text style={styles.listItemDate}>
                           {result.examType} · {new Date(result.date).toLocaleDateString('mn-MN')}
                         </Text>
+                        {sectionSummaries.length > 0 ? (
+                          <View style={styles.listSectionRow}>
+                            {sectionSummaries.map(([label, accuracy]) => (
+                              <View key={label} style={styles.listSectionPill}>
+                                <Text style={styles.listSectionText}>
+                                  {label} {accuracy}%
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        ) : null}
                       </View>
                       <View style={styles.listItemRight}>
                         <Text style={styles.listItemScore}>
@@ -718,37 +866,86 @@ export function Progress() {
             <View style={styles.cardHeaderRow}>
               <View style={styles.sectionHeaderTight}>
                 <View style={styles.sectionAccent} />
-                <Text style={styles.sectionTitle}>Сонгосон хугацааны сул хэсэг</Text>
+                <Text style={styles.sectionTitle}>Олон удаа алдсан асуултууд</Text>
               </View>
-              <Text style={styles.blockMeta}>{selectedResultsLabel}</Text>
-            </View>
-
-            <View style={styles.focusCard}>
-              <Text style={styles.focusEyebrow}>Яг одоо анхаарах хэсэг</Text>
-              <Text style={styles.focusTitle}>{focusArea || 'Тодорхойгүй'}</Text>
-              <Text style={styles.focusDesc}>
-                {focusArea
-                  ? `${focusArea} хамгийн бага зөв хариултын хувьтай байна. Энэ хэсгийн review-д түрүүлж анхаарвал хамгийн үр дүнтэй.`
-                  : 'Одоогоор сул хэсгийг тодорхойлоход хангалттай өгөгдөл алга.'}
+              <Text style={styles.blockMeta} numberOfLines={1}>
+                {selectedChartGroup ? selectedChartGroup.title : selectedResultsLabel}
               </Text>
             </View>
 
-            <View style={styles.barsGap}>
-              {weakAreas.map((area) => (
-                <View key={area.category} style={styles.weakRow}>
-                  <View style={styles.weakHeader}>
-                    <Text style={styles.weakLabel}>{area.category}</Text>
-                    <Text style={styles.weakValue}>{area.accuracy}%</Text>
-                  </View>
-                  <Text style={styles.weakMeta}>
-                    {`${area.correct}/${area.total} зөв · ${area.errors} алдсан · ${area.accuracy}%`}
+            <View style={[styles.repeatedCard, styles.repeatedCardFlush]}>
+              <View style={styles.repeatedHeader}>
+                <View>
+                  <Text style={styles.repeatedTitle}>
+                    {selectedChartGroup
+                      ? `${selectedChartGroup.title} шалгалтын оролдлогууд`
+                      : 'Сонгосон шалгалтын оролдлогууд'}
                   </Text>
-                  <View style={styles.weakTrack}>
-                    <View style={[styles.weakFill, { width: `${area.accuracy}%` }]} />
-                  </View>
+                  <Text style={styles.repeatedSubtitle}>Ижил асуулт дээр давтан алдсан давтамж</Text>
                 </View>
-              ))}
+                {isLoadingRepeatedQuestions ? (
+                  <ActivityIndicator size="small" color="#155DFC" />
+                ) : (
+                  <Icon name="repeat-outline" size={18} color="#155DFC" />
+                )}
+              </View>
+
+              {selectedChartAttemptCount < 2 ? (
+                <Text style={styles.repeatedEmptyText}>
+                  Давтан алдааг харахын тулд энэ шалгалтыг дор хаяж 2 удаа өгсөн байх хэрэгтэй.
+                </Text>
+              ) : repeatedQuestionInsights.length > 0 ? (
+                <View style={styles.repeatedList}>
+                  {visibleRepeatedQuestionInsights.map((item) => (
+                    <TouchableOpacity
+                      key={item.key}
+                      style={styles.repeatedItem}
+                      activeOpacity={0.85}
+                      onPress={() => navigation.navigate('ExamReview', { resultId: item.latestResultId })}
+                    >
+                      <View style={styles.repeatedQuestionBadge}>
+                        <Text style={styles.repeatedQuestionBadgeText}>Q{item.questionNumber}</Text>
+                      </View>
+                      <View style={styles.repeatedItemBody}>
+                        <Text style={styles.repeatedItemTitle}>
+                          {item.sectionLabel} · {item.questionNumber}-р асуулт
+                        </Text>
+                        <Text style={styles.repeatedItemMeta}>
+                          {item.misses} удаа алдсан · {item.attempts} оролдлогоос
+                        </Text>
+                      </View>
+                      <Icon name="chevron-forward" size={16} color="#CBD5E1" />
+                    </TouchableOpacity>
+                  ))}
+                  {repeatedQuestionInsights.length > REPEATED_QUESTION_PREVIEW_LIMIT ? (
+                    <TouchableOpacity
+                      style={styles.repeatedToggle}
+                      activeOpacity={0.85}
+                      onPress={() => setShowAllRepeatedQuestions((current) => !current)}
+                    >
+                      <Text style={styles.repeatedToggleText}>
+                        {showAllRepeatedQuestions
+                          ? 'Хураах'
+                          : `Бүгдийг харах (${hiddenRepeatedQuestionCount} нэмэлт)`}
+                      </Text>
+                      <Icon
+                        name={showAllRepeatedQuestions ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color="#155DFC"
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : (
+                <Text style={styles.repeatedEmptyText}>
+                  Энэ шалгалтын оролдлогууд дээр 2 ба түүнээс олон давтагдсан алдаа одоогоор алга.
+                </Text>
+              )}
             </View>
+          </View>
+
+          <View style={styles.subWrap}>
+            <SubscriptionStatus />
           </View>
 
           <View style={styles.card}>
@@ -759,10 +956,6 @@ export function Progress() {
               </View>
             </View>
 
-            <View style={styles.nextStepCallout}>
-              <Icon name="sparkles-outline" size={18} color="#155DFC" />
-              <Text style={styles.nextStepCalloutText}>{recommendationSummary || nextStepSummary}</Text>
-            </View>
 
             <View style={styles.actionList}>
               {visibleRecommendations.map((recommendation) => {
@@ -888,24 +1081,29 @@ const styles = StyleSheet.create({
 
   hero: {
     backgroundColor: '#0F172A',
-    borderRadius: 22,
-    padding: 24,
-    alignItems: 'center',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     marginBottom: 14,
-    gap: 10,
+  },
+  heroInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   heroIconBox: {
-    width: 58,
-    height: 58,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitle: { fontSize: 20, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.3 },
-  heroDesc: { fontSize: 13, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
+  heroText: { flex: 1, gap: 3 },
+  heroTitle: { fontSize: 16, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.2 },
+  heroDesc: { fontSize: 12, color: '#64748B', lineHeight: 17 },
 
-  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  filterRow: { flexDirection: 'row', gap: 8 },
   filterPill: {
     paddingHorizontal: 14,
     paddingVertical: 7,
@@ -917,6 +1115,62 @@ const styles = StyleSheet.create({
   filterPillActive: { backgroundColor: '#155DFC', borderColor: '#155DFC' },
   filterText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
   filterTextActive: { color: '#fff' },
+
+  filterCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  filterCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 12,
+  },
+  filterCardLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    width: 68,
+  },
+  filterCardLabel: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+  filterCardDivider: { height: 1, backgroundColor: '#F1F5F9', marginHorizontal: 14 },
+  filterSegment: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    padding: 3,
+    gap: 2,
+  },
+  filterSegmentBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  filterSegmentBtnFirst: {},
+  filterSegmentBtnLast: {},
+  filterSegmentBtnActive: {
+    backgroundColor: '#155DFC',
+    shadowColor: '#155DFC',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  filterSegmentText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  filterSegmentTextActive: { color: '#fff', fontWeight: '700' },
 
   message: { marginBottom: 12 },
   refreshBanner: {
@@ -955,7 +1209,7 @@ const styles = StyleSheet.create({
   sectionHeaderTight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionAccent: { width: 4, height: 18, borderRadius: 2, backgroundColor: '#155DFC' },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', letterSpacing: -0.2 },
-  blockMeta: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+  blockMeta: { fontSize: 12, color: '#64748B', fontWeight: '600', flexShrink: 1, textAlign: 'right' },
 
   latestTop: { flexDirection: 'row', gap: 14, marginBottom: 14 },
   latestScorePanel: {
@@ -1081,6 +1335,22 @@ const styles = StyleSheet.create({
   toggleBtnActive: { backgroundColor: '#155DFC' },
   toggleText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
   toggleTextActive: { color: '#fff' },
+  chartExamRow: { gap: 8, paddingBottom: 10 },
+  chartExamBtn: {
+    maxWidth: 220,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 2,
+  },
+  chartExamBtnActive: { borderColor: '#93C5FD', backgroundColor: '#EFF6FF' },
+  chartExamText: { fontSize: 12, color: '#334155', fontWeight: '800' },
+  chartExamTextActive: { color: '#155DFC' },
+  chartExamMeta: { fontSize: 10, color: '#94A3B8', fontWeight: '700' },
+  chartExamMetaActive: { color: '#2563EB' },
   metricRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
   metricBtn: {
     flex: 1,
@@ -1103,6 +1373,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   innerEmptyText: { fontSize: 13, color: '#64748B' },
+  repeatedCard: {
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    marginTop: 12,
+    gap: 10,
+  },
+  repeatedCardFlush: { marginTop: 0 },
+  repeatedHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  repeatedTitle: { fontSize: 13, color: '#0F172A', fontWeight: '800' },
+  repeatedSubtitle: { fontSize: 11, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  repeatedList: { gap: 8 },
+  repeatedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 10,
+  },
+  repeatedQuestionBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+  },
+  repeatedQuestionBadgeText: { fontSize: 12, color: '#EF4444', fontWeight: '900' },
+  repeatedItemBody: { flex: 1 },
+  repeatedItemTitle: { fontSize: 12, color: '#0F172A', fontWeight: '800', marginBottom: 3 },
+  repeatedItemMeta: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+  repeatedCountPill: {
+    borderRadius: 999,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  repeatedCountText: { fontSize: 11, color: '#EF4444', fontWeight: '900' },
+  repeatedToggle: {
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  repeatedToggleText: { fontSize: 12, color: '#155DFC', fontWeight: '900' },
+  repeatedEmptyText: { fontSize: 12, lineHeight: 18, color: '#64748B', fontWeight: '600' },
 
   listGap: { gap: 8 },
   listItem: {
@@ -1125,6 +1456,14 @@ const styles = StyleSheet.create({
   listItemBody: { flex: 1 },
   listItemTitle: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 3 },
   listItemDate: { fontSize: 11, color: '#94A3B8' },
+  listSectionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  listSectionPill: {
+    borderRadius: 999,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  listSectionText: { fontSize: 11, color: '#155DFC', fontWeight: '700' },
   listItemRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   listItemScore: { fontSize: 12, fontWeight: '700', color: '#374151' },
 

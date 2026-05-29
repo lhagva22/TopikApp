@@ -8,8 +8,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+import type { RootDrawerParamList } from '../../../app/navigation/types';
 import { useAppStore } from '../../../app/store';
 import type { AccessLevel } from '../../../app/store/types';
 import { ProtectedTouchable } from '../../../shared/components/molecules/protectedTouchable';
@@ -30,7 +33,9 @@ const LEVEL_OPTIONS: Array<{ value: LevelFilter; label: string }> = [
 const normalize = (value?: string | null) => (value || '').trim().toLowerCase();
 
 const getGrammarRequiredStatus = (level: KoreanGrammarLesson['level']): AccessLevel =>
-  level === 'Beginner' ? 'registered' : 'paid';
+  level === 'Beginner' ? 'guest' : 'paid';
+
+
 
 // ─── Chip ─────────────────────────────────────────────────────────────────────
 
@@ -130,37 +135,53 @@ const GrammarSeparator = () => <View style={styles.separator} />;
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 const GrammarScreen = () => {
+  const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const [query, setQuery] = useState('');
   const [lessons, setLessons] = useState<KoreanGrammarLesson[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<LevelFilter>('all');
   const [selectedTopik, setSelectedTopik] = useState<TopikFilter>('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedLessons, setHasLoadedLessons] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+    let loadingTid: ReturnType<typeof setTimeout> | null = null;
 
     const load = async () => {
       try {
-        setIsLoading(true);
+        loadingTid = setTimeout(() => {
+          if (isMounted) {
+            setIsLoading(true);
+          }
+        }, 180);
         setError(null);
         const response = await lessonApi.getKoreanGrammarLessons();
         if (!response.success) {
           throw new Error(response.error || 'Дүрмийн мэдээлэл ачааллах боломжгүй байна.');
         }
         if (isMounted) {setLessons(response.lessons || []);}
+        if (isMounted) {setHasLoadedLessons(true);}
       } catch (e) {
         if (isMounted) {
           setError(getErrorMessage(e, 'Дүрмийн мэдээлэл ачааллах үед алдаа гарлаа.'));
         }
       } finally {
+        if (loadingTid) {
+          clearTimeout(loadingTid);
+        }
         if (isMounted) {setIsLoading(false);}
       }
     };
 
     load().catch(() => undefined);
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+      if (loadingTid) {
+        clearTimeout(loadingTid);
+      }
+    };
   }, []);
 
   const categories = useMemo(() => {
@@ -206,17 +227,23 @@ const GrammarScreen = () => {
   const listHeader = useMemo(
     () => (
       <>
+        <TouchableOpacity onPress={() => navigation.navigate('Lesson')} style={styles.backBtn}>
+          <Icon name="arrow-back" size={20} color="#0F172A" />
+        </TouchableOpacity>
+
         <View style={styles.hero}>
-          <View style={styles.heroTopRow}>
-            <View style={styles.heroIconBox}>
-              <Icon name="document-text-outline" size={28} color="#60A5FA" />
-            </View>
+          <View style={styles.heroIconBox}>
+            <Icon name="document-text-outline" size={20} color="#60A5FA" />
+          </View>
+          <View style={styles.heroText}>
+            <Text style={styles.heroTitle}>Дүрэм</Text>
+            <Text style={styles.heroDesc}>Солонгос хэлний дүрмийн сан, жишээ болон тайлбар</Text>
+          </View>
+          {lessons.length > 0 ? (
             <View style={styles.heroCounter}>
               <Text style={styles.heroCounterText}>{lessons.length}</Text>
             </View>
-          </View>
-          <Text style={styles.heroTitle}>Дүрэм</Text>
-          <Text style={styles.heroDesc}>Солонгос хэлний дүрмийн сан, жишээ болон тайлбар</Text>
+          ) : null}
         </View>
 
         <View style={styles.searchBox}>
@@ -254,7 +281,7 @@ const GrammarScreen = () => {
 
         </View>
 
-        {!isLoading && !error && (
+        {hasLoadedLessons && !isLoading && !error && (
           <View style={styles.countRow}>
             <View style={styles.accent} />
             <Text style={styles.countText}>Илэрц: {filteredLessons.length}</Text>
@@ -283,7 +310,7 @@ const GrammarScreen = () => {
         </View>
       );
     }
-    if (error) {
+    if (!isLoading && error) {
       return (
         <View style={styles.stateCard}>
           <View style={[styles.stateIconBox, styles.errorIconBox]}>
@@ -294,7 +321,8 @@ const GrammarScreen = () => {
         </View>
       );
     }
-    return (
+    if (hasLoadedLessons) {
+      return (
       <View style={styles.stateCard}>
         <View style={styles.stateIconBox}>
           <Icon name="search-outline" size={26} color="#94A3B8" />
@@ -302,14 +330,17 @@ const GrammarScreen = () => {
         <Text style={styles.stateTitle}>Дүрэм олдсонгүй</Text>
         <Text style={styles.stateDesc}>Хайлтын үг эсвэл шүүлтүүрээ өөрчлөөд дахин үзээрэй.</Text>
       </View>
-    );
-  }, [isLoading, error]);
+      );
+    }
+
+    return null;
+  }, [isLoading, error, hasLoadedLessons]);
 
   return (
     <FlatList
       style={styles.screen}
       contentContainerStyle={styles.content}
-      data={filteredLessons}
+      data={hasLoadedLessons && !isLoading && !error ? filteredLessons : []}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
       ListHeaderComponent={listHeader}
@@ -329,34 +360,48 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F8FAFC' },
   content: { padding: 16, paddingBottom: 36 },
 
-  hero: {
-    backgroundColor: '#0F172A',
-    borderRadius: 20,
-    padding: 22,
-    marginBottom: 14,
-    gap: 10,
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroIconBox: {
-    width: 56,
-    height: 56,
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
     borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 14,
+    gap: 12,
+  },
+  heroIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heroText: { flex: 1, gap: 3 },
   heroCounter: {
-    minWidth: 46,
-    height: 34,
-    borderRadius: 17,
+    minWidth: 36,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(96,165,250,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
-  heroCounterText: { color: '#BFDBFE', fontSize: 14, fontWeight: '800' },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#F8FAFC' },
-  heroDesc: { fontSize: 13, color: '#CBD5E1', lineHeight: 20 },
+  heroCounterText: { color: '#BFDBFE', fontSize: 12, fontWeight: '800' },
+  heroTitle: { fontSize: 15, fontWeight: '800', color: '#F8FAFC', letterSpacing: -0.2 },
+  heroDesc: { fontSize: 12, color: '#64748B', lineHeight: 17 },
 
   searchBox: {
     flexDirection: 'row',

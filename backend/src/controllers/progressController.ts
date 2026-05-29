@@ -139,6 +139,7 @@ type QuestionRow = {
 
 const REVIEW_QUESTION_SELECT =
   'id, mock_test_id, section, question_number, question_text, question_image_url, audio_url, options, option_image_urls, question_score, correct_answer_text, explanation';
+const PROGRESS_QUERY_PAGE_SIZE = 1000;
 
 const calculateDurationInSeconds = (
   startedAt?: string | null,
@@ -191,16 +192,31 @@ const buildQuestionMetaByTest = async (mockTestIds: string[]) => {
     return questionMetaByTest;
   }
 
-  const { data: questionRows, error } = await supabaseAdmin
-    .from('mock_test_questions')
-    .select('id, mock_test_id, section, correct_answer_text, question_score')
-    .in('mock_test_id', mockTestIds);
+  const questionRows: any[] = [];
+  let offset = 0;
 
-  if (error) {
-    throw new Error(error.message);
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('mock_test_questions')
+      .select('id, mock_test_id, section, correct_answer_text, question_score')
+      .in('mock_test_id', mockTestIds)
+      .range(offset, offset + PROGRESS_QUERY_PAGE_SIZE - 1);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const page = data || [];
+    questionRows.push(...page);
+
+    if (page.length < PROGRESS_QUERY_PAGE_SIZE) {
+      break;
+    }
+
+    offset += PROGRESS_QUERY_PAGE_SIZE;
   }
 
-  (questionRows || []).forEach((question: any) => {
+  questionRows.forEach((question: any) => {
     const current = questionMetaByTest.get(question.mock_test_id) || {
       totalScore: 0,
       listeningScore: 0,

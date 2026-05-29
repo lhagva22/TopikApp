@@ -40,6 +40,15 @@ export const getToken = async (): Promise<string | null> => {
   }
 };
 
+export const getRefreshToken = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem('refreshToken');
+  } catch (error) {
+    logError('Error getting refresh token', error);
+    return null;
+  }
+};
+
 export const setToken = async (token: string): Promise<void> => {
   try {
     await AsyncStorage.setItem('token', token);
@@ -48,11 +57,35 @@ export const setToken = async (token: string): Promise<void> => {
   }
 };
 
+export const setRefreshToken = async (refreshToken: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem('refreshToken', refreshToken);
+  } catch (error) {
+    logError('Error setting refresh token', error);
+  }
+};
+
+export const setSessionTokens = async (accessToken: string, refreshToken?: string | null): Promise<void> => {
+  await setToken(accessToken);
+
+  if (refreshToken) {
+    await setRefreshToken(refreshToken);
+  }
+};
+
 export const removeToken = async (): Promise<void> => {
   try {
     await AsyncStorage.removeItem('token');
   } catch (error) {
     logError('Error removing token', error);
+  }
+};
+
+export const removeAuthTokens = async (): Promise<void> => {
+  try {
+    await AsyncStorage.multiRemove(['token', 'refreshToken']);
+  } catch (error) {
+    logError('Error removing auth tokens', error);
   }
 };
 
@@ -74,6 +107,55 @@ export const isTokenExpired = async (): Promise<boolean> => {
 
 export const isTokenValid = async (): Promise<boolean> => !(await isTokenExpired());
 
+const parseApiResponse = async <T,>(response: Response, endpoint: string): Promise<T> => {
+  const body = await response.text();
+
+  if (!body.trim()) {
+    throw new Error(`API returned an empty response (${response.status}) for ${endpoint}.`);
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new Error(`API returned invalid JSON (${response.status}) for ${endpoint}.`);
+  }
+};
+
+type RefreshResponse = {
+  success: boolean;
+  session?: {
+    access_token: string;
+    refresh_token?: string;
+  };
+  error?: string;
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = await getRefreshToken();
+
+  if (!refreshToken) {
+    return null;
+  }
+
+  const response = await fetch(`${API_URL}${ENDPOINTS.AUTH.REFRESH}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  const data = await parseApiResponse<RefreshResponse>(response, ENDPOINTS.AUTH.REFRESH);
+
+  if (!response.ok || !data.success || !data.session?.access_token) {
+    await removeAuthTokens();
+    return null;
+  }
+
+  await setSessionTokens(data.session.access_token, data.session.refresh_token);
+  return data.session.access_token;
+};
+
 export const apiRequest = async <T = any>(
   endpoint: string,
   options: RequestInit = {},
@@ -81,19 +163,30 @@ export const apiRequest = async <T = any>(
   try {
     const token = await getToken();
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
-    });
+    const request = (authToken: string | null) =>
+      fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken && { Authorization: `Bearer ${authToken}` }),
+          ...options.headers,
+        },
+      });
 
-    const data = await response.json();
+    let response = await request(token);
+
+    if (response.status === 401 && endpoint !== ENDPOINTS.AUTH.REFRESH) {
+      const refreshedToken = await refreshAccessToken();
+
+      if (refreshedToken) {
+        response = await request(refreshedToken);
+      }
+    }
+
+    const data = await parseApiResponse<T>(response, endpoint);
 
     if (response.status === 401) {
-      await removeToken();
+      await removeAuthTokens();
     }
 
     return data;
@@ -176,6 +269,8 @@ export const ENDPOINTS = {
     CATEGORIES: '/lesson-categories',
     LIST: '/lessons',
     GRAMMAR: '/korean-grammar-lessons',
+    GRAMMAR_SYNC: '/korean-grammar-lessons/sync',
+    GRAMMAR_SYNC_META: '/korean-grammar-lessons/sync/meta',
     BY_CATEGORY: (slug: string) => `/lessons/category/${slug}`,
     DETAIL: (id: string) => `/lessons/${id}`,
     PROGRESS: '/lessons/progress',
@@ -186,6 +281,8 @@ export const ENDPOINTS = {
   },
   DICTIONARY: {
     SEARCH: '/dictionary/search',
+    SYNC: '/dictionary/sync',
+    SYNC_META: '/dictionary/sync/meta',
     WORD: (id: string) => `/dictionary/${id}`,
     BOOKMARKS: '/dictionary/bookmarks',
   },
@@ -194,8 +291,12 @@ export const ENDPOINTS = {
 export default {
   API_URL,
   getToken,
+  getRefreshToken,
   setToken,
+  setRefreshToken,
+  setSessionTokens,
   removeToken,
+  removeAuthTokens,
   isTokenExpired,
   isTokenValid,
   apiRequest,

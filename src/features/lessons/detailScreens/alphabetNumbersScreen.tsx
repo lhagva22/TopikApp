@@ -1,7 +1,10 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+import type { RootDrawerParamList } from '../../../app/navigation/types';
 import AppText from '../../../shared/components/atoms/AppText';
 
 type VowelItem = { symbol: string; label: string };
@@ -175,8 +178,15 @@ const NumberGrid = ({
   </View>
 );
 
-const AlphabetNumbersScreen = () => (
+const AlphabetNumbersScreen = () => {
+  const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
+
+  return (
   <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <TouchableOpacity onPress={() => navigation.navigate('Lesson')} style={styles.backBtn}>
+      <Icon name="arrow-back" size={20} color="#0F172A" />
+    </TouchableOpacity>
+
     {/* Intro hero */}
     <View style={styles.hero}>
       <View style={styles.heroKoreanBox}>
@@ -271,7 +281,8 @@ const AlphabetNumbersScreen = () => (
       </View>
     </View>
   </ScrollView>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   screen: {
@@ -283,44 +294,57 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
 
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+
   /* Hero */
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0F172A',
-    borderRadius: 22,
-    padding: 20,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     marginBottom: 16,
-    gap: 16,
+    gap: 12,
   },
   heroKoreanBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   heroKorean: {
-    fontSize: 32,
+    fontSize: 20,
     color: '#F8FAFC',
     fontWeight: '800',
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
   heroBody: {
     flex: 1,
+    gap: 3,
   },
   heroTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: '800',
     color: '#F8FAFC',
-    letterSpacing: -0.4,
-    marginBottom: 6,
+    letterSpacing: -0.2,
   },
   heroDesc: {
     fontSize: 12,
-    color: '#94A3B8',
-    lineHeight: 18,
+    color: '#64748B',
+    lineHeight: 17,
   },
 
   /* Section container */

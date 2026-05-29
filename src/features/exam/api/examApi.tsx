@@ -1,6 +1,6 @@
 // src/features/exam/api/examApi.ts
 import { apiRequest, ENDPOINTS } from '../../../core/api/apiClient';
-import {
+import type {
   GetExamBankResponse,
   GetExamResultsResponse,
   StartExamResponse,

@@ -1,6 +1,6 @@
 import { Response } from 'express';
 
-import { supabase, supabaseAdmin } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 import type { AuthRequest } from '../types';
 
 type SubmittedAnswer = {
@@ -25,10 +25,13 @@ type MockTestRow = {
   id: string;
   title: string;
   exam_type: 'TOPIK_I' | 'TOPIK_II';
+  test_number?: number | null;
   total_questions: number;
   duration: number;
   listening_questions: number;
   reading_questions: number;
+  is_active?: boolean;
+  updated_at?: string | null;
 };
 
 type LevelTestExamType = 'TOPIK_I' | 'TOPIK_II';
@@ -74,7 +77,239 @@ type ExamResultListRow = {
 
 const LEVEL_TEST_UNLOCK_SCORE = 140;
 const LEVEL_TEST_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+const EXAM_CACHE_TTL_MS = 10 * 60 * 1000;
 const getExamMaxScore = (examType: 'TOPIK_I' | 'TOPIK_II') => (examType === 'TOPIK_I' ? 200 : 300);
+
+type ActiveExamCache = {
+  exams: MockTestRow[];
+  questionCountByExamId: Map<string, number>;
+  questionsByExamId: Map<string, QuestionRow[]>;
+  loadedAt: number;
+  meta: {
+    total: number;
+    latestUpdatedAt: string | null;
+    questionTotal: number;
+  };
+};
+
+let activeExamCache: ActiveExamCache | null = null;
+let activeExamCachePromise: Promise<ActiveExamCache> | null = null;
+
+const EXAM_COLUMNS = 'id, title, exam_type, test_number, total_questions, duration, listening_questions, reading_questions, is_active, updated_at';
+const QUESTION_COLUMNS = 'id, mock_test_id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url, correct_answer_text, question_score, created_at';
+const CACHE_PAGE_SIZE = 1000;
+const isFreshExamCache = (cache: ActiveExamCache | null): cache is ActiveExamCache =>
+  Boolean(cache && Date.now() - cache.loadedAt < EXAM_CACHE_TTL_MS);
+
+const mapPublicExam = (exam: MockTestRow) => ({
+  id: exam.id,
+  title: exam.title,
+  exam_type: exam.exam_type,
+  test_number: exam.test_number,
+  total_questions: exam.total_questions,
+  duration: exam.duration,
+  listening_questions: exam.listening_questions,
+  reading_questions: exam.reading_questions,
+  is_active: exam.is_active,
+});
+
+const fetchAllActiveExams = async (): Promise<MockTestRow[]> => {
+  const rows: MockTestRow[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('mock_test_bank')
+      .select(EXAM_COLUMNS)
+      .eq('is_active', true)
+      .order('exam_type', { ascending: true })
+      .order('test_number', { ascending: false })
+      .range(offset, offset + CACHE_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = (data || []) as MockTestRow[];
+    rows.push(...page);
+
+    if (page.length < CACHE_PAGE_SIZE) {
+      return rows;
+    }
+
+    offset += CACHE_PAGE_SIZE;
+  }
+};
+
+const fetchAllExamQuestions = async (): Promise<Array<QuestionRow & { mock_test_id: string }>> => {
+  const rows: Array<QuestionRow & { mock_test_id: string }> = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('mock_test_questions')
+      .select(QUESTION_COLUMNS)
+      .order('mock_test_id', { ascending: true })
+      .order('section', { ascending: true })
+      .order('question_number', { ascending: true })
+      .range(offset, offset + CACHE_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = (data || []) as Array<QuestionRow & { mock_test_id: string }>;
+    rows.push(...page);
+
+    if (page.length < CACHE_PAGE_SIZE) {
+      return rows;
+    }
+
+    offset += CACHE_PAGE_SIZE;
+  }
+};
+
+const loadActiveExamCache = async (): Promise<ActiveExamCache> => {
+  if (isFreshExamCache(activeExamCache)) {
+    return activeExamCache;
+  }
+
+  if (activeExamCachePromise) {
+    return activeExamCachePromise;
+  }
+
+  activeExamCachePromise = (async () => {
+    const [examRows, questionRows] = await Promise.all([
+      fetchAllActiveExams(),
+      fetchAllExamQuestions(),
+    ]);
+
+    const questionsByExamId = new Map<string, QuestionRow[]>();
+    const questionCountByExamId = new Map<string, number>();
+
+    questionRows.forEach((question) => {
+      const examQuestions = questionsByExamId.get(question.mock_test_id) || [];
+      examQuestions.push(question);
+      questionsByExamId.set(question.mock_test_id, examQuestions);
+      questionCountByExamId.set(question.mock_test_id, examQuestions.length);
+    });
+
+    const exams = examRows.filter((exam) => {
+      const count = questionCountByExamId.get(exam.id) || 0;
+      return count >= exam.total_questions;
+    });
+
+    const latestUpdatedAt = exams.reduce<string | null>((latest, exam) => {
+      if (!exam.updated_at) {
+        return latest;
+      }
+
+      if (!latest || new Date(exam.updated_at).getTime() > new Date(latest).getTime()) {
+        return exam.updated_at;
+      }
+
+      return latest;
+    }, null);
+
+    const cache = {
+      exams,
+      questionCountByExamId,
+      questionsByExamId,
+      loadedAt: Date.now(),
+      meta: {
+        total: exams.length,
+        latestUpdatedAt,
+        questionTotal: Array.from(questionCountByExamId.values()).reduce((sum, count) => sum + count, 0),
+      },
+    };
+
+    activeExamCache = cache;
+    return cache;
+  })().finally(() => {
+    activeExamCachePromise = null;
+  });
+
+  return activeExamCachePromise;
+};
+
+const clearActiveExamCache = () => {
+  activeExamCache = null;
+  activeExamCachePromise = null;
+};
+
+const fetchExamQuestionsByExamId = async (examId: string): Promise<QuestionRow[]> => {
+  const rows: QuestionRow[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('mock_test_questions')
+      .select(QUESTION_COLUMNS)
+      .eq('mock_test_id', examId)
+      .order('section', { ascending: true })
+      .order('question_number', { ascending: true })
+      .range(offset, offset + CACHE_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const page = (data || []) as QuestionRow[];
+    rows.push(...page);
+
+    if (page.length < CACHE_PAGE_SIZE) {
+      return rows;
+    }
+
+    offset += CACHE_PAGE_SIZE;
+  }
+};
+
+const fetchExamBundleById = async (examId: string) => {
+  const { data: exam, error } = await supabaseAdmin
+    .from('mock_test_bank')
+    .select(EXAM_COLUMNS)
+    .eq('id', examId)
+    .eq('is_active', true)
+    .maybeSingle<MockTestRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!exam) {
+    return { exam: null, questions: [] };
+  }
+
+  const questions = await fetchExamQuestionsByExamId(examId);
+  return { exam, questions };
+};
+
+const getCachedExamById = async (examId: string, forceRefresh = false) => {
+  if (forceRefresh) {
+    clearActiveExamCache();
+  }
+
+  const cache = await loadActiveExamCache();
+  return {
+    exam: cache.exams.find((item) => item.id === examId) || null,
+    questions: cache.questionsByExamId.get(examId) || [],
+  };
+};
+
+const getExamBundleById = async (examId: string) => {
+  const cached = await getCachedExamById(examId);
+  if (cached.exam && cached.questions.length > 0) {
+    return cached;
+  }
+
+  const refreshed = await getCachedExamById(examId, true);
+  if (refreshed.exam && refreshed.questions.length > 0) {
+    return refreshed;
+  }
+
+  return fetchExamBundleById(examId);
+};
 
 const getPremiumProfile = async (userId: string) => {
   const { data: profile, error } = await supabaseAdmin
@@ -346,28 +581,13 @@ const determineLevelFromRules = async (examType: 'TOPIK_I' | 'TOPIK_II', totalSc
 };
 
 const getRandomLevelTestExam = async (examType: LevelTestExamType) => {
-  const { data: mockTests, error: testError } = await supabaseAdmin
-    .from('mock_test_bank')
-    .select('*, mock_test_questions(count)')
-    .eq('is_active', true)
-    .eq('exam_type', examType)
-    .order('test_number', { ascending: false });
-
-  if (testError || !mockTests || mockTests.length === 0) {
+  const cache = await loadActiveExamCache();
+  const availableTests = cache.exams.filter((test) => test.exam_type === examType);
+  if (availableTests.length === 0) {
     return { error: 'Шалгалт олдсонгүй' as const };
   }
 
-  const availableTests = (mockTests as any[]).filter(test => {
-    const count = test.mock_test_questions[0]?.count ?? 0;
-    return count >= test.total_questions;
-  });
-
-  if (availableTests.length === 0) {
-    return { error: 'Шалгалтын асуултууд олдсонгүй' as const };
-  }
-
-  const exam = { ...availableTests[Math.floor(Math.random() * availableTests.length)] };
-  delete exam.mock_test_questions;
+  const exam = availableTests[Math.floor(Math.random() * availableTests.length)];
 
   return { exam: exam as MockTestRow };
 };
@@ -403,14 +623,9 @@ const createLevelTestSessionPayload = async (
     throw new Error('Session үүсгэхэд алдаа гарлаа');
   }
 
-  const { data: questions, error: questionsError } = await supabaseAdmin
-    .from('mock_test_questions')
-    .select('id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url')
-    .eq('mock_test_id', exam.id)
-    .order('section', { ascending: true })
-    .order('question_number', { ascending: true });
-
-  if (questionsError || !questions || questions.length === 0) {
+  const cache = await loadActiveExamCache();
+  const questions = cache.questionsByExamId.get(exam.id) || [];
+  if (!questions || questions.length === 0) {
     throw new Error('Шалгалтын асуултууд олдсонгүй');
   }
 
@@ -434,28 +649,14 @@ const createLevelTestSessionPayload = async (
 
 export const getExams = async (_req: AuthRequest, res: Response) => {
   try {
-    const { data: exams, error } = await supabase
-      .from('mock_test_bank')
-      .select('*, mock_test_questions(count)')
-      .eq('is_active', true)
-      .order('exam_type', { ascending: true })
-      .order('test_number', { ascending: false });
-
-    if (error) {
-      return res.status(400).json({ success: false, error: error.message });
-    }
-
-    const examsWithQuestions = (exams || [])
-      .filter(exam => {
-        const count = (exam.mock_test_questions as any)[0]?.count ?? 0;
-        return count >= exam.total_questions;
-      })
-      .map(({ mock_test_questions: _mqc, ...exam }) => exam);
+    const cache = await loadActiveExamCache();
+    const examsWithQuestions = cache.exams.map(mapPublicExam);
 
     return res.json({
       success: true,
       exams: examsWithQuestions,
       total: examsWithQuestions.length,
+      meta: cache.meta,
     });
   } catch (error) {
     console.error('Get exams error:', error);
@@ -525,18 +726,18 @@ export const getExamResults = async (req: AuthRequest, res: Response) => {
 export const getExamById = async (req: AuthRequest, res: Response) => {
   const { examId } = req.params;
 
-  try {
-    const { data: exam, error } = await supabase
-      .from('mock_test_bank')
-      .select('*')
-      .eq('id', examId)
-      .single();
+  if (typeof examId !== 'string') {
+    return res.status(400).json({ success: false, error: 'Exam ID missing' });
+  }
 
-    if (error || !exam) {
-      return res.status(404).json({ success: false, error: 'Шалгалт олдсонгүй' });
+  try {
+    const { exam } = await getExamBundleById(examId);
+
+    if (!exam) {
+      return res.status(404).json({ success: false, error: 'Exam not found' });
     }
 
-    return res.json({ success: true, exam });
+    return res.json({ success: true, exam: mapPublicExam(exam) });
   } catch (error) {
     console.error('Get exam by id error:', error);
     return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
@@ -551,20 +752,14 @@ export const startExam = async (req: AuthRequest, res: Response) => {
     return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй' });
   }
 
-  if (!examId) {
+  if (typeof examId !== 'string' || !examId) {
     return res.status(400).json({ success: false, error: 'Шалгалтын ID олдсонгүй' });
   }
 
   try {
-    const [premiumCheck, examResult, questionsResult] = await Promise.all([
+    const [premiumCheck, cachedExam] = await Promise.all([
       getPremiumProfile(userId),
-      supabaseAdmin.from('mock_test_bank').select('*').eq('id', examId).eq('is_active', true).single<MockTestRow>(),
-      supabaseAdmin
-        .from('mock_test_questions')
-        .select('id, section, question_number, question_text, question_image_url, options, option_image_urls, audio_url')
-        .eq('mock_test_id', examId)
-        .order('section', { ascending: true })
-        .order('question_number', { ascending: true }),
+      getExamBundleById(examId),
     ]);
 
     if ('error' in premiumCheck) {
@@ -575,13 +770,12 @@ export const startExam = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { data: exam, error: examError } = examResult;
-    if (examError || !exam) {
+    const { exam, questions } = cachedExam;
+    if (!exam) {
       return res.status(404).json({ success: false, error: 'Шалгалт олдсонгүй' });
     }
 
-    const { data: questions, error: questionsError } = questionsResult;
-    if (questionsError || !questions || questions.length === 0) {
+    if (!questions || questions.length === 0) {
       return res.status(404).json({ success: false, error: 'Шалгалтын асуултууд олдсонгүй' });
     }
 

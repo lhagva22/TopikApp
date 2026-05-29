@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Video from 'react-native-video/lib/index';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -28,8 +28,13 @@ const getBadgeLabel = (lesson: VideoLesson) => {
   return 'TOPIK I';
 };
 
+const getVideoRequiredStatus = (lesson: VideoLesson) => lesson.isPremium ? 'paid' : 'guest';
+
 const Videolesson = () => {
-  const { hasAccess } = useAppStore();
+  const { getUserStatus, hasAccess } = useAppStore();
+  const userStatus = getUserStatus();
+  const isRegisteredOrPaidUser = hasAccess('registered');
+  const lastDefaultStatusRef = useRef<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoLesson | null>(null);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState('all');
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -69,6 +74,26 @@ const Videolesson = () => {
     return () => { isMounted = false; };
   }, []);
 
+  const visibleCategories = useMemo(() => {
+    return categories;
+  }, [categories]);
+
+  useEffect(() => {
+    if (lastDefaultStatusRef.current === userStatus || categories.length === 0) {
+      return;
+    }
+
+    lastDefaultStatusRef.current = userStatus;
+
+    if (userStatus === 'guest') {
+      const hasFreeCategory = categories.some((category) => category.slug === 'free');
+      setSelectedCategorySlug(hasFreeCategory ? 'free' : 'all');
+      return;
+    }
+
+    setSelectedCategorySlug('all');
+  }, [categories, userStatus]);
+
   const filteredLessons = useMemo(() => {
     if (selectedCategorySlug === 'all') {return lessons;}
     return lessons.filter((lesson) => lesson.category?.slug === selectedCategorySlug);
@@ -76,7 +101,7 @@ const Videolesson = () => {
 
   const groupedLessons = useMemo<VideoLessonGroup[]>(() => {
     const categoryMap = new Map<string, VideoLessonGroup>(
-      categories.map((cat) => [cat.id, { category: cat, lessons: [] as VideoLesson[] }]),
+      visibleCategories.map((cat) => [cat.id, { category: cat, lessons: [] as VideoLesson[] }]),
     );
     const uncategorized: VideoLesson[] = [];
 
@@ -89,7 +114,7 @@ const Videolesson = () => {
     const groups = Array.from(categoryMap.values()).filter((g) => g.lessons.length > 0);
     if (uncategorized.length > 0) {groups.push({ category: null, lessons: uncategorized });}
     return groups;
-  }, [categories, filteredLessons]);
+  }, [filteredLessons, visibleCategories]);
 
   const handleVideoPress = (video: VideoLesson) => {
     setVideoError(null);
@@ -124,8 +149,9 @@ const Videolesson = () => {
 
         {!isLoading && !loadError && categories.length > 0 ? (
           <VideoCategoryFilter
-            categories={categories}
+            categories={visibleCategories}
             selectedSlug={selectedCategorySlug}
+            showAll={isRegisteredOrPaidUser}
             onSelect={setSelectedCategorySlug}
           />
         ) : null}
@@ -157,7 +183,7 @@ const Videolesson = () => {
             {group.lessons.map((video) => (
               <ProtectedTouchable
                 key={video.id}
-                requiredStatus="registered"
+                requiredStatus={getVideoRequiredStatus(video)}
                 onPress={() => handleVideoPress(video)}
                 activeOpacity={0.82}
                 style={styles.cardWrapper}
@@ -176,7 +202,7 @@ const Videolesson = () => {
                         <Icon name="play" size={20} color="#fff" />
                       </View>
                     </View>
-                    {!hasAccess('registered') && (
+                    {!hasAccess(getVideoRequiredStatus(video)) && (
                       <View style={styles.lockBadge}>
                         <Icon name="lock-closed" size={10} color="#fff" />
                       </View>
@@ -192,6 +218,9 @@ const Videolesson = () => {
                       <View style={styles.levelChip}>
                         <Icon name="school-outline" size={11} color="#155DFC" />
                         <Text style={styles.levelChipText}>{getLessonLevel(video)}</Text>
+                      </View>
+                      <View style={styles.badgePill}>
+                        <Text style={styles.badgePillText}>{video.isPremium ? 'Premium' : 'Free'}</Text>
                       </View>
                       <View style={styles.badgePill}>
                         <Text style={styles.badgePillText}>{getBadgeLabel(video)}</Text>

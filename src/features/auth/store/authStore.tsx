@@ -3,6 +3,7 @@ import { create } from 'zustand';
 
 import { getUserStatus } from '../../../app/store/accessControl';
 import { useAppStore } from '../../../app/store';
+import { removeAuthTokens, setSessionTokens } from '../../../core/api/apiClient';
 import { getErrorMessage, logError } from '../../../shared/lib/errors';
 import { authApi } from '../api/authApi';
 import type { User } from '../types';
@@ -37,14 +38,14 @@ const buildAuthState = (user: User, token: string | null) => ({
 });
 
 const persistAuthenticatedUser = async (user: User, session: AuthSession) => {
-  await AsyncStorage.setItem('token', session.access_token);
+  await setSessionTokens(session.access_token, session.refresh_token);
   syncSharedAuthState(user, session.access_token);
 
   return buildAuthState(user, session.access_token);
 };
 
 const createGuestState = async () => {
-  await AsyncStorage.removeItem('token');
+  await removeAuthTokens();
   await AsyncStorage.removeItem('guestUser');
 
   const guestUser = createGuestUser();

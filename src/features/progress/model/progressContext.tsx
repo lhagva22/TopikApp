@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { useAppStore } from '../../../app/store';
 import { getErrorMessage, logError } from '../../../shared/lib/errors';
@@ -6,6 +6,7 @@ import { progressApi } from '../api/progressApi';
 import type { ExamResult, LessonProgress, ProgressContextType, ProgressRecommendation } from './types';
 
 const ProgressContext = createContext<ProgressContextType | undefined>(undefined);
+const PROGRESS_CACHE_MAX_AGE_MS = 60 * 1000;
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isInitialized } = useAppStore();
@@ -15,8 +16,19 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const [recommendations, setRecommendations] = useState<ProgressRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
+  const [hasLoadedProgress, setHasLoadedProgress] = useState(false);
 
-  const loadData = useCallback(async () => {
+  const hasProgressData = useMemo(
+    () =>
+      examResults.length > 0 ||
+      levelTestResults.length > 0 ||
+      lessonProgress.length > 0 ||
+      recommendations.length > 0,
+    [examResults.length, lessonProgress.length, levelTestResults.length, recommendations.length],
+  );
+
+  const loadData = useCallback(async (force = false) => {
     if (!isInitialized) {
       return;
     }
@@ -27,11 +39,21 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       setLessonProgress([]);
       setRecommendations([]);
       setError(null);
+      setLastLoadedAt(null);
+      setHasLoadedProgress(false);
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    if (
+      !force &&
+      lastLoadedAt &&
+      Date.now() - lastLoadedAt < PROGRESS_CACHE_MAX_AGE_MS
+    ) {
+      return;
+    }
+
+    setIsLoading(!hasLoadedProgress && !hasProgressData);
     setError(null);
 
     try {
@@ -62,24 +84,30 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
             createdAt: recommendation.createdAt ? new Date(recommendation.createdAt) : undefined,
           })),
         );
+        setLastLoadedAt(Date.now());
+        setHasLoadedProgress(true);
       } else {
-        setExamResults([]);
-        setLevelTestResults([]);
-        setLessonProgress([]);
-        setRecommendations([]);
+        if (!hasLoadedProgress && !hasProgressData) {
+          setExamResults([]);
+          setLevelTestResults([]);
+          setLessonProgress([]);
+          setRecommendations([]);
+        }
         setError(getErrorMessage(response.error, 'Failed to load progress data.'));
       }
     } catch (caughtError) {
       logError('Error loading progress data', caughtError);
-      setExamResults([]);
-      setLevelTestResults([]);
-      setLessonProgress([]);
-      setRecommendations([]);
+      if (!hasLoadedProgress && !hasProgressData) {
+        setExamResults([]);
+        setLevelTestResults([]);
+        setLessonProgress([]);
+        setRecommendations([]);
+      }
       setError(getErrorMessage(caughtError, 'Failed to load progress data.'));
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, isInitialized]);
+  }, [hasLoadedProgress, hasProgressData, isAuthenticated, isInitialized, lastLoadedAt]);
 
   useEffect(() => {
     loadData().catch(() => undefined);
@@ -87,9 +115,13 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
 
   const addExamResult = (result: ExamResult) => {
     setExamResults((prev) => [result, ...prev]);
+    setLastLoadedAt(Date.now());
+    setHasLoadedProgress(true);
   };
 
   const updateLessonProgress = (progress: LessonProgress) => {
+    setLastLoadedAt(Date.now());
+    setHasLoadedProgress(true);
     setLessonProgress((prev) => {
       const existing = prev.find(
         (item) => item.categoryId === progress.categoryId && item.lessonId === progress.lessonId,
@@ -157,6 +189,8 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     setLevelTestResults([]);
     setLessonProgress([]);
     setRecommendations([]);
+    setLastLoadedAt(null);
+    setHasLoadedProgress(false);
   };
 
   return (

@@ -6,17 +6,23 @@ import type { VideoCategorySummary } from '../api/lessonApi';
 type VideoCategoryFilterProps = {
   categories: VideoCategorySummary[];
   selectedSlug: string;
+  showAll?: boolean;
   onSelect: (slug: string) => void;
 };
 
-const VideoCategoryFilter = ({ categories, selectedSlug, onSelect }: VideoCategoryFilterProps) => (
+const VideoCategoryFilter = ({
+  categories,
+  selectedSlug,
+  showAll = true,
+  onSelect,
+}: VideoCategoryFilterProps) => (
   <View style={styles.wrapper}>
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.content}
     >
-      {[{ id: 'all', slug: 'all', title: 'Бүгд' }, ...categories].map((cat) => {
+      {[...(showAll ? [{ id: 'all', slug: 'all', title: 'Бүгд' }] : []), ...categories].map((cat) => {
         const active = selectedSlug === cat.slug;
         return (
           <Pressable

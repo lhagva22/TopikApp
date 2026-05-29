@@ -78,7 +78,16 @@ export type GetExamResultsResponse =
   | { success: false; error: string };
 
 export type GetExamBankResponse =
-  | { success: true; exams: ExamBank[]; total: number }
+  | {
+      success: true;
+      exams: ExamBank[];
+      total: number;
+      meta?: {
+        total: number;
+        latestUpdatedAt: string | null;
+        questionTotal: number;
+      };
+    }
   | { success: false; error: string };
 
 export type StartExamResponse =

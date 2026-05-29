@@ -14,7 +14,7 @@ import { useAppStore } from '../../app/store';
 import type { RootStackParamList } from '../../app/navigation/types';
 import type { PaymentPlanItem, PaymentProps } from './types';
 
-const FEATURES = ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'];
+const FEATURES = ['Бүх видео хичээл', 'Mock шалгалтууд', 'Дүрмийн дунд гүнзгий түвшин', 'Ахиц дэвшил хянах боломж'];
 
 const paymentItems: PaymentPlanItem[] = [
   { id: 1, title: '1 сар', price: '29,900₮', months: 1, amount: 29900, features: FEATURES },

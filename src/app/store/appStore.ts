@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand/react';
 
-import { getToken } from '../../core/api/apiClient';
+import { getToken, removeAuthTokens } from '../../core/api/apiClient';
 import { authApi } from '../../features/auth/api/authApi';
 import type { User } from '../../features/auth/types';
 import { getErrorMessage, logError } from '../../shared/lib/errors';
@@ -92,7 +92,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           return;
         }
 
-        await AsyncStorage.removeItem('token');
+        await removeAuthTokens();
       }
 
       const guestStr = await AsyncStorage.getItem('guestUser');
