@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const { after, afterEach, before, describe, it } = require('node:test');
 
 const { createApp } = require('../dist/server.js');
+const { clearActiveExamCache } = require('../dist/controllers/examController.js');
 const database = require('../dist/config/supabase.js');
 
 const originalSupabaseFrom = database.supabase.from.bind(database.supabase);
@@ -65,6 +66,7 @@ describe('backend API', () => {
   });
 
   afterEach(() => {
+    clearActiveExamCache();
     database.supabase.from = originalSupabaseFrom;
     database.supabaseAdmin.from = originalAdminFrom;
     database.supabase.auth.getUser = originalGetUser;
@@ -132,20 +134,30 @@ describe('backend API', () => {
   });
 
   it('serves public exam, learning, video, and dictionary content', async () => {
-    mockTables(
-      {
-        mock_test_bank: [
-          {
-            id: 'exam-1',
-            title: 'TOPIK I',
-            total_questions: 1,
-            mock_test_questions: [{ count: 1 }],
-          },
-        ],
-      },
-      database.supabase,
-    );
     mockTables({
+      mock_test_bank: [
+        {
+          id: 'exam-1',
+          title: 'TOPIK I',
+          exam_type: 'TOPIK_I',
+          total_questions: 1,
+          duration: 100,
+          listening_questions: 1,
+          reading_questions: 0,
+          is_active: true,
+          updated_at: '2026-05-25T00:00:00.000Z',
+        },
+      ],
+      mock_test_questions: [
+        {
+          id: 'question-1',
+          mock_test_id: 'exam-1',
+          section: 'listening',
+          question_number: 1,
+          question_text: 'Question',
+          options: ['A', 'B'],
+        },
+      ],
       lesson_categories: [{ id: 'cat-1', slug: 'grammar', title: 'Grammar', is_active: true }],
       learning_contents: [{ id: 'content-1', title: 'Lesson', is_active: true }],
       korean_grammar_lessons: [{ id: 'grammar-1', grammar_pattern: '-아요', is_active: true }],
@@ -280,7 +292,7 @@ describe('backend API', () => {
     });
     const body = await response.json();
 
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 200, JSON.stringify(body));
     assert.equal(body.test.exam_type, 'TOPIK_II');
     assert.equal(body.session.id, 'topik-ii-session');
   });

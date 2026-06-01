@@ -232,7 +232,7 @@ const loadActiveExamCache = async (): Promise<ActiveExamCache> => {
   return activeExamCachePromise;
 };
 
-const clearActiveExamCache = () => {
+export const clearActiveExamCache = () => {
   activeExamCache = null;
   activeExamCachePromise = null;
 };
@@ -581,8 +581,28 @@ const determineLevelFromRules = async (examType: 'TOPIK_I' | 'TOPIK_II', totalSc
 };
 
 const getRandomLevelTestExam = async (examType: LevelTestExamType) => {
-  const cache = await loadActiveExamCache();
-  const availableTests = cache.exams.filter((test) => test.exam_type === examType);
+  let cache = await loadActiveExamCache();
+  let availableTests = cache.exams.filter((test) => test.exam_type === examType);
+
+  if (availableTests.length === 0) {
+    clearActiveExamCache();
+    cache = await loadActiveExamCache();
+    availableTests = cache.exams.filter((test) => test.exam_type === examType);
+  }
+
+  if (availableTests.length === 0) {
+    const { data: tests, error } = await supabaseAdmin
+      .from('mock_test_bank')
+      .select(EXAM_COLUMNS)
+      .eq('is_active', true)
+      .eq('exam_type', examType)
+      .order('test_number', { ascending: false });
+
+    if (!error && tests && tests.length > 0) {
+      availableTests = tests as MockTestRow[];
+    }
+  }
+
   if (availableTests.length === 0) {
     return { error: 'Шалгалт олдсонгүй' as const };
   }
@@ -624,7 +644,16 @@ const createLevelTestSessionPayload = async (
   }
 
   const cache = await loadActiveExamCache();
-  const questions = cache.questionsByExamId.get(exam.id) || [];
+  let questions = cache.questionsByExamId.get(exam.id) || [];
+  if (!questions || questions.length === 0) {
+    clearActiveExamCache();
+    const refreshedCache = await loadActiveExamCache();
+    questions = refreshedCache.questionsByExamId.get(exam.id) || [];
+  }
+
+  if (!questions || questions.length === 0) {
+    questions = await fetchExamQuestionsByExamId(exam.id);
+  }
   if (!questions || questions.length === 0) {
     throw new Error('Шалгалтын асуултууд олдсонгүй');
   }
