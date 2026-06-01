@@ -1,18 +1,8 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 
-import type { AuthStackParamList } from '../../features/auth/navigation/types';
-
-type ExamQuestionParam = {
-  id: string;
-  section: string;
-  question_number: number;
-  question_text: string;
-  question_image_url?: string;
-  options: string[];
-  option_image_urls?: Array<string | null> | null;
-  audio_url?: string;
-};
+import type { AuthStackParamList } from '../../features/auth/presentation/navigation/types';
+import type { TopikExamType, TopikQuestion } from '../../shared/types/topik';
 
 export type RootDrawerParamList = {
   Home: undefined;
@@ -44,13 +34,13 @@ export type RootDrawerParamList = {
   ExamInterface: {
     examId: string;
     examTitle: string;
-    examType: 'TOPIK_I' | 'TOPIK_II';
+    examType: TopikExamType;
     duration: number;
     totalQuestions: number;
     listeningQuestions: number;
     readingQuestions: number;
     sessionId?: string;
-    questions?: ExamQuestionParam[];
+    questions?: TopikQuestion[];
     isLevelTest?: boolean;
   };
   ExamResultScreen: {
@@ -68,19 +58,19 @@ export type RootDrawerParamList = {
     isLevelTest?: boolean;
     level?: number;
     levelName?: string;
-    currentExamType?: 'TOPIK_I' | 'TOPIK_II';
+    currentExamType?: TopikExamType;
     nextLevelTest?: {
       session: { id: string; started_at: string };
       test: {
         id: string;
         title: string;
-        exam_type: 'TOPIK_I' | 'TOPIK_II';
+        exam_type: TopikExamType;
         duration: number;
         total_questions: number;
         listening_questions: number;
         reading_questions: number;
       };
-      questions: ExamQuestionParam[];
+      questions: TopikQuestion[];
     } | null;
   };
 };

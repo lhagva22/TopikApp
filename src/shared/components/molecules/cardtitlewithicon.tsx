@@ -1,8 +1,17 @@
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
+import type { ImageSourcePropType } from 'react-native';
 import { CardHeader, CardTitle } from './card';
 
-const CardTitleWithIcon = ({ icon, image, title, iconBgColor, description }: any) => (
+type CardTitleWithIconProps = {
+  icon?: React.ReactNode;
+  image?: ImageSourcePropType;
+  title: string;
+  iconBgColor?: string;
+  description: string;
+};
+
+const CardTitleWithIcon = ({ icon, image, title, iconBgColor, description }: CardTitleWithIconProps) => (
   <View style={styles.container}>
     <View style={styles.iconColumn}>
       <View

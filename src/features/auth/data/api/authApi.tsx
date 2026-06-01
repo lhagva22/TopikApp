@@ -1,0 +1,36 @@
+import { post, get, ENDPOINTS } from '../../../../core/api/apiClient';
+import {
+  LoginRequest,
+  RegisterRequest,
+  GoogleLoginRequest,
+  AuthResponse,
+  ForgotPasswordRequest,
+  VerifyResetOtpRequest,
+  ResetPasswordRequest,
+} from '../../domain/types';
+
+export const authApi = {
+  login: (data: LoginRequest) =>
+    post<AuthResponse>(ENDPOINTS.AUTH.LOGIN, data),
+
+  googleLogin: (data: GoogleLoginRequest) =>
+    post<AuthResponse>(ENDPOINTS.AUTH.GOOGLE, data),
+
+  register: (data: RegisterRequest) =>
+    post<AuthResponse>(ENDPOINTS.AUTH.REGISTER, data),
+
+  getProfile: () =>
+    get<AuthResponse>(ENDPOINTS.AUTH.PROFILE),
+
+  logout: () =>
+    post<AuthResponse>(ENDPOINTS.AUTH.LOGOUT),
+
+  forgotPassword: (data: ForgotPasswordRequest) =>
+    post<AuthResponse>(ENDPOINTS.AUTH.FORGOT_PASSWORD, data),
+
+  verifyResetOtp: (data: VerifyResetOtpRequest) =>
+    post<AuthResponse>(ENDPOINTS.AUTH.VERIFY_RESET_OTP, data),
+
+  resetPassword: (data: ResetPasswordRequest) =>
+    post<AuthResponse>(ENDPOINTS.AUTH.RESET_PASSWORD, data),
+};

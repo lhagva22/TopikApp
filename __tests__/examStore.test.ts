@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-import { examApi } from '../src/features/exam/api/examApi';
-import { useExamStore } from '../src/features/exam/store/examStore';
+import { examApi } from '../src/features/exam/data/api/examApi';
+import { useExamStore } from '../src/features/exam/presentation/store/examStore';
 
-jest.mock('../src/features/exam/api/examApi', () => ({
+jest.mock('../src/features/exam/data/api/examApi', () => ({
   examApi: {
     getExams: jest.fn(),
     startExam: jest.fn(),

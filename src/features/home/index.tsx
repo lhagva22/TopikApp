@@ -1,8 +1,12 @@
-export { default as HomeScreen } from './screens/homescreen';
-export { useHome } from './hooks/useHome';
-export { homeApi } from './api/homeApi';
-export { LEVELS } from './constants/levels';
-export { LevelCard } from './components/LevelCard';
+export { LEVELS } from './domain/constants/levels';
+export {
+  lessonCategories as homeLessonCategories,
+  lessonCategoryMap as homeLessonCategoryMap,
+  lessonCategorySlugMap as homeLessonCategorySlugMap,
+} from '../lessons';
+export { LevelCard } from './presentation/components/LevelCard';
+export { useHome } from './presentation/hooks/useHome';
+export { default as HomeScreen } from './presentation/screens/homescreen';
 export type {
   Level,
   LevelTestData,
@@ -10,4 +14,4 @@ export type {
   StartLevelTestError,
   StartLevelTestResult,
   StartLevelTestSuccess,
-} from './types';
+} from './domain/types';

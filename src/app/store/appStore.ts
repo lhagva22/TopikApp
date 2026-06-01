@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand/react';
 
 import { getToken, removeAuthTokens } from '../../core/api/apiClient';
-import { authApi } from '../../features/auth/api/authApi';
-import type { User } from '../../features/auth/types';
+import { authRepository } from '../../features/auth/data/authRepository';
+import type { User } from '../../features/auth/domain/types';
 import { getErrorMessage, logError } from '../../shared/lib/errors';
 import {
   getAccessBlockReason,
@@ -48,16 +48,17 @@ const calculateDaysUsed = (startDate?: string | null, endDate?: string | null): 
   return Math.min(daysUsed, totalDays);
 };
 
-const createUserFromProfile = (profile: any, authUser: any): User => ({
-  id: authUser.id,
-  email: authUser.email,
-  name: profile?.name || authUser.user_metadata?.name || '',
-  status: profile?.status || 'guest',
-  current_level: profile?.current_level || 0,
-  subscription_start_date: profile?.subscription_start_date || null,
-  subscription_end_date: profile?.subscription_end_date || null,
-  subscription_months: profile?.subscription_months || null,
-});
+const parseStoredUser = (value: string | null): User | null => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value) as User;
+  } catch {
+    return null;
+  }
+};
 
 export const useAppStore = create<AppState>((set, get) => ({
   user: null,
@@ -78,11 +79,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const token = await getToken();
 
       if (token) {
-        const response = await authApi.getProfile();
+        const response = await authRepository.getProfile();
 
         if (response.success && response.user) {
           set({
-            user: createUserFromProfile(response.user, response.user),
+            user: response.user,
             token,
             isAuthenticated: true,
             isGuest: false,
@@ -96,7 +97,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       const guestStr = await AsyncStorage.getItem('guestUser');
-      const guestUser = guestStr ? JSON.parse(guestStr) : GUEST_USER.create();
+      const guestUser = parseStoredUser(guestStr) ?? GUEST_USER.create();
 
       if (!guestStr) {
         await AsyncStorage.setItem('guestUser', JSON.stringify(guestUser));

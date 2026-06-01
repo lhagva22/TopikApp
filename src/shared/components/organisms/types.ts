@@ -1,3 +1,5 @@
+import type { StyleProp, ViewStyle } from 'react-native';
+
 export type HeaderProps = {
   title?: string;
   onMenuPress?: () => void;
@@ -16,5 +18,5 @@ export type StatusType = 'success' | 'caution' | 'warning' | 'danger';
 export interface CustomProgressProps {
   value: number;
   color?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }

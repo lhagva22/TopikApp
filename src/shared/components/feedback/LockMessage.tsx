@@ -55,6 +55,7 @@ export function LockMessage({
   reason,
   onClose,
   onLoginClick,
+  onPricingClick,
 }: LockMessageProps) {
   const content = getContent(reason);
 
@@ -79,6 +80,25 @@ export function LockMessage({
                 }}
               >
                 <Text style={styles.primaryButtonText}>Нэвтрэх</Text>
+              </TouchableOpacity>
+            )}
+
+            {content.showPricing && (
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  content.showLogin ? styles.secondaryButton : styles.primaryButton,
+                ]}
+                onPress={() => {
+                  onClose();
+                  runAfterClose(onPricingClick);
+                }}
+              >
+                <Text
+                  style={content.showLogin ? styles.secondaryButtonText : styles.primaryButtonText}
+                >
+                  Багц идэвхжүүлэх
+                </Text>
               </TouchableOpacity>
             )}
 

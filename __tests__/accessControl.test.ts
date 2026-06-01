@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { getAccessBlockReason, hasAccess } from '../src/app/store/accessControl';
-import type { User } from '../src/features/auth/types';
+import type { User } from '../src/features/auth/domain/types';
 
 const createUser = (overrides: Partial<User>): User => ({
   id: 'user-1',

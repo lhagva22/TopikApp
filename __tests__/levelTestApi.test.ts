@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
 import { apiRequest, ENDPOINTS } from '../src/core/api/apiClient';
-import { examApi } from '../src/features/exam/api/examApi';
+import { examApi } from '../src/features/exam/data/api/examApi';
 
 jest.mock('../src/core/api/apiClient', () => ({
   apiRequest: jest.fn(),

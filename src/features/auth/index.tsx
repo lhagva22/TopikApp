@@ -1,7 +1,6 @@
 // src/features/auth/index.ts
-export { useAuthStore } from './store/authStore';
-export { useAuth } from './hooks/useAuth';
-export { authApi } from './api/authApi';
-export { ForgotPasswordScreen, LoginScreen, SigninScreen } from './screens';
-export type { AuthStackParamList } from './navigation/types';
-export type { User, LoginRequest, RegisterRequest, AuthResponse } from './types';
+export { useAuth } from './presentation/hooks/useAuth';
+export { ForgotPasswordScreen, LoginScreen, SigninScreen } from './presentation/screens';
+export { useAuthStore } from './presentation/store/authStore';
+export type { AuthStackParamList } from './presentation/navigation/types';
+export type { AuthResponse, LoginRequest, RegisterRequest, User } from './domain/types';

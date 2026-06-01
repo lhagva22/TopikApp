@@ -1,4 +1,4 @@
-import type { User } from '../../features/auth/types';
+import type { User } from '../../features/auth/domain/types';
 import type { AccessBlockReason, AccessLevel, UserStatus } from './types';
 
 const ACCESS_RANK: Record<UserStatus, number> = {

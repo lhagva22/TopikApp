@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-import { authApi } from '../src/features/auth/api/authApi';
-import { useAuthStore } from '../src/features/auth/store/authStore';
+import { authApi } from '../src/features/auth/data/api/authApi';
+import { useAuthStore } from '../src/features/auth/presentation/store/authStore';
 
-jest.mock('../src/features/auth/api/authApi', () => ({
+jest.mock('../src/features/auth/data/api/authApi', () => ({
   authApi: {
     login: jest.fn(),
     logout: jest.fn(),
@@ -57,7 +57,7 @@ describe('auth store session flow', () => {
 
     await useAuthStore.getState().logout();
 
-    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('token');
+    expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(['token', 'refreshToken']);
     expect(useAuthStore.getState().isGuest).toBe(true);
     expect(useAuthStore.getState().token).toBeNull();
   });
@@ -68,7 +68,7 @@ describe('auth store session flow', () => {
 
     await useAuthStore.getState().logout();
 
-    expect(AsyncStorage.removeItem).toHaveBeenCalledWith('token');
+    expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(['token', 'refreshToken']);
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(useAuthStore.getState().isGuest).toBe(true);
     errorLog.mockRestore();

@@ -9,7 +9,7 @@ export interface ProtectedTouchableProps {
   onPress?: () => void;
   onPaymentRequired?: () => void;
   requiredStatus?: AccessLevel;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
   activeOpacity?: number;
 }
 

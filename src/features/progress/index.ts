@@ -1,6 +1,11 @@
-export { ExamReviewScreen } from './ExamReviewScreen';
-export { Progress } from './Progress';
-export { ProgressProvider, useProgress } from './model/progressContext';
+export {
+  buildWeakAreas,
+  getScorePercentage,
+  getSectionAccuracy,
+} from './domain/progressMetrics';
+export { ExamReviewScreen } from './presentation/screens/ExamReviewScreen';
+export { Progress } from './presentation/screens/Progress';
+export { ProgressProvider, useProgress } from './presentation/providers/progressContext';
 export type {
   ExamResultDetail,
   ExamWeakSection,
@@ -11,4 +16,4 @@ export type {
   ReviewOption,
   ReviewQuestion,
   WeakArea,
-} from './model/types';
+} from './domain/types';

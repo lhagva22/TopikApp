@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { buildWeakAreas, getScorePercentage, getSectionAccuracy } from '../src/features/progress/model/progressMetrics';
+import { buildWeakAreas, getScorePercentage, getSectionAccuracy } from '../src/features/progress/domain/progressMetrics';
 
 describe('progress metrics', () => {
   it('finds the weak area from all selected exam results', () => {

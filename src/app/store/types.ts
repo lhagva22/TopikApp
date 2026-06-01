@@ -1,4 +1,4 @@
-import type { User } from '../../features/auth/types';
+import type { User } from '../../features/auth/domain/types';
 
 export type UserStatus = 'guest' | 'registered' | 'premium';
 export type AccessLevel = 'guest' | 'registered' | 'paid';

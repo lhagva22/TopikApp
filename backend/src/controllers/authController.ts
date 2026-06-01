@@ -135,6 +135,10 @@ export const register = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Бүх талбарыг бөглөнө үү' });
   }
 
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Нууц үг 8 ба түүнээс дээш тэмдэгттэй байх ёстой.' });
+  }
+
   // 1. Supabase auth бүртгэл
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -305,8 +309,8 @@ export const resetPassword = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Баталгаажуулалт болон шинэ нууц үгээ оруулна уу.' });
   }
 
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой.' });
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Нууц үг 8 ба түүнээс дээш тэмдэгттэй байх ёстой.' });
   }
 
   const payload = passwordResetTokens.get(resetToken);

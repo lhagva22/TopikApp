@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 import { apiRequest, get, post } from '../src/core/api/apiClient';
-import { authApi } from '../src/features/auth/api/authApi';
-import { dictionaryApi } from '../src/features/dictionary/api/dictionaryApi';
-import { examApi } from '../src/features/exam/api/examApi';
-import { lessonApi } from '../src/features/lessons/api/lessonApi';
-import { paymentApi } from '../src/features/payment/api/paymentApi';
-import { progressApi } from '../src/features/progress/api/progressApi';
+import { authApi } from '../src/features/auth/data/api/authApi';
+import { dictionaryApi } from '../src/features/dictionary/data/api/dictionaryApi';
+import { examApi } from '../src/features/exam/data/api/examApi';
+import { lessonApi } from '../src/features/lessons/data/api/lessonApi';
+import { paymentApi } from '../src/features/payment/data/api/paymentApi';
+import { progressApi } from '../src/features/progress/data/api/progressApi';
 
 jest.mock('../src/core/api/apiClient', () => ({
   apiRequest: jest.fn(),
@@ -59,6 +59,7 @@ jest.mock('../src/core/api/apiClient', () => ({
 describe('feature API contracts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(apiRequest).mockResolvedValue({ success: false });
   });
 
   it('uses the auth endpoints expected by the backend', async () => {
