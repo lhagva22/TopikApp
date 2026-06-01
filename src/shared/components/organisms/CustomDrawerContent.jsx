@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import { useAuthStore } from '../../../features/auth/store/authStore';
+import { useAuthStore } from '../../../features/auth/presentation/store/authStore';
 import { useAppStore } from '../../../app/store';
 import { PaymentScreen as Payment, usePaymentModal } from '../../../features/payment';
 
