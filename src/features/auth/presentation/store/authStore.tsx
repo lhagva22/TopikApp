@@ -59,7 +59,7 @@ const failAuth = (message: string) => ({
   isLoading: false,
 });
 
-const INVALID_LOGIN_MESSAGE = 'Буруу имэйл, нууц үг эсвэл нэвтрэх мэдээлэл оруулсан тохиолдолд алдааны мэдэгдэл харуулна.';
+const INVALID_LOGIN_MESSAGE = 'Имэйл эсвэл нууц үг буруу байна.';
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
@@ -80,7 +80,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         return true;
       }
 
-      set(failAuth(INVALID_LOGIN_MESSAGE));
+      set(failAuth(getErrorMessage(response.error || response.message, INVALID_LOGIN_MESSAGE)));
       return false;
     } catch (error) {
       logError('Login error', error);

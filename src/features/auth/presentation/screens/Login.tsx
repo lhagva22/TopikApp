@@ -24,6 +24,8 @@ import { googleAuthUseCases } from '../dependencies';
 import type { AuthStackParamList } from '../navigation/types';
 import type { LoginScreenNavigationProp } from './types';
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const Login = () => {
   const { login, googleLogin, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
@@ -55,12 +57,24 @@ const Login = () => {
     setFormError(null);
     clearError();
 
-    if (!email.trim() || !password.trim()) {
-      setFormError('И-мэйл болон нууц үгээ оруулна уу.');
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setFormError('И-мэйлээ оруулна уу.');
       return;
     }
 
-    const success = await login(email.trim(), password);
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      setFormError('И-мэйл буруу байна.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setFormError('Нууц үгээ оруулна уу.');
+      return;
+    }
+
+    const success = await login(trimmedEmail, password);
 
     if (!success) {
       return;

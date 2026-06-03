@@ -6,6 +6,26 @@ import { AuthRequest } from '../types';
 const PASSWORD_RESET_TOKEN_TTL_MS = 10 * 60 * 1000;
 const passwordResetTokens = new Map<string, { userId: string; email: string; expiresAt: number }>();
 
+const getLoginErrorMessage = async (email: string): Promise<string> => {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (!normalizedEmail) {
+    return 'Имэйл буруу байна.';
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('email', normalizedEmail)
+    .maybeSingle();
+
+  if (error) {
+    return 'Имэйл эсвэл нууц үг буруу байна.';
+  }
+
+  return data ? 'Нууц үг буруу байна.' : 'Имэйл буруу байна.';
+};
+
 export const logout = async (_req: Request, res: Response) => {
   return res.json({ success: true });
 };
@@ -344,13 +364,14 @@ export const login = async (req: Request, res: Response) => {
   }
 
   try {
+    const normalizedEmail = email.trim().toLowerCase();
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
     if (error) {
-      return res.status(401).json({ error: 'Имэйл эсвэл нууц үг буруу' });
+      return res.status(401).json({ error: await getLoginErrorMessage(normalizedEmail) });
     }
 
     // Profile-с мэдээлэл авах

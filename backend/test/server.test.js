@@ -133,6 +133,40 @@ describe('backend API', () => {
     assert.deepEqual(await response.json(), { error: 'Server error while signing in.' });
   });
 
+  it('returns an email-specific login error when the email is not registered', async () => {
+    database.supabase.auth.signInWithPassword = async () => ({
+      data: { user: null, session: null },
+      error: new Error('Invalid login credentials'),
+    });
+    database.supabaseAdmin.from = () => makeQuery({ data: null, error: null });
+
+    const response = await fetch(`${origin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'missing@example.com', password: 'password' }),
+    });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'Имэйл буруу байна.' });
+  });
+
+  it('returns a password-specific login error when the email exists', async () => {
+    database.supabase.auth.signInWithPassword = async () => ({
+      data: { user: null, session: null },
+      error: new Error('Invalid login credentials'),
+    });
+    database.supabaseAdmin.from = () => makeQuery({ data: { id: 'user-1' }, error: null });
+
+    const response = await fetch(`${origin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'student@example.com', password: 'wrong-password' }),
+    });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'Нууц үг буруу байна.' });
+  });
+
   it('serves public exam, learning, video, and dictionary content', async () => {
     mockTables({
       mock_test_bank: [

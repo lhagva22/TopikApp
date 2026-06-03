@@ -52,6 +52,18 @@ describe('auth store session flow', () => {
     expect(useAuthStore.getState().token).toBe('new-token');
   });
 
+  it('shows the login failure message returned by the backend', async () => {
+    jest.mocked(authApi.login).mockResolvedValue({
+      success: false,
+      error: 'Нууц үг буруу байна.',
+    });
+
+    const result = await useAuthStore.getState().login('student@example.com', 'wrong-password');
+
+    expect(result).toBe(false);
+    expect(useAuthStore.getState().error).toBe('Нууц үг буруу байна.');
+  });
+
   it('clears the local session when server logout succeeds', async () => {
     jest.mocked(authApi.logout).mockResolvedValue({ success: true });
 
