@@ -26,7 +26,7 @@ import { getErrorMessage, logError } from '../../../../shared/lib/errors';
 import { paymentUseCases } from '../dependencies';
 import type { QPayDeeplink, QPayPayment } from '../../domain/types';
 
-const FEATURES = ['Бүх видео хичээл', 'Mock шалгалтууд', 'Толь бичиг', 'Хичээлийн материал'];
+const FEATURES = ['Бүх видео хичээл', 'Mock шалгалтууд', 'Дүрмийн дунд гүнзгий түвшин', 'Ахиц дэвшил хянах боломж'];
 
 const paymentMethods = [
   { id: 'qpay', label: 'QPay', icon: 'qr-code-outline' },

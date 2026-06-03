@@ -125,10 +125,9 @@ const HomeScreen = () => {
             <Icon name="school-outline" size={24} color="#fff" />
           </View>
           <View style={styles.schoolBody}>
-            <Text style={styles.schoolTitle}>Шинэ эхлэл нархан сургууль</Text>
+            <Text style={styles.schoolTitle}>BrithRise</Text>
             <Text style={styles.schoolDesc}>
-              Ахлах ангидаа Солонгос улсад шилжин суралцах боломжтой Монгол улсын цорын
-              ганц сургууль.
+             New Beginning Education Center & Bright Rise Teenagers Club — өсвөр үе, сурагчдад зориулсан боловсрол, сургалт, хөгжлийн хөтөлбөрүүдтэй.
             </Text>
           </View>
         </View>
