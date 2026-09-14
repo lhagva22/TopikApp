@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useProgress } from '../../../progress';
 import {
   ActivityIndicator,
   Alert,
@@ -41,6 +42,7 @@ type BeforeRemoveEvent = {
 };
 
 export const ExamInterface = () => {
+  const { reloadData } = useProgress();
   const route = useRoute<ExamInterfaceRoute>();
   const navigation = useNavigation<ExamInterfaceNavigation>();
   const params = route.params ?? {};
@@ -298,6 +300,7 @@ export const ExamInterface = () => {
       if (result.success && 'result' in result) {
         if (isLevelTest) {
           await syncProfile();
+          await reloadData(true);
         }
         const nextLevelTest =
           isLevelTest && 'nextLevelTest' in result
@@ -333,6 +336,7 @@ export const ExamInterface = () => {
     isLevelTest,
     navigation,
     params.examType,
+    reloadData,
     sessionId,
     syncProfile,
     stopAudioPlayback,

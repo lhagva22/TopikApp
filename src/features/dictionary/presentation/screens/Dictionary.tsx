@@ -244,9 +244,9 @@ const Dictionary = () => {
       data={listData}
       keyExtractor={(item) => item.id}
       renderItem={renderWord}
-      ListHeaderComponent={renderHeader}
-      ListEmptyComponent={renderEmpty}
-      ListFooterComponent={renderFooter}
+      ListHeaderComponent={renderHeader()}
+      ListEmptyComponent={renderEmpty()}
+      ListFooterComponent={renderFooter()}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       initialNumToRender={14}
