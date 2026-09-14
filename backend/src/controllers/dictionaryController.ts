@@ -69,32 +69,6 @@ const getDictionaryMeta = async () => {
   };
 };
 
-const fetchAllDictionaryWords = async () => {
-  const words: any[] = [];
-  let offset = 0;
-
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from(DICTIONARY_TABLE)
-      .select(DICTIONARY_COLUMNS)
-      .order('korean_word', { ascending: true })
-      .range(offset, offset + DICTIONARY_SYNC_PAGE_SIZE - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    const page = data || [];
-    words.push(...page);
-
-    if (page.length < DICTIONARY_SYNC_PAGE_SIZE) {
-      return words;
-    }
-
-    offset += DICTIONARY_SYNC_PAGE_SIZE;
-  }
-};
-
 export const searchDictionary = async (req: AuthRequest, res: Response) => {
   const query = String(req.query.q || '').trim();
   const limitParam = Number(req.query.limit);
@@ -113,7 +87,7 @@ export const searchDictionary = async (req: AuthRequest, res: Response) => {
 
     if (query) {
       request = request.or(
-        `korean_word.ilike.%${query}%,mongolian_meaning.ilike.%${query}%,mongolian_definition.ilike.%${query}%,korean_definition.ilike.%${query}%`,
+        `korean_word.ilike.%${query}%,mongolian_meaning.ilike.%${query}%`,
       );
     }
 
@@ -149,15 +123,35 @@ export const getDictionarySyncMeta = async (_req: AuthRequest, res: Response) =>
   }
 };
 
-export const syncDictionary = async (_req: AuthRequest, res: Response) => {
+export const syncDictionary = async (req: AuthRequest, res: Response) => {
   try {
-    const words = (await fetchAllDictionaryWords()).map(mapDictionaryWord);
+    const offsetParam = Number(req.query.offset);
+    const limitParam = Number(req.query.limit);
+    const offset = Number.isFinite(offsetParam) && offsetParam >= 0 ? Math.floor(offsetParam) : 0;
+    const limit = Number.isFinite(limitParam) && limitParam > 0
+      ? Math.min(Math.floor(limitParam), DICTIONARY_SYNC_PAGE_SIZE)
+      : DICTIONARY_SYNC_PAGE_SIZE;
     const meta = await getDictionaryMeta();
+    const { data, error } = await supabaseAdmin
+      .from(DICTIONARY_TABLE)
+      .select(DICTIONARY_COLUMNS)
+      .order('korean_word', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const words = (data || []).map(mapDictionaryWord);
 
     return res.json({
       success: true,
       words,
       meta,
+      limit,
+      offset,
+      hasMore: offset + words.length < meta.total,
     });
   } catch (error: any) {
     console.error('Sync dictionary error:', error);

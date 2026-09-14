@@ -174,23 +174,22 @@ export const getDictionaryCacheStatus = async (): Promise<DictionaryCacheStatus 
   return { meta, cachedAt, wordCount };
 };
 
-export const saveDictionaryCache = async (words: DictionaryWord[], meta: DictionaryMeta) => {
+export const saveDictionaryCache = async (
+  words: DictionaryWord[],
+  meta: DictionaryMeta,
+  options: { reset?: boolean; finalize?: boolean } = {},
+) => {
   await ensureDictionaryDatabase();
   const db = await getDatabase();
+  const { reset = true, finalize = true } = options;
 
   await new Promise<void>((resolve, reject) => {
     db.transaction(
       (tx) => {
-        tx.executeSql(`DELETE FROM ${WORDS_TABLE}`);
-        tx.executeSql(`DELETE FROM ${META_TABLE}`);
-        tx.executeSql(`INSERT OR REPLACE INTO ${META_TABLE} (key, value) VALUES (?, ?)`, [
-          'meta',
-          JSON.stringify(meta),
-        ]);
-        tx.executeSql(`INSERT OR REPLACE INTO ${META_TABLE} (key, value) VALUES (?, ?)`, [
-          'cachedAt',
-          String(Date.now()),
-        ]);
+        if (reset) {
+          tx.executeSql(`DELETE FROM ${WORDS_TABLE}`);
+          tx.executeSql(`DELETE FROM ${META_TABLE}`);
+        }
 
         for (let start = 0; start < words.length; start += SQLITE_INSERT_BATCH_SIZE) {
           const batch = words.slice(start, start + SQLITE_INSERT_BATCH_SIZE);
@@ -228,6 +227,17 @@ export const saveDictionaryCache = async (words: DictionaryWord[], meta: Diction
             values,
           );
         }
+
+        if (finalize) {
+          tx.executeSql(`INSERT OR REPLACE INTO ${META_TABLE} (key, value) VALUES (?, ?)`, [
+            'meta',
+            JSON.stringify(meta),
+          ]);
+          tx.executeSql(`INSERT OR REPLACE INTO ${META_TABLE} (key, value) VALUES (?, ?)`, [
+            'cachedAt',
+            String(Date.now()),
+          ]);
+        }
       },
       (error) => reject(error),
       () => resolve(),
@@ -245,10 +255,10 @@ export const searchDictionaryCache = async (
 
   const trimmedQuery = query.trim();
   const where = trimmedQuery
-    ? 'WHERE korean_word LIKE ? ESCAPE \'\\\' OR mongolian_meaning LIKE ? ESCAPE \'\\\' OR mongolian_definition LIKE ? ESCAPE \'\\\' OR korean_definition LIKE ? ESCAPE \'\\\''
+    ? 'WHERE korean_word LIKE ? ESCAPE \'\\\' OR mongolian_meaning LIKE ? ESCAPE \'\\\''
     : '';
   const like = `%${escapeLike(trimmedQuery)}%`;
-  const searchParams: SQLiteValue[] = trimmedQuery ? [like, like, like, like] : [];
+  const searchParams: SQLiteValue[] = trimmedQuery ? [like, like] : [];
 
   const [countResult, wordsResult] = await Promise.all([
     execute(`SELECT COUNT(*) as count FROM ${WORDS_TABLE} ${where}`, searchParams),
@@ -259,10 +269,26 @@ export const searchDictionaryCache = async (
                mongolian_definition, examples, source, license, created_at
         FROM ${WORDS_TABLE}
         ${where}
-        ORDER BY korean_word COLLATE NOCASE ASC
+        ORDER BY
+          CASE
+            WHEN korean_word = ? THEN 0
+            WHEN mongolian_meaning = ? THEN 1
+            WHEN korean_word LIKE ? ESCAPE '\\' THEN 2
+            WHEN mongolian_meaning LIKE ? ESCAPE '\\' THEN 3
+            ELSE 4
+          END,
+          korean_word COLLATE NOCASE ASC
         LIMIT ? OFFSET ?
       `,
-      [...searchParams, options.limit, options.offset],
+      [
+        ...searchParams,
+        trimmedQuery,
+        trimmedQuery,
+        `${escapeLike(trimmedQuery)}%`,
+        `${escapeLike(trimmedQuery)}%`,
+        options.limit,
+        options.offset,
+      ],
     ),
   ]);
 

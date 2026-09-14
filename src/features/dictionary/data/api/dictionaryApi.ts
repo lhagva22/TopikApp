@@ -19,17 +19,34 @@ type DictionarySyncResponse = {
   success: boolean;
   words: DictionaryWord[];
   meta?: DictionaryMeta;
+  hasMore?: boolean;
   error?: string;
 };
 
 let hasVerifiedCacheThisSession = false;
 let dictionarySyncPromise: Promise<void> | null = null;
+const SYNC_PAGE_SIZE = 1000;
 
-const getFallbackMeta = (words: DictionaryWord[]): DictionaryMeta => ({
-  total: words.length,
-  version: 0,
-  updatedAt: null,
-});
+export type DictionarySyncProgress = {
+  downloaded: number;
+  total: number;
+  percent: number;
+  status: 'syncing' | 'complete' | 'error';
+};
+
+const progressListeners = new Set<(progress: DictionarySyncProgress) => void>();
+const emitSyncProgress = (progress: DictionarySyncProgress) => {
+  progressListeners.forEach((listener) => listener(progress));
+};
+
+export const subscribeDictionarySyncProgress = (
+  listener: (progress: DictionarySyncProgress) => void,
+) => {
+  progressListeners.add(listener);
+  return () => {
+    progressListeners.delete(listener);
+  };
+};
 
 const hasSameMeta = (cached: { meta: DictionaryMeta }, meta?: DictionaryMeta): boolean =>
   Boolean(
@@ -49,14 +66,58 @@ const fetchRemoteMeta = async (): Promise<DictionaryMeta | undefined> => {
 
 const performRemoteDictionarySync = async () => {
   console.log('[DictionaryCache] syncing dictionary from backend');
-  const response = await apiRequest<DictionarySyncResponse>(ENDPOINTS.DICTIONARY.SYNC, { method: 'GET' });
-  if (!response.success) {
-    throw new Error(response.error || 'Dictionary could not be synced.');
-  }
+  const meta = await fetchRemoteMeta();
+  if (!meta) {throw new Error('Dictionary metadata could not be loaded.');}
 
-  const words = response.words || [];
-  await saveDictionaryCache(words, response.meta || getFallbackMeta(words));
-  hasVerifiedCacheThisSession = true;
+  let downloaded = 0;
+  emitSyncProgress({ downloaded, total: meta.total, percent: 0, status: 'syncing' });
+
+  try {
+    while (downloaded < meta.total) {
+      const response = await apiRequest<DictionarySyncResponse>(
+        `${ENDPOINTS.DICTIONARY.SYNC}?limit=${SYNC_PAGE_SIZE}&offset=${downloaded}`,
+        { method: 'GET' },
+      );
+      if (!response.success) {
+        throw new Error(response.error || 'Dictionary could not be synced.');
+      }
+
+      const words = response.words || [];
+      if (words.length === 0) {break;}
+      const nextDownloaded = downloaded + words.length;
+      await saveDictionaryCache(words, meta, {
+        reset: downloaded === 0,
+        finalize: nextDownloaded >= meta.total || !response.hasMore,
+      });
+      downloaded = nextDownloaded;
+      emitSyncProgress({
+        downloaded,
+        total: meta.total,
+        percent: Math.min(100, Math.round((downloaded / meta.total) * 100)),
+        status: 'syncing',
+      });
+    }
+
+    if (downloaded < meta.total) {throw new Error('Dictionary sync ended before all words were received.');}
+
+    const completedCache = await getDictionaryCacheStatus();
+    if (!completedCache || completedCache.wordCount !== meta.total) {
+      throw new Error(
+        `Dictionary cache count mismatch: expected ${meta.total}, saved ${completedCache?.wordCount || 0}.`,
+      );
+    }
+
+    hasVerifiedCacheThisSession = true;
+    emitSyncProgress({ downloaded, total: meta.total, percent: 100, status: 'complete' });
+  } catch (error) {
+    emitSyncProgress({
+      downloaded,
+      total: meta.total,
+      percent: meta.total > 0 ? Math.round((downloaded / meta.total) * 100) : 0,
+      status: 'error',
+    });
+    throw error;
+  }
 };
 
 const fetchRemoteDictionary = (): Promise<void> => {

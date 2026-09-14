@@ -4,7 +4,11 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 import { getErrorMessage } from '../../../../shared/lib/errors';
 import type { DictionaryWord } from '../../domain/types';
-import { dictionaryUseCases } from '../dependencies';
+import {
+  dictionaryUseCases,
+  subscribeDictionarySyncProgress,
+  type DictionarySyncProgress,
+} from '../dependencies';
 
 const PAGE_SIZE = 200;
 
@@ -23,6 +27,9 @@ const Dictionary = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasLoadedWords, setHasLoadedWords] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState<DictionarySyncProgress | null>(null);
+
+  useEffect(() => subscribeDictionarySyncProgress(setSyncProgress), []);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,6 +142,21 @@ const Dictionary = () => {
           </TouchableOpacity>
         )}
       </View>
+
+      {syncProgress?.status === 'syncing' && (
+        <View style={styles.syncCard}>
+          <View style={styles.syncRow}>
+            <Text style={styles.syncTitle}>Үгийн сан татаж байна</Text>
+            <Text style={styles.syncPercent}>{syncProgress.percent}%</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${syncProgress.percent}%` }]} />
+          </View>
+          <Text style={styles.syncCount}>
+            {syncProgress.downloaded.toLocaleString()} / {syncProgress.total.toLocaleString()} үг
+          </Text>
+        </View>
+      )}
 
       {hasLoadedWords && !isLoading && !error && words.length > 0 && (
         <View style={styles.countRow}>
@@ -317,6 +339,13 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 15, color: '#0F172A', fontWeight: '500', paddingVertical: 0 },
   clearBtn: { padding: 2 },
+  syncCard: { backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, marginBottom: 14, gap: 7 },
+  syncRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  syncTitle: { fontSize: 12, fontWeight: '700', color: '#1E3A8A' },
+  syncPercent: { fontSize: 12, fontWeight: '800', color: '#155DFC' },
+  progressTrack: { height: 7, borderRadius: 999, backgroundColor: '#DBEAFE', overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 999, backgroundColor: '#155DFC' },
+  syncCount: { fontSize: 11, color: '#64748B' },
 
   countRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionAccent: { width: 4, height: 18, borderRadius: 2, backgroundColor: '#155DFC' },
