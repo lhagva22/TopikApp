@@ -3,23 +3,33 @@ import { Response } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import type { AuthRequest } from '../types';
 
-const DICTIONARY_COLUMNS = 'id, korean_word, mongolian_meaning, example_sentence, level, created_at';
+const DICTIONARY_TABLE = 'dictionary_words_v2';
+const DICTIONARY_COLUMNS = 'id, korean_word, parent_word, entry_kind, homonym_no, part_of_speech, pronunciation, vocabulary_level, korean_definition, mongolian_meaning, mongolian_definition, examples, source, license, created_at';
 const DICTIONARY_SYNC_PAGE_SIZE = 1000;
-const DICTIONARY_VERSION_KEY = 'dictionary_words';
+const DICTIONARY_VERSION_KEY = 'dictionary_words_v2';
 
 const mapDictionaryWord = (item: any) => ({
   id: String(item.id),
   koreanWord: item.korean_word || '',
+  parentWord: item.parent_word || '',
+  entryKind: item.entry_kind || '',
+  homonymNo: item.homonym_no ?? null,
+  partOfSpeech: item.part_of_speech || '',
+  pronunciation: item.pronunciation || '',
+  vocabularyLevel: item.vocabulary_level || '',
+  koreanDefinition: item.korean_definition || '',
   mongolianMeaning: item.mongolian_meaning || '',
-  exampleSentence: item.example_sentence || '',
-  level: item.level || null,
+  mongolianDefinition: item.mongolian_definition || '',
+  examples: Array.isArray(item.examples) ? item.examples : [],
+  source: item.source || '',
+  license: item.license || '',
   createdAt: item.created_at || null,
 });
 
 const getDictionaryMeta = async () => {
   const [countResult, versionResult] = await Promise.all([
     supabaseAdmin
-      .from('dictionary_words')
+      .from(DICTIONARY_TABLE)
       .select('id', { count: 'exact', head: true }),
     supabaseAdmin
       .from('app_data_versions')
@@ -65,7 +75,7 @@ const fetchAllDictionaryWords = async () => {
 
   while (true) {
     const { data, error } = await supabaseAdmin
-      .from('dictionary_words')
+      .from(DICTIONARY_TABLE)
       .select(DICTIONARY_COLUMNS)
       .order('korean_word', { ascending: true })
       .range(offset, offset + DICTIONARY_SYNC_PAGE_SIZE - 1);
@@ -96,14 +106,14 @@ export const searchDictionary = async (req: AuthRequest, res: Response) => {
 
   try {
     let request = supabaseAdmin
-      .from('dictionary_words')
+      .from(DICTIONARY_TABLE)
       .select(DICTIONARY_COLUMNS, { count: 'exact' })
       .order('korean_word', { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (query) {
       request = request.or(
-        `korean_word.ilike.%${query}%,mongolian_meaning.ilike.%${query}%,example_sentence.ilike.%${query}%`,
+        `korean_word.ilike.%${query}%,mongolian_meaning.ilike.%${query}%,mongolian_definition.ilike.%${query}%,korean_definition.ilike.%${query}%`,
       );
     }
 
@@ -164,8 +174,8 @@ export const getDictionaryWord = async (req: AuthRequest, res: Response) => {
 
   try {
     const { data, error } = await supabaseAdmin
-      .from('dictionary_words')
-      .select('id, korean_word, mongolian_meaning, example_sentence, level, created_at')
+      .from(DICTIONARY_TABLE)
+      .select(DICTIONARY_COLUMNS)
       .eq('id', id)
       .maybeSingle();
 
@@ -201,14 +211,7 @@ export const getBookmarks = async (req: AuthRequest, res: Response) => {
         `
           id,
           created_at,
-          dictionary_words:word_id (
-            id,
-            korean_word,
-            mongolian_meaning,
-            example_sentence,
-            level,
-            created_at
-          )
+          dictionary_words_v2:word_id (${DICTIONARY_COLUMNS})
         `,
       )
       .eq('user_id', userId)
@@ -221,8 +224,8 @@ export const getBookmarks = async (req: AuthRequest, res: Response) => {
     const bookmarks = (data || []).map((item: any) => ({
       id: String(item.id),
       createdAt: item.created_at || null,
-      word: item.dictionary_words
-          ? mapDictionaryWord(item.dictionary_words)
+      word: item.dictionary_words_v2
+          ? mapDictionaryWord(item.dictionary_words_v2)
         : null,
     }));
 

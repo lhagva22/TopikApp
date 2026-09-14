@@ -16,18 +16,30 @@ type DictionarySearchResult = {
 };
 
 type SQLiteValue = string | number | null;
+const SQLITE_INSERT_BATCH_SIZE = 50;
 type DictionaryRow = {
   id: string;
   korean_word?: string | null;
+  parent_word?: string | null;
+  entry_kind?: string | null;
+  homonym_no?: number | null;
+  part_of_speech?: string | null;
+  pronunciation?: string | null;
+  vocabulary_level?: string | null;
+  korean_definition?: string | null;
   mongolian_meaning?: string | null;
-  example_sentence?: string | null;
-  level?: number | null;
+  mongolian_definition?: string | null;
+  examples?: string | null;
+  source?: string | null;
+  license?: string | null;
   created_at?: string | null;
 };
 
 const DB_NAME = 'topik_dictionary.db';
-const META_TABLE = 'dictionary_cache_meta';
-const WORDS_TABLE = 'dictionary_words';
+const LEGACY_META_TABLE = 'dictionary_cache_meta';
+const LEGACY_WORDS_TABLE = 'dictionary_words';
+const META_TABLE = 'dictionary_cache_meta_v2';
+const WORDS_TABLE = 'dictionary_words_v2';
 
 let dbPromise: Promise<SQLiteDatabase> | null = null;
 let isInitialized = false;
@@ -51,6 +63,10 @@ const ensureDictionaryDatabase = async () => {
     return;
   }
 
+  // The old cache contains test dictionary data with an incompatible schema.
+  await execute(`DROP TABLE IF EXISTS ${LEGACY_WORDS_TABLE}`);
+  await execute(`DROP TABLE IF EXISTS ${LEGACY_META_TABLE}`);
+
   await execute(`
     CREATE TABLE IF NOT EXISTS ${META_TABLE} (
       key TEXT PRIMARY KEY NOT NULL,
@@ -62,15 +78,24 @@ const ensureDictionaryDatabase = async () => {
     CREATE TABLE IF NOT EXISTS ${WORDS_TABLE} (
       id TEXT PRIMARY KEY NOT NULL,
       korean_word TEXT NOT NULL,
-      mongolian_meaning TEXT NOT NULL,
-      example_sentence TEXT,
-      level INTEGER,
+      parent_word TEXT,
+      entry_kind TEXT,
+      homonym_no INTEGER,
+      part_of_speech TEXT,
+      pronunciation TEXT,
+      vocabulary_level TEXT,
+      korean_definition TEXT,
+      mongolian_meaning TEXT,
+      mongolian_definition TEXT,
+      examples TEXT NOT NULL DEFAULT '[]',
+      source TEXT,
+      license TEXT,
       created_at TEXT
     )
   `);
 
-  await execute(`CREATE INDEX IF NOT EXISTS idx_dictionary_words_korean ON ${WORDS_TABLE}(korean_word)`);
-  await execute(`CREATE INDEX IF NOT EXISTS idx_dictionary_words_level ON ${WORDS_TABLE}(level)`);
+  await execute(`CREATE INDEX IF NOT EXISTS idx_dictionary_words_v2_korean ON ${WORDS_TABLE}(korean_word)`);
+  await execute(`CREATE INDEX IF NOT EXISTS idx_dictionary_words_v2_level ON ${WORDS_TABLE}(vocabulary_level)`);
 
   isInitialized = true;
 };
@@ -78,9 +103,25 @@ const ensureDictionaryDatabase = async () => {
 const rowToWord = (row: DictionaryRow): DictionaryWord => ({
   id: String(row.id),
   koreanWord: row.korean_word || '',
+  parentWord: row.parent_word || '',
+  entryKind: row.entry_kind || '',
+  homonymNo: row.homonym_no ?? null,
+  partOfSpeech: row.part_of_speech || '',
+  pronunciation: row.pronunciation || '',
+  vocabularyLevel: row.vocabulary_level || '',
+  koreanDefinition: row.korean_definition || '',
   mongolianMeaning: row.mongolian_meaning || '',
-  exampleSentence: row.example_sentence || '',
-  level: row.level ?? null,
+  mongolianDefinition: row.mongolian_definition || '',
+  examples: (() => {
+    try {
+      const parsed = JSON.parse(row.examples || '[]');
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  })(),
+  source: row.source || '',
+  license: row.license || '',
   createdAt: row.created_at || null,
 });
 
@@ -151,23 +192,42 @@ export const saveDictionaryCache = async (words: DictionaryWord[], meta: Diction
           String(Date.now()),
         ]);
 
-        words.forEach((word) => {
+        for (let start = 0; start < words.length; start += SQLITE_INSERT_BATCH_SIZE) {
+          const batch = words.slice(start, start + SQLITE_INSERT_BATCH_SIZE);
+          const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+          const values: SQLiteValue[] = [];
+
+          batch.forEach((word) => {
+            values.push(
+              word.id,
+              word.koreanWord,
+              word.parentWord || null,
+              word.entryKind || null,
+              word.homonymNo ?? null,
+              word.partOfSpeech || null,
+              word.pronunciation || null,
+              word.vocabularyLevel || null,
+              word.koreanDefinition || null,
+              word.mongolianMeaning,
+              word.mongolianDefinition || null,
+              JSON.stringify(word.examples || []),
+              word.source || null,
+              word.license || null,
+              word.createdAt || null,
+            );
+          });
+
           tx.executeSql(
             `
               INSERT OR REPLACE INTO ${WORDS_TABLE}
-                (id, korean_word, mongolian_meaning, example_sentence, level, created_at)
-              VALUES (?, ?, ?, ?, ?, ?)
+                (id, korean_word, parent_word, entry_kind, homonym_no, part_of_speech,
+                 pronunciation, vocabulary_level, korean_definition, mongolian_meaning,
+                 mongolian_definition, examples, source, license, created_at)
+              VALUES ${placeholders}
             `,
-            [
-              word.id,
-              word.koreanWord,
-              word.mongolianMeaning,
-              word.exampleSentence || null,
-              word.level ?? null,
-              word.createdAt || null,
-            ],
+            values,
           );
-        });
+        }
       },
       (error) => reject(error),
       () => resolve(),
@@ -185,16 +245,18 @@ export const searchDictionaryCache = async (
 
   const trimmedQuery = query.trim();
   const where = trimmedQuery
-    ? 'WHERE korean_word LIKE ? ESCAPE \'\\\' OR mongolian_meaning LIKE ? ESCAPE \'\\\' OR example_sentence LIKE ? ESCAPE \'\\\''
+    ? 'WHERE korean_word LIKE ? ESCAPE \'\\\' OR mongolian_meaning LIKE ? ESCAPE \'\\\' OR mongolian_definition LIKE ? ESCAPE \'\\\' OR korean_definition LIKE ? ESCAPE \'\\\''
     : '';
   const like = `%${escapeLike(trimmedQuery)}%`;
-  const searchParams: SQLiteValue[] = trimmedQuery ? [like, like, like] : [];
+  const searchParams: SQLiteValue[] = trimmedQuery ? [like, like, like, like] : [];
 
   const [countResult, wordsResult] = await Promise.all([
     execute(`SELECT COUNT(*) as count FROM ${WORDS_TABLE} ${where}`, searchParams),
     execute(
       `
-        SELECT id, korean_word, mongolian_meaning, example_sentence, level, created_at
+        SELECT id, korean_word, parent_word, entry_kind, homonym_no, part_of_speech,
+               pronunciation, vocabulary_level, korean_definition, mongolian_meaning,
+               mongolian_definition, examples, source, license, created_at
         FROM ${WORDS_TABLE}
         ${where}
         ORDER BY korean_word COLLATE NOCASE ASC

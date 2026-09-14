@@ -8,13 +8,10 @@ import { dictionaryUseCases } from '../dependencies';
 
 const PAGE_SIZE = 200;
 
-const LEVEL_THEME: Record<number, { label: string; color: string; bg: string }> = {
-  1: { label: 'TOPIK I', color: '#059669', bg: '#ECFDF5' },
-  2: { label: 'TOPIK I', color: '#059669', bg: '#ECFDF5' },
-  3: { label: 'TOPIK II', color: '#8B5CF6', bg: '#F5F3FF' },
-  4: { label: 'TOPIK II', color: '#8B5CF6', bg: '#F5F3FF' },
-  5: { label: 'TOPIK II', color: '#8B5CF6', bg: '#F5F3FF' },
-  6: { label: 'TOPIK II', color: '#8B5CF6', bg: '#F5F3FF' },
+const LEVEL_THEME: Record<string, { label: string; color: string; bg: string }> = {
+  '초급': { label: 'Анхан', color: '#059669', bg: '#ECFDF5' },
+  '중급': { label: 'Дунд', color: '#2563EB', bg: '#EFF6FF' },
+  '고급': { label: 'Ахисан', color: '#8B5CF6', bg: '#F5F3FF' },
 };
 
 const Dictionary = () => {
@@ -209,7 +206,8 @@ const Dictionary = () => {
   };
 
   const renderWord = ({ item, index }: { item: DictionaryWord; index: number }) => {
-    const levelTheme = item.level != null ? LEVEL_THEME[item.level] : null;
+    const levelTheme = item.vocabularyLevel ? LEVEL_THEME[item.vocabularyLevel] : null;
+    const firstExample = item.examples?.[0];
 
     return (
       <View style={[styles.wordRow, index < words.length - 1 && styles.wordRowBorder]}>
@@ -219,6 +217,7 @@ const Dictionary = () => {
         <View style={styles.wordBody}>
           <View style={styles.wordTitleRow}>
             <Text style={styles.wordKorean}>{item.koreanWord}</Text>
+            {!!item.pronunciation && <Text style={styles.pronunciation}>[{item.pronunciation}]</Text>}
             {levelTheme && (
               <View style={[styles.levelBadge, { backgroundColor: levelTheme.bg }]}>
                 <Text style={[styles.levelBadgeText, { color: levelTheme.color }]}>{levelTheme.label}</Text>
@@ -226,10 +225,12 @@ const Dictionary = () => {
             )}
           </View>
           {!!item.mongolianMeaning && <Text style={styles.wordMeaning}>{item.mongolianMeaning}</Text>}
-          {!!item.exampleSentence && (
+          {!!item.partOfSpeech && <Text style={styles.partOfSpeech}>{item.partOfSpeech}</Text>}
+          {!!item.mongolianDefinition && <Text style={styles.wordDefinition}>{item.mongolianDefinition}</Text>}
+          {!!firstExample && (
             <View style={styles.exampleWrap}>
               <Icon name="chatbubble-outline" size={11} color="#94A3B8" style={styles.exampleIcon} />
-              <Text style={styles.wordExample}>{item.exampleSentence}</Text>
+              <Text style={styles.wordExample}>{firstExample}</Text>
             </View>
           )}
         </View>
@@ -368,6 +369,9 @@ const styles = StyleSheet.create({
   wordBody: { flex: 1, gap: 4 },
   wordTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   wordKorean: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  pronunciation: { fontSize: 12, color: '#64748B' },
+  partOfSpeech: { fontSize: 11, color: '#2563EB', fontWeight: '700' },
+  wordDefinition: { fontSize: 13, color: '#64748B', lineHeight: 19 },
   levelBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999 },
   levelBadgeText: { fontSize: 10, fontWeight: '700' },
   wordMeaning: { fontSize: 14, color: '#374151', fontWeight: '500', lineHeight: 20 },

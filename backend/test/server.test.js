@@ -197,7 +197,7 @@ describe('backend API', () => {
       korean_grammar_lessons: [{ id: 'grammar-1', grammar_pattern: '-아요', is_active: true }],
       video_categories: [{ id: 'video-cat-1', slug: 'start', title: 'Start', is_active: true }],
       video_lessons: [{ id: 'video-1', title: 'Video', video_url: '/media/video.mp4', is_active: true }],
-      dictionary_words: [{ id: 'word-1', korean_word: '학교', mongolian_meaning: 'сургууль' }],
+      dictionary_words_v2: [{ id: 'word-1', korean_word: '학교', mongolian_meaning: 'сургууль', examples: [] }],
     });
 
     const requests = [
@@ -510,7 +510,7 @@ describe('backend API', () => {
       dictionary_bookmarks: [
         {
           id: 'bookmark-1',
-          dictionary_words: { id: 'word-1', korean_word: '학교', mongolian_meaning: 'school' },
+          dictionary_words_v2: { id: 'word-1', korean_word: '학교', mongolian_meaning: 'school', examples: [] },
         },
       ],
     });

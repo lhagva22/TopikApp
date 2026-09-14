@@ -23,6 +23,7 @@ type DictionarySyncResponse = {
 };
 
 let hasVerifiedCacheThisSession = false;
+let dictionarySyncPromise: Promise<void> | null = null;
 
 const getFallbackMeta = (words: DictionaryWord[]): DictionaryMeta => ({
   total: words.length,
@@ -46,7 +47,7 @@ const fetchRemoteMeta = async (): Promise<DictionaryMeta | undefined> => {
   return response.meta;
 };
 
-const fetchRemoteDictionary = async () => {
+const performRemoteDictionarySync = async () => {
   console.log('[DictionaryCache] syncing dictionary from backend');
   const response = await apiRequest<DictionarySyncResponse>(ENDPOINTS.DICTIONARY.SYNC, { method: 'GET' });
   if (!response.success) {
@@ -58,10 +59,20 @@ const fetchRemoteDictionary = async () => {
   hasVerifiedCacheThisSession = true;
 };
 
-const ensureDictionaryCache = async () => {
+const fetchRemoteDictionary = (): Promise<void> => {
+  if (!dictionarySyncPromise) {
+    dictionarySyncPromise = performRemoteDictionarySync().finally(() => {
+      dictionarySyncPromise = null;
+    });
+  }
+
+  return dictionarySyncPromise;
+};
+
+const ensureDictionaryCache = async (): Promise<boolean> => {
   const cached = await getDictionaryCacheStatus();
   if (cached && hasVerifiedCacheThisSession) {
-    return;
+    return true;
   }
 
   try {
@@ -72,10 +83,15 @@ const ensureDictionaryCache = async () => {
         words: cached.wordCount,
       });
       hasVerifiedCacheThisSession = true;
-      return;
+      return true;
     }
 
-    await fetchRemoteDictionary();
+    // Keep search responsive while the large first-time cache is built once
+    // in the background. Until then, callers use the paginated backend search.
+    fetchRemoteDictionary().catch((error) => {
+      console.log('[DictionaryCache] background sync failed', error);
+    });
+    return Boolean(cached);
   } catch (error) {
     if (cached) {
       console.log('[DictionaryCache] offline/fallback using SQLite cache', {
@@ -83,10 +99,10 @@ const ensureDictionaryCache = async () => {
         words: cached.wordCount,
       });
       hasVerifiedCacheThisSession = true;
-      return;
+      return true;
     }
 
-    throw error;
+    return false;
   }
 };
 
@@ -106,7 +122,11 @@ export const dictionaryApi = {
     const offset = options.offset || 0;
 
     try {
-      await ensureDictionaryCache();
+      const cacheReady = await ensureDictionaryCache();
+      if (!cacheReady) {
+        return searchRemoteWords(query, { limit, offset });
+      }
+
       const result = await searchDictionaryCache(query, { limit, offset });
 
       return {
