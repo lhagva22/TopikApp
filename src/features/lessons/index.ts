@@ -8,6 +8,7 @@ export { default as AlphabetNumbersScreen } from './presentation/screens/detailS
 export { default as BookReaderScreen } from './presentation/screens/detailScreens/BookReaderScreen';
 export { default as BooksScreen } from './presentation/screens/detailScreens/booksScreen';
 export { default as GrammarScreen } from './presentation/screens/detailScreens/grammarScreen';
+export { default as ReadingPracticeScreen } from './presentation/screens/detailScreens/ReadingPracticeScreen';
 export { default as VocabularyScreen } from './presentation/screens/detailScreens/vocabularyScreen';
 export { default as LessonScreen } from './presentation/screens/lessonScreen/lessonScreen';
 export { default as VideoLessonScreen } from './presentation/screens/videolessonscreen/videolesson';

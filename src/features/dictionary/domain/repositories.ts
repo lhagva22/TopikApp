@@ -15,5 +15,7 @@ export interface DictionaryRepository {
     query: string,
     options?: { limit?: number; offset?: number },
   ): Promise<DictionarySearchResponse>;
+  getPracticeWords(limit?: number): Promise<DictionaryWord[]>;
+  getSentencePracticeWords(limit?: number): Promise<DictionaryWord[]>;
   refreshCache(): Promise<void>;
 }

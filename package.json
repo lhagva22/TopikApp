@@ -3,9 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "adb reverse tcp:5000 tcp:5000 && react-native run-android",
+    "preandroid": "node scripts/setup_android_reverse.cjs",
+    "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
+    "prestart": "node scripts/setup_android_reverse.cjs",
     "start": "react-native start",
     "test": "jest",
     "generate:topik64-sql": "node scripts/generate_topik_64_sql.mjs",

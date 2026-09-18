@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+import { koreanTts } from '../../../../core/native/koreanTts';
 import { getErrorMessage } from '../../../../shared/lib/errors';
 import type { DictionaryWord } from '../../domain/types';
 import {
@@ -18,6 +19,27 @@ const LEVEL_THEME: Record<string, { label: string; color: string; bg: string }> 
   '고급': { label: 'Ахисан', color: '#8B5CF6', bg: '#F5F3FF' },
 };
 
+const cleanExampleForSpeech = (text: string): string =>
+  text
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/^\s*[가나다라마바사아자차카타파하]\s*:\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const speakKorean = async (text: string) => {
+  try {
+    await koreanTts.speak(text);
+  } catch (speechError) {
+    console.warn('[KoreanTts] speak failed', speechError);
+    Alert.alert(
+      'Дуудлага ажиллахгүй байна',
+      koreanTts.isSupported
+        ? 'Утасныхаа Text-to-speech тохиргооноос солонгос хэлний дууг суулгана уу.'
+        : 'Аппыг Android дээр дахин build хийж суулгасны дараа ашиглана уу.',
+    );
+  }
+};
+
 const Dictionary = () => {
   const [query, setQuery] = useState('');
   const [words, setWords] = useState<DictionaryWord[]>([]);
@@ -30,6 +52,10 @@ const Dictionary = () => {
   const [syncProgress, setSyncProgress] = useState<DictionarySyncProgress | null>(null);
 
   useEffect(() => subscribeDictionarySyncProgress(setSyncProgress), []);
+
+  useEffect(() => () => {
+    koreanTts.stop().catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -240,6 +266,15 @@ const Dictionary = () => {
           <View style={styles.wordTitleRow}>
             <Text style={styles.wordKorean}>{item.koreanWord}</Text>
             {!!item.pronunciation && <Text style={styles.pronunciation}>[{item.pronunciation}]</Text>}
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`${item.koreanWord} үгийн дуудлагыг сонсох`}
+              activeOpacity={0.65}
+              onPress={() => speakKorean(item.koreanWord)}
+              style={styles.speakerButton}
+            >
+              <Icon name="volume-high-outline" size={17} color="#155DFC" />
+            </TouchableOpacity>
             {levelTheme && (
               <View style={[styles.levelBadge, { backgroundColor: levelTheme.bg }]}>
                 <Text style={[styles.levelBadgeText, { color: levelTheme.color }]}>{levelTheme.label}</Text>
@@ -253,6 +288,15 @@ const Dictionary = () => {
             <View style={styles.exampleWrap}>
               <Icon name="chatbubble-outline" size={11} color="#94A3B8" style={styles.exampleIcon} />
               <Text style={styles.wordExample}>{firstExample}</Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Жишээ өгүүлбэрийн дуудлагыг сонсох"
+                activeOpacity={0.65}
+                onPress={() => speakKorean(cleanExampleForSpeech(firstExample))}
+                style={styles.exampleSpeakerButton}
+              >
+                <Icon name="volume-high-outline" size={16} color="#64748B" />
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -399,6 +443,14 @@ const styles = StyleSheet.create({
   wordTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   wordKorean: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
   pronunciation: { fontSize: 12, color: '#64748B' },
+  speakerButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   partOfSpeech: { fontSize: 11, color: '#2563EB', fontWeight: '700' },
   wordDefinition: { fontSize: 13, color: '#64748B', lineHeight: 19 },
   levelBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999 },
@@ -407,6 +459,14 @@ const styles = StyleSheet.create({
   exampleWrap: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 2 },
   exampleIcon: { marginTop: 2 },
   wordExample: { flex: 1, fontSize: 12, color: '#94A3B8', lineHeight: 18, fontStyle: 'italic' },
+  exampleSpeakerButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   loadMoreButton: {
     marginTop: 12,

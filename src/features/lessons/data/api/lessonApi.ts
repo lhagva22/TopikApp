@@ -6,7 +6,6 @@ import {
 } from '../storage/grammarSqlite';
 import type {
   KoreanGrammarLesson,
-  KoreanGrammarLessonFilters,
   KoreanGrammarMeta,
 } from '../../domain/types';
 import type {
@@ -94,40 +93,21 @@ const ensureGrammarCache = async () => {
   }
 };
 
-const getRemoteKoreanGrammarLessons = (filters: KoreanGrammarLessonFilters = {}) => {
-  const params = new URLSearchParams();
-
-  if (filters.level) {params.append('level', filters.level);}
-  if (filters.topikLevel) {params.append('topikLevel', filters.topikLevel);}
-  if (filters.category) {params.append('category', filters.category);}
-
-  const query = params.toString();
-  return get<KoreanGrammarLessonsResponse>(`${ENDPOINTS.LESSONS.GRAMMAR}${query ? `?${query}` : ''}`);
-};
+const getRemoteKoreanGrammarLessons = () =>
+  get<KoreanGrammarLessonsResponse>(ENDPOINTS.LESSONS.GRAMMAR);
 
 export const lessonApi = {
   getLessonCategories: () => get<LessonCategoriesResponse>(ENDPOINTS.LESSONS.CATEGORIES),
   getLessons: () => get<LessonContentsResponse>(ENDPOINTS.LESSONS.LIST),
   getLessonsByCategory: (slug: string) => get<LessonContentsResponse>(ENDPOINTS.LESSONS.BY_CATEGORY(slug)),
-  getKoreanGrammarLessons: async (filters: KoreanGrammarLessonFilters = {}): Promise<KoreanGrammarLessonsResponse> => {
+  getKoreanGrammarLessons: async (): Promise<KoreanGrammarLessonsResponse> => {
     try {
       await ensureGrammarCache();
-      let lessons = await getCachedGrammarLessons();
-
-      if (filters.level) {
-        lessons = lessons.filter((lesson) => lesson.level === filters.level);
-      }
-      if (filters.topikLevel) {
-        lessons = lessons.filter((lesson) => lesson.topikLevel === filters.topikLevel);
-      }
-      if (filters.category) {
-        lessons = lessons.filter((lesson) => lesson.category === filters.category);
-      }
-
+      const lessons = await getCachedGrammarLessons();
       return { success: true, lessons };
     } catch (error) {
       console.log('[GrammarCache] SQLite unavailable, using backend grammar lessons');
-      return getRemoteKoreanGrammarLessons(filters);
+      return getRemoteKoreanGrammarLessons();
     }
   },
   refreshKoreanGrammarCache: syncGrammarLessons,

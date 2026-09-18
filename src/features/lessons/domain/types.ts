@@ -30,25 +30,26 @@ export type LessonContent = {
 
 export type KoreanGrammarLesson = {
   id: string;
-  sortOrder: number;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
-  topikLevel: 'TOPIK 1' | 'TOPIK 2';
-  category?: string | null;
+  sourceWordNo: string;
+  senseNo: number;
   grammarPattern: string;
-  meaningMn: string;
+  partOfSpeech?: string | null;
+  koreanDefinition: string;
+  mongolianTranslation?: string | null;
+  mongolianDefinition?: string | null;
   formRule?: string | null;
-  exampleKr?: string | null;
-  exampleMn?: string | null;
-  noteMn?: string | null;
+  examples: Array<{ type?: string | null; text: string }>;
+  relatedWords: Array<{
+    rel_word?: string;
+    id?: number;
+    rel_code_name?: string;
+    rel_sup_no?: string;
+  }>;
+  source?: string | null;
+  license?: string | null;
   isActive: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
-};
-
-export type KoreanGrammarLessonFilters = {
-  level?: KoreanGrammarLesson['level'];
-  topikLevel?: KoreanGrammarLesson['topikLevel'];
-  category?: string;
 };
 
 export type KoreanGrammarMeta = {

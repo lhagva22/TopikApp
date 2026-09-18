@@ -103,7 +103,7 @@ describe('feature API contracts', () => {
     await progressApi.getProgress();
     await progressApi.getResultDetail('result-1');
     await lessonApi.getLessonsByCategory('grammar');
-    await lessonApi.getKoreanGrammarLessons({ level: 'Beginner', topikLevel: 'TOPIK 1' });
+    await lessonApi.getKoreanGrammarLessons();
     await dictionaryApi.searchWords('학교', { limit: 20, offset: 5 });
     await paymentApi.createQPayPayment(3);
     await paymentApi.checkQPayPayment('payment-1');
@@ -111,7 +111,7 @@ describe('feature API contracts', () => {
     expect(apiRequest).toHaveBeenCalledWith('/progress');
     expect(apiRequest).toHaveBeenCalledWith('/progress/results/result-1');
     expect(get).toHaveBeenCalledWith('/lessons/category/grammar');
-    expect(get).toHaveBeenCalledWith('/korean-grammar-lessons?level=Beginner&topikLevel=TOPIK+1');
+    expect(get).toHaveBeenCalledWith('/korean-grammar-lessons');
     expect(apiRequest).toHaveBeenCalledWith(
       '/dictionary/search?q=%ED%95%99%EA%B5%90&limit=20&offset=5',
       { method: 'GET' },

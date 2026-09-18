@@ -166,6 +166,32 @@ const LessonScreen = () => {
             </ProtectedTouchable>
           );
         })}
+
+        {!isLoading && !loadError ? (
+          <ProtectedTouchable
+            requiredStatus="guest"
+            onPress={() => navigation.navigate('LessonReadingPractice')}
+            activeOpacity={0.82}
+            style={styles.cardWrapper}
+          >
+            <View style={[styles.card, styles.readingCard]}>
+              <View style={[styles.imageBox, styles.readingImageBox]}>
+                <Icon name="mic-outline" size={34} color="#DC2626" />
+              </View>
+              <View style={styles.info}>
+                <AppText style={styles.cardTitle}>Уншлагын дасгал</AppText>
+                <AppText style={styles.cardDesc}>Үгийг сонсож, дагаж уншаад дуудлагаа шалгах</AppText>
+                <View style={[styles.levelBadge, styles.readingLevelBadge]}>
+                  <View style={[styles.levelDot, styles.readingLevelDot]} />
+                  <AppText style={[styles.levelText, styles.readingLevelText]}>Бүх шат</AppText>
+                </View>
+              </View>
+              <View style={styles.arrowBox}>
+                <Icon name="chevron-forward" size={18} color="#DC2626" />
+              </View>
+            </View>
+          </ProtectedTouchable>
+        ) : null}
       </ScrollView>
 
     </>
@@ -270,6 +296,11 @@ const styles = StyleSheet.create({
   arrowBox: {
     paddingLeft: 8,
   },
+  readingCard: { borderLeftColor: '#DC2626' },
+  readingImageBox: { backgroundColor: '#FEF2F2' },
+  readingLevelBadge: { backgroundColor: '#FEF2F2' },
+  readingLevelDot: { backgroundColor: '#DC2626' },
+  readingLevelText: { color: '#DC2626' },
 });
 
 export default LessonScreen;

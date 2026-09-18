@@ -19,6 +19,8 @@ class MainApplication : Application(), ReactApplication {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
               add(ScreenshotPreventPackage())
+              add(KoreanTtsPackage())
+              add(KoreanSpeechRecognizerPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

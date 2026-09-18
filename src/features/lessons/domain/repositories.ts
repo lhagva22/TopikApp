@@ -1,6 +1,5 @@
 import type {
   KoreanGrammarLesson,
-  KoreanGrammarLessonFilters,
   LessonCategorySummary,
   LessonContent,
   VideoCategorySummary,
@@ -41,7 +40,7 @@ export interface LessonRepository {
   getLessonCategories(): Promise<LessonCategoriesResponse>;
   getLessons(): Promise<LessonContentsResponse>;
   getLessonsByCategory(slug: string): Promise<LessonContentsResponse>;
-  getKoreanGrammarLessons(filters?: KoreanGrammarLessonFilters): Promise<KoreanGrammarLessonsResponse>;
+  getKoreanGrammarLessons(): Promise<KoreanGrammarLessonsResponse>;
   refreshKoreanGrammarCache(): Promise<void>;
   getVideoCategories(): Promise<VideoCategoriesResponse>;
   getVideoLessons(): Promise<VideoLessonsResponse>;

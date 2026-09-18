@@ -2,19 +2,22 @@ import { Request, Response } from 'express';
 
 import { supabaseAdmin } from '../config/supabase';
 
-const GRAMMAR_VERSION_KEY = 'korean_grammar_lessons';
+const GRAMMAR_TABLE = 'korean_grammar_lessons_v2';
+const GRAMMAR_VERSION_KEY = 'korean_grammar_lessons_v2';
 const GRAMMAR_COLUMNS = `
   id,
-  sort_order,
-  level,
-  topik_level,
-  category,
+  source_word_no,
+  sense_no,
   grammar_pattern,
-  meaning_mn,
+  part_of_speech,
+  korean_definition,
+  mongolian_translation,
+  mongolian_definition,
   form_rule,
-  example_kr,
-  example_mn,
-  note_mn,
+  examples,
+  related_words,
+  source,
+  license,
   is_active,
   created_at,
   updated_at
@@ -55,16 +58,18 @@ const mapLesson = (item: any) => ({
 
 const mapGrammarLesson = (item: any) => ({
   id: String(item.id),
-  sortOrder: item.sort_order || 0,
-  level: item.level || 'Beginner',
-  topikLevel: item.topik_level || 'TOPIK 1',
-  category: item.category || '',
+  sourceWordNo: item.source_word_no || '',
+  senseNo: item.sense_no || 1,
   grammarPattern: item.grammar_pattern || '',
-  meaningMn: item.meaning_mn || '',
+  partOfSpeech: item.part_of_speech || '',
+  koreanDefinition: item.korean_definition || '',
+  mongolianTranslation: item.mongolian_translation || '',
+  mongolianDefinition: item.mongolian_definition || '',
   formRule: item.form_rule || '',
-  exampleKr: item.example_kr || '',
-  exampleMn: item.example_mn || '',
-  noteMn: item.note_mn || '',
+  examples: Array.isArray(item.examples) ? item.examples : [],
+  relatedWords: Array.isArray(item.related_words) ? item.related_words : [],
+  source: item.source || '',
+  license: item.license || '',
   isActive: Boolean(item.is_active),
   createdAt: item.created_at || null,
   updatedAt: item.updated_at || null,
@@ -101,7 +106,7 @@ const getAppDataVersion = async (key: string) => {
 const getGrammarMeta = async () => {
   const [countResult, version] = await Promise.all([
     supabaseAdmin
-      .from('korean_grammar_lessons')
+      .from(GRAMMAR_TABLE)
       .select('id', { count: 'exact', head: true })
       .eq('is_active', true),
     getAppDataVersion(GRAMMAR_VERSION_KEY),
@@ -124,11 +129,11 @@ const fetchAllGrammarLessons = async () => {
 
   while (true) {
     const { data, error } = await supabaseAdmin
-      .from('korean_grammar_lessons')
+      .from(GRAMMAR_TABLE)
       .select(GRAMMAR_COLUMNS)
       .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true })
+      .order('grammar_pattern', { ascending: true })
+      .order('sense_no', { ascending: true })
       .range(offset, offset + GRAMMAR_SYNC_PAGE_SIZE - 1);
 
     if (error) {
@@ -258,34 +263,9 @@ export const getLessonsByCategory = async (req: Request, res: Response) => {
   }
 };
 
-export const getKoreanGrammarLessons = async (req: Request, res: Response) => {
-  const { level, topikLevel, category } = req.query;
-
+export const getKoreanGrammarLessons = async (_req: Request, res: Response) => {
   try {
-    let query = supabaseAdmin
-      .from('korean_grammar_lessons')
-      .select(GRAMMAR_COLUMNS)
-      .eq('is_active', true);
-
-    if (typeof level === 'string' && level.trim()) {
-      query = query.eq('level', level.trim());
-    }
-
-    if (typeof topikLevel === 'string' && topikLevel.trim()) {
-      query = query.eq('topik_level', topikLevel.trim());
-    }
-
-    if (typeof category === 'string' && category.trim()) {
-      query = query.eq('category', category.trim());
-    }
-
-    const { data, error } = await query
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      return res.status(400).json({ success: false, error: error.message });
-    }
+    const data = await fetchAllGrammarLessons();
 
     return res.json({
       success: true,

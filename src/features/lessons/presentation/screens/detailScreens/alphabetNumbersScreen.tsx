@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -7,60 +7,61 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import type { RootDrawerParamList } from '../../../../../app/navigation/types';
 import AppText from '../../../../../shared/components/atoms/AppText';
 import { IconButton } from '../../../../../shared/components/molecules/IconButton';
+import { koreanTts } from '../../../../../core/native/koreanTts';
 
-type VowelItem = { symbol: string; label: string };
+type VowelItem = { symbol: string; label: string; speechText: string };
 type NumberItem = { label: string; korean: string; pronunciation?: string };
 
 const basicVowels: VowelItem[] = [
-  { symbol: 'ㅏ', label: 'а' },
-  { symbol: 'ㅑ', label: 'я' },
-  { symbol: 'ㅓ', label: 'о' },
-  { symbol: 'ㅕ', label: 'ё' },
-  { symbol: 'ㅗ', label: 'у' },
-  { symbol: 'ㅛ', label: 'юу' },
-  { symbol: 'ㅜ', label: 'ү' },
-  { symbol: 'ㅠ', label: 'юү' },
-  { symbol: 'ㅡ', label: 'ы' },
-  { symbol: 'ㅣ', label: 'и' },
+  { symbol: 'ㅏ', label: 'а', speechText: '아' },
+  { symbol: 'ㅑ', label: 'я', speechText: '야' },
+  { symbol: 'ㅓ', label: 'о', speechText: '어' },
+  { symbol: 'ㅕ', label: 'ё', speechText: '여' },
+  { symbol: 'ㅗ', label: 'у', speechText: '오' },
+  { symbol: 'ㅛ', label: 'юу', speechText: '요' },
+  { symbol: 'ㅜ', label: 'ү', speechText: '우' },
+  { symbol: 'ㅠ', label: 'юү', speechText: '유' },
+  { symbol: 'ㅡ', label: 'ы', speechText: '으' },
+  { symbol: 'ㅣ', label: 'и', speechText: '이' },
 ];
 
 const compoundVowels: VowelItem[] = [
-  { symbol: 'ㅐ', label: 'э' },
-  { symbol: 'ㅔ', label: 'е' },
-  { symbol: 'ㅒ', label: 'э' },
-  { symbol: 'ㅖ', label: 'е' },
-  { symbol: 'ㅘ', label: 'ва' },
-  { symbol: 'ㅙ', label: 'вэ' },
-  { symbol: 'ㅚ', label: 'ө' },
-  { symbol: 'ㅝ', label: 'во' },
-  { symbol: 'ㅞ', label: 'вэ' },
-  { symbol: 'ㅟ', label: 'үи' },
-  { symbol: 'ㅢ', label: 'ыи' },
+  { symbol: 'ㅐ', label: 'э', speechText: '애' },
+  { symbol: 'ㅔ', label: 'е', speechText: '에' },
+  { symbol: 'ㅒ', label: 'э', speechText: '얘' },
+  { symbol: 'ㅖ', label: 'е', speechText: '예' },
+  { symbol: 'ㅘ', label: 'ва', speechText: '와' },
+  { symbol: 'ㅙ', label: 'вэ', speechText: '왜' },
+  { symbol: 'ㅚ', label: 'ө', speechText: '외' },
+  { symbol: 'ㅝ', label: 'во', speechText: '워' },
+  { symbol: 'ㅞ', label: 'вэ', speechText: '웨' },
+  { symbol: 'ㅟ', label: 'үи', speechText: '위' },
+  { symbol: 'ㅢ', label: 'ыи', speechText: '의' },
 ];
 
 const basicConsonants: VowelItem[] = [
-  { symbol: 'ㄱ', label: 'к/г' },
-  { symbol: 'ㄴ', label: 'н' },
-  { symbol: 'ㄷ', label: 'т/д' },
-  { symbol: 'ㄹ', label: 'р/л' },
-  { symbol: 'ㅁ', label: 'м' },
-  { symbol: 'ㅂ', label: 'п/б' },
-  { symbol: 'ㅅ', label: 'с' },
-  { symbol: 'ㅇ', label: 'н/гүй' },
-  { symbol: 'ㅈ', label: 'ж' },
-  { symbol: 'ㅊ', label: 'ч' },
-  { symbol: 'ㅋ', label: 'кх' },
-  { symbol: 'ㅌ', label: 'тх' },
-  { symbol: 'ㅍ', label: 'пх' },
-  { symbol: 'ㅎ', label: 'х' },
+  { symbol: 'ㄱ', label: 'к/г', speechText: '기역' },
+  { symbol: 'ㄴ', label: 'н', speechText: '니은' },
+  { symbol: 'ㄷ', label: 'т/д', speechText: '디귿' },
+  { symbol: 'ㄹ', label: 'р/л', speechText: '리을' },
+  { symbol: 'ㅁ', label: 'м', speechText: '미음' },
+  { symbol: 'ㅂ', label: 'п/б', speechText: '비읍' },
+  { symbol: 'ㅅ', label: 'с', speechText: '시옷' },
+  { symbol: 'ㅇ', label: 'н/гүй', speechText: '이응' },
+  { symbol: 'ㅈ', label: 'ж', speechText: '지읒' },
+  { symbol: 'ㅊ', label: 'ч', speechText: '치읓' },
+  { symbol: 'ㅋ', label: 'кх', speechText: '키읔' },
+  { symbol: 'ㅌ', label: 'тх', speechText: '티읕' },
+  { symbol: 'ㅍ', label: 'пх', speechText: '피읖' },
+  { symbol: 'ㅎ', label: 'х', speechText: '히읗' },
 ];
 
 const doubleConsonants: VowelItem[] = [
-  { symbol: 'ㄲ', label: 'кк' },
-  { symbol: 'ㄸ', label: 'тт' },
-  { symbol: 'ㅃ', label: 'пп' },
-  { symbol: 'ㅆ', label: 'сс' },
-  { symbol: 'ㅉ', label: 'жж' },
+  { symbol: 'ㄲ', label: 'кк', speechText: '쌍기역' },
+  { symbol: 'ㄸ', label: 'тт', speechText: '쌍디귿' },
+  { symbol: 'ㅃ', label: 'пп', speechText: '쌍비읍' },
+  { symbol: 'ㅆ', label: 'сс', speechText: '쌍시옷' },
+  { symbol: 'ㅉ', label: 'жж', speechText: '쌍지읒' },
 ];
 
 const koreanNumbers: NumberItem[] = [
@@ -115,6 +116,20 @@ const THEMES: Record<string, Theme> = {
   violet: { color: '#7C3AED', bg: '#F5F3FF', border: '#C4B5FD' },
 };
 
+const speakKorean = async (text: string) => {
+  try {
+    await koreanTts.speak(text);
+  } catch (error) {
+    console.warn('[KoreanTts] speak failed', error);
+    Alert.alert(
+      'Дуудлага ажиллахгүй байна',
+      koreanTts.isSupported
+        ? 'Утасныхаа Text-to-speech тохиргооноос солонгос хэлний дууг суулгана уу.'
+        : 'Аппыг Android дээр дахин build хийж суулгасны дараа ашиглана уу.',
+    );
+  }
+};
+
 const SectionHeader = ({
   title,
   subtitle,
@@ -141,12 +156,19 @@ const SectionHeader = ({
 const VowelGrid = ({ items, theme }: { items: VowelItem[]; theme: Theme }) => (
   <View style={styles.grid}>
     {items.map((item) => (
-      <View key={item.symbol} style={styles.charCard}>
+      <Pressable
+        key={item.symbol}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.symbol} үсгийн дуудлагыг сонсох`}
+        onPress={() => speakKorean(item.speechText)}
+        style={({ pressed }) => [styles.charCard, pressed && styles.speechPressed]}
+      >
+        <Icon name="volume-high-outline" size={15} color={theme.color} style={styles.charSpeaker} />
         <AppText style={styles.charSymbol}>{item.symbol}</AppText>
         <View style={[styles.charLabelBox, { backgroundColor: theme.bg }]}>
           <AppText style={[styles.charLabel, { color: theme.color }]}>{item.label}</AppText>
         </View>
-      </View>
+      </Pressable>
     ))}
   </View>
 );
@@ -162,7 +184,17 @@ const NumberGrid = ({
 }) => (
   <View style={styles.numberList}>
     {items.map((item) => (
-      <View key={item.label} style={[styles.numberRow, { borderColor: theme.border }]}>
+      <Pressable
+        key={item.label}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.korean} тооны дуудлагыг сонсох`}
+        onPress={() => speakKorean(item.korean)}
+        style={({ pressed }) => [
+          styles.numberRow,
+          { borderColor: theme.border },
+          pressed && styles.speechPressed,
+        ]}
+      >
         <View style={[styles.numberLabelBox, { backgroundColor: theme.bg }]}>
           <AppText style={[styles.numberLabelText, compact && styles.numberLabelCompact, { color: theme.color }]}>
             {item.label}
@@ -174,13 +206,18 @@ const NumberGrid = ({
         {item.pronunciation ? (
           <AppText style={styles.numberPronun}>{item.pronunciation}</AppText>
         ) : null}
-      </View>
+        <Icon name="volume-high-outline" size={19} color={theme.color} style={styles.numberSpeaker} />
+      </Pressable>
     ))}
   </View>
 );
 
 const AlphabetNumbersScreen = () => {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
+
+  useEffect(() => () => {
+    koreanTts.stop().catch(() => undefined);
+  }, []);
 
   return (
   <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -396,6 +433,7 @@ const styles = StyleSheet.create({
   },
   charCard: {
     width: '22%',
+    position: 'relative',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
     borderRadius: 14,
@@ -404,6 +442,11 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  charSpeaker: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
   },
   charSymbol: {
     fontSize: 40,
@@ -465,6 +508,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#94A3B8',
     paddingRight: 12,
+  },
+  numberSpeaker: {
+    marginRight: 12,
+  },
+  speechPressed: {
+    opacity: 0.58,
   },
 
   /* Tip */

@@ -297,3 +297,51 @@ export const searchDictionaryCache = async (
     words: wordsResult.rows.raw().map(rowToWord),
   };
 };
+
+export const getRandomDictionaryWords = async (limit: number): Promise<DictionaryWord[]> => {
+  await ensureDictionaryDatabase();
+
+  const result = await execute(
+    `
+      SELECT id, korean_word, parent_word, entry_kind, homonym_no, part_of_speech,
+             pronunciation, vocabulary_level, korean_definition, mongolian_meaning,
+             mongolian_definition, examples, source, license, created_at
+      FROM ${WORDS_TABLE}
+      WHERE length(korean_word) BETWEEN 1 AND 6
+        AND korean_word NOT LIKE '%-%'
+        AND korean_word NOT LIKE '% %'
+        AND mongolian_meaning IS NOT NULL
+        AND trim(mongolian_meaning) <> ''
+        AND mongolian_meaning <> '(Тохирох үг хэллэг байхгүй байна)'
+      ORDER BY RANDOM()
+      LIMIT ?
+    `,
+    [Math.max(20, Math.min(limit * 5, 100))],
+  );
+
+  return result.rows
+    .raw()
+    .map(rowToWord)
+    .filter((word) => /^[가-힣]+$/.test(word.koreanWord))
+    .slice(0, limit);
+};
+
+export const getRandomDictionaryWordsWithExamples = async (limit: number): Promise<DictionaryWord[]> => {
+  await ensureDictionaryDatabase();
+
+  const result = await execute(
+    `
+      SELECT id, korean_word, parent_word, entry_kind, homonym_no, part_of_speech,
+             pronunciation, vocabulary_level, korean_definition, mongolian_meaning,
+             mongolian_definition, examples, source, license, created_at
+      FROM ${WORDS_TABLE}
+      WHERE examples IS NOT NULL
+        AND examples <> '[]'
+      ORDER BY RANDOM()
+      LIMIT ?
+    `,
+    [Math.max(20, Math.min(limit, 200))],
+  );
+
+  return result.rows.raw().map(rowToWord);
+};

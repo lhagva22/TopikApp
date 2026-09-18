@@ -1,6 +1,8 @@
 import { apiRequest, ENDPOINTS } from '../../../../core/api/apiClient';
 import {
   getDictionaryCacheStatus,
+  getRandomDictionaryWords,
+  getRandomDictionaryWordsWithExamples,
   saveDictionaryCache,
   searchDictionaryCache,
 } from '../storage/dictionarySqlite';
@@ -202,6 +204,26 @@ export const dictionaryApi = {
       console.log('[DictionaryCache] SQLite unavailable, using backend search');
       return searchRemoteWords(query, { limit, offset });
     }
+  },
+  getPracticeWords: async (limit = 10): Promise<DictionaryWord[]> => {
+    const cacheReady = await ensureDictionaryCache();
+    if (cacheReady) {
+      return getRandomDictionaryWords(limit);
+    }
+
+    const response = await searchRemoteWords('', { limit: Math.max(limit * 5, 50), offset: 0 });
+    return [...(response.words || [])]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, limit);
+  },
+  getSentencePracticeWords: async (limit = 100): Promise<DictionaryWord[]> => {
+    const cacheReady = await ensureDictionaryCache();
+    if (cacheReady) {
+      return getRandomDictionaryWordsWithExamples(limit);
+    }
+
+    const response = await searchRemoteWords('', { limit: Math.max(limit, 100), offset: 0 });
+    return (response.words || []).filter((word) => word.examples.length > 0);
   },
   refreshCache: fetchRemoteDictionary,
 };

@@ -5,6 +5,15 @@ import { logError } from '../../shared/lib/errors';
 
 export const getBaseUrl = (): string => {
   if (Platform.OS === 'android') {
+    const androidDevice = `${Platform.constants.Brand} ${Platform.constants.Model} ${Platform.constants.Fingerprint}`;
+    const isEmulator = /android sdk|emulator|generic|sdk_gphone|goldfish|ranchu/i.test(androidDevice);
+
+    // Android emulators reach the development computer through 10.0.2.2.
+    // A physical USB device uses localhost together with `adb reverse`.
+    if (isEmulator) {
+      return 'http://10.0.2.2:5000/api';
+    }
+
     return 'http://localhost:5000/api';
   }
 
