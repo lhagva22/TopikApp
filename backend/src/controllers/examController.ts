@@ -78,7 +78,12 @@ type ExamResultListRow = {
 const LEVEL_TEST_UNLOCK_SCORE = 140;
 const LEVEL_TEST_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 const EXAM_CACHE_TTL_MS = 10 * 60 * 1000;
-const getExamMaxScore = (examType: 'TOPIK_I' | 'TOPIK_II') => (examType === 'TOPIK_I' ? 200 : 300);
+// This app currently tests listening + reading only, including TOPIK II.
+// Prefer imported point totals so history matches the score shown on submission.
+const getExamMaxScore = (questions: QuestionRow[]) => {
+  const total = questions.reduce((sum, question) => sum + (question.question_score ?? 1), 0);
+  return total > 0 ? total : 200;
+};
 
 type ActiveExamCache = {
   exams: MockTestRow[];
@@ -504,6 +509,24 @@ const isSubmittedAnswerArray = (answers: unknown): answers is SubmittedAnswer[] 
       typeof (answer as SubmittedAnswer).selectedAnswer === 'string',
   );
 
+class ExamContentError extends Error {}
+
+const assertExamQuestionsReady = (exam: MockTestRow, questions: QuestionRow[]) => {
+  if (questions.length !== exam.total_questions) {
+    throw new ExamContentError('Шалгалтын асуултууд дутуу байна. Өөр шалгалт сонгоно уу.');
+  }
+  const invalid = questions.find((question) =>
+    !Array.isArray(question.options) || question.options.length !== 4 ||
+    question.options.some((option) => typeof option !== 'string' || !option.trim()) ||
+    new Set(question.options).size !== question.options.length ||
+    !question.options.includes(question.correct_answer_text || ''),
+  );
+  if (invalid) {
+    const section = invalid.section === 'listening' ? 'сонсгол' : 'уншлага';
+    throw new ExamContentError(`${exam.title}: ${section} №${invalid.question_number}-ын сонголтын өгөгдөл алдаатай байна. Өөр шалгалт сонгоно уу.`);
+  }
+};
+
 const scoreAnswers = (questions: QuestionRow[], answers: SubmittedAnswer[]) => {
   let totalScore = 0;
   let listeningScore = 0;
@@ -617,6 +640,14 @@ const createLevelTestSessionPayload = async (
   exam: MockTestRow,
   abandonExisting = false,
 ) => {
+  const cache = await loadActiveExamCache();
+  let questions = cache.questionsByExamId.get(exam.id) || [];
+  if (questions.length === 0) {
+    questions = await fetchExamQuestionsByExamId(exam.id);
+  }
+  // Validate before abandoning a current attempt or inserting a new session.
+  assertExamQuestionsReady(exam, questions);
+
   if (abandonExisting) {
     await supabaseAdmin
       .from('level_test_sessions')
@@ -641,21 +672,6 @@ const createLevelTestSessionPayload = async (
 
   if (sessionError || !session) {
     throw new Error('Session үүсгэхэд алдаа гарлаа');
-  }
-
-  const cache = await loadActiveExamCache();
-  let questions = cache.questionsByExamId.get(exam.id) || [];
-  if (!questions || questions.length === 0) {
-    clearActiveExamCache();
-    const refreshedCache = await loadActiveExamCache();
-    questions = refreshedCache.questionsByExamId.get(exam.id) || [];
-  }
-
-  if (!questions || questions.length === 0) {
-    questions = await fetchExamQuestionsByExamId(exam.id);
-  }
-  if (!questions || questions.length === 0) {
-    throw new Error('Шалгалтын асуултууд олдсонгүй');
   }
 
   return {
@@ -724,11 +740,13 @@ export const getExamResults = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: error.message });
     }
 
-    const results = ((data || []) as ExamResultListRow[]).map((result) => {
+    const resultRows = (data || []) as ExamResultListRow[];
+    const questionCache = resultRows.length > 0 ? await loadActiveExamCache() : null;
+    const results = resultRows.map((result) => {
       const test = Array.isArray(result.mock_test_bank)
         ? result.mock_test_bank[0] || null
         : result.mock_test_bank;
-      const maxScore = getExamMaxScore(result.exam_type);
+      const maxScore = getExamMaxScore(questionCache?.questionsByExamId.get(result.mock_test_id) || []);
       const totalScore = result.total_score || 0;
 
       return {
@@ -808,6 +826,8 @@ export const startExam = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Шалгалтын асуултууд олдсонгүй' });
     }
 
+    assertExamQuestionsReady(exam, questions);
+
     await supabaseAdmin
       .from('level_test_sessions')
       .update({
@@ -853,6 +873,9 @@ export const startExam = async (req: AuthRequest, res: Response) => {
       questions: shuffleOptions(questions as QuestionRow[]),
     });
   } catch (error) {
+    if (error instanceof ExamContentError) {
+      return res.status(422).json({ success: false, error: error.message });
+    }
     console.error('Start exam error:', error);
     return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
   }
@@ -894,6 +917,9 @@ export const startLevelTest = async (req: AuthRequest, res: Response) => {
       ...payload,
     });
   } catch (error) {
+    if (error instanceof ExamContentError) {
+      return res.status(422).json({ success: false, error: error.message });
+    }
     console.error('Start level test error:', error);
     return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
   }
@@ -932,6 +958,9 @@ export const startLevelTestMockTest = async (req: AuthRequest, res: Response) =>
       ...payload,
     });
   } catch (error) {
+    if (error instanceof ExamContentError) {
+      return res.status(422).json({ success: false, error: error.message });
+    }
     console.error('Start level test error:', error);
     return res.status(500).json({ success: false, error: 'Серверийн алдаа гарлаа' });
   }
@@ -1213,7 +1242,13 @@ export const submitLevelTest = async (req: AuthRequest, res: Response) => {
       const nextExamResult = await getRandomLevelTestExam('TOPIK_II');
 
       if (topikIIAccess.allowed && !('error' in nextExamResult)) {
-        nextLevelTest = await createLevelTestSessionPayload(userId, nextExamResult.exam);
+        try {
+          nextLevelTest = await createLevelTestSessionPayload(userId, nextExamResult.exam);
+        } catch (error) {
+          // A malformed follow-up exam must not turn a saved result into a failed submission.
+          if (!(error instanceof ExamContentError)) throw error;
+          console.warn('Skipped unavailable follow-up level test:', error.message);
+        }
       }
     }
 

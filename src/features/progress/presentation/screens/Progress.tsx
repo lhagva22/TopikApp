@@ -23,7 +23,7 @@ import { SubscriptionStatus } from '../../../../shared/components/organisms/Subs
 import { useProgress } from '../providers/progressContext';
 import { progressUseCases } from '../dependencies';
 import { lessonCategorySlugMap, type LessonCategorySlug } from '../../../lessons';
-import { getScorePercentage, getSectionAccuracy } from '../../domain/progressMetrics';
+import { buildProgressSummaries, filterResultsByPeriod, getScorePercentage, getSectionAccuracy } from '../../domain/progressMetrics';
 import type { ProgressRecommendation, ProgressSection } from '../../domain/types';
 
 type ProgressNavigationProp = DrawerScreenProps<RootDrawerParamList, 'Progress'>['navigation'];
@@ -135,14 +135,17 @@ export function Progress() {
 
   const [viewMode, setViewMode] = useState<TrendMode>('chart');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
-  const [progressSource, setProgressSource] = useState<ProgressSource>('level_test');
+  const [selectedProgressSource, setProgressSource] = useState<ProgressSource | null>(null);
+  const progressSource = selectedProgressSource ?? (levelTestResults.length > 0 ? 'level_test' : 'mock');
   const [topikExamType, setTopikExamType] = useState<TopikExamType>('all');
   const [chartMetric, setChartMetric] = useState<ChartMetric>('total');
   const [chartExamTitle, setChartExamTitle] = useState<string | null>(null);
   const [repeatedQuestionInsights, setRepeatedQuestionInsights] = useState<RepeatedQuestionInsight[]>([]);
   const [isLoadingRepeatedQuestions, setIsLoadingRepeatedQuestions] = useState(false);
+  const [repeatedQuestionsError, setRepeatedQuestionsError] = useState<string | null>(null);
   const [showAllRepeatedQuestions, setShowAllRepeatedQuestions] = useState(false);
   const [chartWidth, setChartWidth] = useState(0);
+  const [refreshCount, setRefreshCount] = useState(0);
 
   const progressEntryIcon = 'home-outline';
 
@@ -166,52 +169,20 @@ export function Progress() {
       : activeResults.filter((result) => result.examType === topikExamType);
   const totalAvailableResults = examResults.length + levelTestResults.length;
 
-  const filteredResults = examTypeResults.filter((result) => {
-    if (timePeriod === 'all') {
-      return true;
-    }
-
-    const now = new Date();
-    const cutoff = new Date();
-
-    if (timePeriod === 'week') {
-      cutoff.setDate(now.getDate() - 7);
-    } else {
-      cutoff.setMonth(now.getMonth() - 1);
-    }
-
-    return new Date(result.date) >= cutoff;
-  });
+  const filteredResults = filterResultsByPeriod(examTypeResults, timePeriod);
+  const summaries = buildProgressSummaries(filteredResults);
 
   const hasFilteredResults = filteredResults.length > 0;
   const latestResult = filteredResults[0] ?? null;
   const trendResults = filteredResults;
 
-  const getImprovementRate = () => {
-    if (filteredResults.length < 2) {
-      return 0;
-    }
-
-    const recent = filteredResults.slice(0, Math.min(3, filteredResults.length));
-    const older = filteredResults.slice(Math.max(0, filteredResults.length - 3));
-
-    const recentAvg =
-      recent.reduce((sum, result) => sum + getScorePercentage(result.totalScore, result.maxScore), 0) /
-      recent.length;
-    const olderAvg =
-      older.reduce((sum, result) => sum + getScorePercentage(result.totalScore, result.maxScore), 0) /
-      older.length;
-
-    return Math.round(recentAvg - olderAvg);
-  };
-
-  const improvementRate = getImprovementRate();
+  const improvementRate = summaries.find((summary) => summary.examType === latestResult?.examType)?.improvement ?? 0;
 
   const latestResultPercentage = latestResult
     ? getScorePercentage(latestResult.totalScore, latestResult.maxScore)
     : 0;
   const latestSections = latestResult
-    ? latestResult.sections.map((section) => ({
+    ? latestResult.sections.filter((section) => section.totalQuestions > 0).map((section) => ({
         ...section,
         accuracy: getSectionAccuracy(section),
       }))
@@ -298,17 +269,23 @@ export function Progress() {
     if (resultIds.length < 2) {
       setRepeatedQuestionInsights([]);
       setIsLoadingRepeatedQuestions(false);
+      setRepeatedQuestionsError(null);
       return;
     }
 
     let cancelled = false;
     setIsLoadingRepeatedQuestions(true);
+    setRepeatedQuestionInsights([]);
+    setRepeatedQuestionsError(null);
 
     const loadRepeatedQuestions = async () => {
       try {
         const responses = await Promise.all(
           resultIds.map((resultId) => progressUseCases.getResultDetail(resultId)),
         );
+        if (responses.some((response) => !response.success || !response.detail)) {
+          throw new Error('Incomplete exam review data');
+        }
         const stats = new Map<string, RepeatedQuestionInsight>();
 
         responses.forEach((response) => {
@@ -323,7 +300,7 @@ export function Progress() {
               return;
             }
 
-            const key = `${question.section}:${question.questionNumber}`;
+            const key = question.id;
             const existing = stats.get(key);
 
             stats.set(key, {
@@ -348,6 +325,7 @@ export function Progress() {
       } catch {
         if (!cancelled) {
           setRepeatedQuestionInsights([]);
+          setRepeatedQuestionsError('Алдсан асуултуудыг ачаалж чадсангүй. Дахин шинэчилж оролдоорой.');
         }
       } finally {
         if (!cancelled) {
@@ -361,12 +339,7 @@ export function Progress() {
     return () => {
       cancelled = true;
     };
-  }, [selectedChartAttemptCount, selectedChartResultIds]);
-
-      // const latestSummary = latestWeakSection
-      //   ? `${latestWeakSection.name} хэсэг одоогоор хамгийн сул байна. Эхлээд энэ хэсгийн тайлбараа үзээрэй.`
-      //   : 'Сүүлийн шалгалтынхаа ерөнхий дүн болон хэсэг тус бүрийн гүйцэтгэлийг эндээс харна.';
-
+  }, [refreshCount, selectedChartAttemptCount, selectedChartResultIds]);
 
   const handleOpenRecommendation = async (recommendation: ProgressRecommendation) => {
     const content = recommendation.content;
@@ -443,9 +416,20 @@ export function Progress() {
           <View style={styles.emptyIconBox}>
             <Icon name="bar-chart-outline" size={28} color="#94A3B8" />
           </View>
-          <Text style={styles.emptyTitle}>Шалгалтын өгөгдөл алга</Text>
-          <Text style={styles.emptyDesc}>Эхний mock test-ээ өгөөд үр дүн, сул хэсгээ эндээс хараарай.</Text>
-          <Button onPress={() => navigation.navigate('Exam')} title="Шалгалт өгөх" />
+          <Text style={styles.emptyTitle}>{error ? 'Мэдээлэл ачаалж чадсангүй' : 'Шалгалтын өгөгдөл алга'}</Text>
+          <Text style={styles.emptyDesc}>
+            {error ? 'Холболтоо шалгаад дахин оролдоорой. Хадгалсан шалгалтын дүн устахгүй.' : 'Түвшин тогтоох эсвэл mock test өгөөд үр дүн, сул хэсгээ эндээс хараарай.'}
+          </Text>
+          <Button
+            onPress={() => {
+              if (error) {
+                reloadData(true).catch(() => undefined);
+              } else {
+                navigation.navigate('Exam');
+              }
+            }}
+            title={error ? 'Дахин оролдох' : 'Шалгалт өгөх'}
+          />
         </View>
       </ScrollView>
     );
@@ -461,6 +445,7 @@ export function Progress() {
           refreshing={isLoading && totalAvailableResults > 0}
           onRefresh={() => {
             reloadData(true).catch(() => undefined);
+            setRefreshCount((count) => count + 1);
           }}
           tintColor="#155DFC"
         />
@@ -609,6 +594,56 @@ export function Progress() {
         </View>
       ) : (
         <>
+          {summaries.map((summary) => {
+            const weakest = summary.weakAreas.find((area) => area.errors > 0);
+            const reviewResult = filteredResults.find((result) =>
+              result.examType === summary.examType && result.sections.some((section) =>
+                section.name === weakest?.category && section.correctAnswers < section.totalQuestions,
+              ),
+            );
+            return (
+              <View key={summary.examType} style={styles.card}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.sectionTitle}>{summary.examType} · Нэгтгэл</Text>
+                  <Text style={styles.blockMeta}>{summary.count} шалгалт</Text>
+                </View>
+                <View style={styles.statRow}>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statLabel}>Дундаж гүйцэтгэл</Text>
+                    <Text style={styles.statValue}>{summary.average === null ? '—' : `${summary.average}%`}</Text>
+                  </View>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statLabel}>Шилдэг гүйцэтгэл</Text>
+                    <Text style={styles.statValue}>{summary.best === null ? '—' : `${summary.best}%`}</Text>
+                  </View>
+                </View>
+                <Text style={styles.summaryNote}>Дундаж = авсан нийт оноо / боломжит нийт оноо.</Text>
+                <Text style={styles.summaryNote}>
+                  {summary.improvement === null
+                    ? 'Өөрчлөлт харахын тулд энэ төрлийн дор хаяж 2 шалгалт өгнө.'
+                    : `Сүүлийн ${summary.comparisonCount} шалгалт өмнөх ${summary.comparisonCount}-аас ${summary.improvement > 0 ? '+' : ''}${summary.improvement} хувийн нэгж.`}
+                </Text>
+                <View style={styles.sectionMiniGrid}>
+                  {summary.weakAreas.map((area) => (
+                    <View key={area.category} style={styles.sectionMiniCard}>
+                      <Text style={styles.sectionMiniLabel}>{area.category}</Text>
+                      <Text style={styles.sectionMiniValue}>{area.accuracy}%</Text>
+                      <Text style={styles.sectionMiniMeta}>{area.correct}/{area.total} зөв хариулт</Text>
+                    </View>
+                  ))}
+                </View>
+                {weakest && reviewResult ? (
+                  <TouchableOpacity
+                    style={styles.resetFilterBtn}
+                    onPress={() => navigation.navigate('ExamReview', { resultId: reviewResult.id })}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.resetFilterText}>{weakest.category}: алдсан асуултуудаа давтах →</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            );
+          })}
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View style={styles.sectionHeaderTight}>
@@ -882,7 +917,11 @@ export function Progress() {
                 )}
               </View>
 
-              {selectedChartAttemptCount < 2 ? (
+              {isLoadingRepeatedQuestions ? (
+                <Text style={styles.repeatedEmptyText}>Шалгалтын хариултуудыг харьцуулж байна...</Text>
+              ) : repeatedQuestionsError ? (
+                <InlineMessage message={repeatedQuestionsError} />
+              ) : selectedChartAttemptCount < 2 ? (
                 <Text style={styles.repeatedEmptyText}>
                   Давтан алдааг харахын тулд энэ шалгалтыг дор хаяж 2 удаа өгсөн байх хэрэгтэй.
                 </Text>
@@ -1283,6 +1322,7 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 11, color: '#64748B', fontWeight: '600' },
   statValue: { fontSize: 18, color: '#0F172A', fontWeight: '800' },
+  summaryNote: { fontSize: 12, color: '#64748B', lineHeight: 18, marginBottom: 12 },
   insightCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',

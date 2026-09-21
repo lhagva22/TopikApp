@@ -256,6 +256,47 @@ describe('backend API', () => {
     assert.equal(body.results[0].exam_title, 'TOPIK I 35');
   });
 
+  it('uses actual imported point totals for TOPIK II and TOPIK I result history', async () => {
+    mockAuth();
+    mockTables({
+      level_test_results: [
+        { id: 'r1', mock_test_id: 'e2', exam_type: 'TOPIK_II', total_score: 160 },
+        { id: 'r2', mock_test_id: 'e1', exam_type: 'TOPIK_I', total_score: 201 },
+      ],
+      mock_test_questions: [
+        { id: 'q1', mock_test_id: 'e2', section: 'listening', question_score: 100 },
+        { id: 'q2', mock_test_id: 'e2', section: 'reading', question_score: 100 },
+        { id: 'q3', mock_test_id: 'e1', section: 'listening', question_score: 100 },
+        { id: 'q4', mock_test_id: 'e1', section: 'reading', question_score: 101 },
+      ],
+    });
+    const response = await fetch(`${origin}/api/exam-results`, { headers: { Authorization: 'Bearer test-token' } });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.results[0].max_score, 200);
+    assert.equal(body.results[0].percentage, 80);
+    assert.equal(body.results[1].max_score, 201);
+    assert.equal(body.results[1].percentage, 100);
+  });
+
+  it('rejects an unanswerable exam before changing or creating sessions', async () => {
+    mockAuth();
+    const exam = { id: 'bad-exam', title: 'TOPIK II 37', exam_type: 'TOPIK_II', total_questions: 1, listening_questions: 1, reading_questions: 0, is_active: true };
+    const question = { id: 'bad-q', mock_test_id: exam.id, section: 'listening', question_number: 1, options: ['', '', '', 'header'], correct_answer_text: '①' };
+    let sessionWrites = 0;
+    database.supabaseAdmin.from = (table) => {
+      if (table === 'profiles') return makeQuery({ data: { status: 'premium' }, error: null });
+      if (table === 'mock_test_bank') return makeQuery({ data: [exam], error: null });
+      if (table === 'mock_test_questions') return makeQuery({ data: [question], error: null });
+      if (table === 'level_test_sessions') sessionWrites += 1;
+      return makeQuery({ data: null, error: null });
+    };
+    const response = await fetch(`${origin}/api/exam/bad-exam/start`, { method: 'POST', headers: { Authorization: 'Bearer test-token' } });
+    assert.equal(response.status, 422);
+    assert.match((await response.json()).error, /№1/);
+    assert.equal(sessionWrites, 0);
+  });
+
   it('allows TOPIK II start after a qualifying TOPIK I level-test result', async () => {
     mockAuth();
     let sessionRequestCount = 0;
@@ -315,7 +356,8 @@ describe('backend API', () => {
               section: 'listening',
               question_number: 1,
               question_text: 'Question',
-              options: ['A', 'B'],
+              options: ['A', 'B', 'C', 'D'],
+              correct_answer_text: 'A',
             },
           ],
           error: null,

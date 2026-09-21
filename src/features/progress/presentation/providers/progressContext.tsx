@@ -1,36 +1,43 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { useAppStore } from '../../../../app/store';
 import { getErrorMessage, logError } from '../../../../shared/lib/errors';
 import { progressUseCases } from '../dependencies';
 import type { ExamResult, LessonProgress, ProgressContextType, ProgressRecommendation } from '../../domain/types';
+import { buildWeakAreas, getScorePercentage, sortResultsByDate } from '../../domain/progressMetrics';
 
 const ProgressContext = createContext<ProgressContextType | undefined>(undefined);
 const PROGRESS_CACHE_MAX_AGE_MS = 60 * 1000;
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isInitialized } = useAppStore();
+  const { isAuthenticated, isInitialized, user } = useAppStore();
+  const userId = isAuthenticated ? user?.id : undefined;
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
   const [levelTestResults, setLevelTestResults] = useState<ExamResult[]>([]);
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
   const [recommendations, setRecommendations] = useState<ProgressRecommendation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
-  const [hasLoadedProgress, setHasLoadedProgress] = useState(false);
-
-  const hasProgressData = useMemo(
-    () =>
-      examResults.length > 0 ||
-      levelTestResults.length > 0 ||
-      lessonProgress.length > 0 ||
-      recommendations.length > 0,
-    [examResults.length, lessonProgress.length, levelTestResults.length, recommendations.length],
-  );
+  const lastLoadedAt = useRef<number | null>(null);
+  const hasLoadedProgress = useRef(false);
+  const loadedUser = useRef<string | undefined>(undefined);
+  const activeUser = useRef(userId);
+  activeUser.current = userId;
+  const inFlight = useRef<{ userId: string | undefined; promise: Promise<void> } | null>(null);
 
   const loadData = useCallback(async (force = false) => {
     if (!isInitialized) {
       return;
+    }
+
+    if (loadedUser.current !== userId) {
+      loadedUser.current = userId;
+      lastLoadedAt.current = null;
+      hasLoadedProgress.current = false;
+      setExamResults([]);
+      setLevelTestResults([]);
+      setLessonProgress([]);
+      setRecommendations([]);
     }
 
     if (!isAuthenticated) {
@@ -39,25 +46,36 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       setLessonProgress([]);
       setRecommendations([]);
       setError(null);
-      setLastLoadedAt(null);
-      setHasLoadedProgress(false);
+      lastLoadedAt.current = null;
+      hasLoadedProgress.current = false;
       setIsLoading(false);
       return;
     }
 
     if (
       !force &&
-      lastLoadedAt &&
-      Date.now() - lastLoadedAt < PROGRESS_CACHE_MAX_AGE_MS
+      lastLoadedAt.current &&
+      Date.now() - lastLoadedAt.current < PROGRESS_CACHE_MAX_AGE_MS
     ) {
       return;
     }
 
-    setIsLoading(!hasLoadedProgress && !hasProgressData);
+    if (inFlight.current?.userId === userId && inFlight.current) {
+      await inFlight.current.promise;
+      if (!force || activeUser.current !== userId) {
+        return;
+      }
+    }
+
+    setIsLoading(true);
     setError(null);
 
+    const request = (async () => {
     try {
       const response = await progressUseCases.getProgress();
+      if (activeUser.current !== userId) {
+        return;
+      }
 
       if (response.success) {
         setExamResults(
@@ -84,44 +102,56 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
             createdAt: recommendation.createdAt ? new Date(recommendation.createdAt) : undefined,
           })),
         );
-        setLastLoadedAt(Date.now());
-        setHasLoadedProgress(true);
+        lastLoadedAt.current = Date.now();
+        hasLoadedProgress.current = true;
       } else {
-        if (!hasLoadedProgress && !hasProgressData) {
+        if (!hasLoadedProgress.current) {
           setExamResults([]);
           setLevelTestResults([]);
           setLessonProgress([]);
           setRecommendations([]);
         }
-        setError(getErrorMessage(response.error, 'Failed to load progress data.'));
+        setError(getErrorMessage(response.error, 'Ахицын мэдээлэл ачаалж чадсангүй.'));
       }
     } catch (caughtError) {
       logError('Error loading progress data', caughtError);
-      if (!hasLoadedProgress && !hasProgressData) {
+      if (activeUser.current !== userId) {
+        return;
+      }
+      if (!hasLoadedProgress.current) {
         setExamResults([]);
         setLevelTestResults([]);
         setLessonProgress([]);
         setRecommendations([]);
       }
-      setError(getErrorMessage(caughtError, 'Failed to load progress data.'));
+      setError(getErrorMessage(caughtError, 'Ахицын мэдээлэл ачаалж чадсангүй.'));
     } finally {
-      setIsLoading(false);
+      if (activeUser.current === userId) {
+        setIsLoading(false);
+      }
     }
-  }, [hasLoadedProgress, hasProgressData, isAuthenticated, isInitialized, lastLoadedAt]);
+    })();
+    inFlight.current = { userId, promise: request };
+    await request;
+    if (inFlight.current?.promise === request) {
+      inFlight.current = null;
+    }
+  }, [isAuthenticated, isInitialized, userId]);
 
   useEffect(() => {
     loadData().catch(() => undefined);
   }, [loadData]);
 
   const addExamResult = (result: ExamResult) => {
-    setExamResults((prev) => [result, ...prev]);
-    setLastLoadedAt(Date.now());
-    setHasLoadedProgress(true);
+    const setResults = result.resultType === 'level_test' ? setLevelTestResults : setExamResults;
+    setResults((prev) => sortResultsByDate([result, ...prev.filter((item) => item.id !== result.id)]));
+    lastLoadedAt.current = Date.now();
+    hasLoadedProgress.current = true;
   };
 
   const updateLessonProgress = (progress: LessonProgress) => {
-    setLastLoadedAt(Date.now());
-    setHasLoadedProgress(true);
+    lastLoadedAt.current = Date.now();
+    hasLoadedProgress.current = true;
     setLessonProgress((prev) => {
       const existing = prev.find(
         (item) => item.categoryId === progress.categoryId && item.lessonId === progress.lessonId,
@@ -151,46 +181,26 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       return 0;
     }
 
-    const total = examResults.reduce(
-      (sum, result) => sum + (result.totalScore / Math.max(result.maxScore, 1)) * 100,
-      0,
+    const scoredResults = examResults.filter((result) => result.maxScore > 0);
+    return getScorePercentage(
+      scoredResults.reduce((sum, result) => sum + result.totalScore, 0),
+      scoredResults.reduce((sum, result) => sum + result.maxScore, 0),
     );
-    return Math.round(total / examResults.length);
   };
 
   const getTotalExamsTaken = () => examResults.length;
 
-  const getRecentResults = (limit = 5) => examResults.slice(0, limit);
+  const getRecentResults = (limit = 5) => sortResultsByDate(examResults).slice(0, limit);
 
-  const getWeakAreas = () => {
-    const sectionStats: Record<string, { correct: number; total: number }> = {};
-
-    examResults.forEach((result) => {
-      result.sections.forEach((section) => {
-        if (!sectionStats[section.name]) {
-          sectionStats[section.name] = { correct: 0, total: 0 };
-        }
-
-        sectionStats[section.name].correct += section.correctAnswers;
-        sectionStats[section.name].total += section.totalQuestions;
-      });
-    });
-
-    return Object.entries(sectionStats)
-      .map(([category, stats]) => ({
-        category,
-        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-      }))
-      .sort((left, right) => left.accuracy - right.accuracy);
-  };
+  const getWeakAreas = () => buildWeakAreas(examResults);
 
   const clearAllData = async () => {
     setExamResults([]);
     setLevelTestResults([]);
     setLessonProgress([]);
     setRecommendations([]);
-    setLastLoadedAt(null);
-    setHasLoadedProgress(false);
+    lastLoadedAt.current = null;
+    hasLoadedProgress.current = false;
   };
 
   return (

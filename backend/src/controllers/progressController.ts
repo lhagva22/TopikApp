@@ -166,8 +166,19 @@ const calculateDurationInSeconds = (
   return Math.round((completed - started) / 1000);
 };
 
-const getAnswerList = (result: Pick<ResultRow, 'listening_answers' | 'reading_answers'>) =>
-  ([...(result.listening_answers || []), ...(result.reading_answers || [])] as StoredAnswer[]);
+const getAnswerList = (result: Pick<ResultRow, 'listening_answers' | 'reading_answers'>) => {
+  const answers = [
+    ...(Array.isArray(result.listening_answers) ? result.listening_answers : []),
+    ...(Array.isArray(result.reading_answers) ? result.reading_answers : []),
+  ];
+  const uniqueAnswers = new Map<string, StoredAnswer>();
+  answers.forEach((answer) => {
+    if (answer && typeof answer.questionId === 'string' && typeof answer.selectedAnswer === 'string') {
+      uniqueAnswers.set(answer.questionId, answer);
+    }
+  });
+  return [...uniqueAnswers.values()].filter((answer) => answer.selectedAnswer.trim().length > 0);
+};
 
 const getExamMeta = (mockTestBank: ResultRow['mock_test_bank']) =>
   Array.isArray(mockTestBank) ? mockTestBank[0] || null : mockTestBank;
@@ -200,6 +211,7 @@ const buildQuestionMetaByTest = async (mockTestIds: string[]) => {
       .from('mock_test_questions')
       .select('id, mock_test_id, section, correct_answer_text, question_score')
       .in('mock_test_id', mockTestIds)
+      .order('id', { ascending: true })
       .range(offset, offset + PROGRESS_QUERY_PAGE_SIZE - 1);
 
     if (error) {
@@ -251,6 +263,7 @@ const buildSectionSummaries = (
 ) => {
   const exam = getExamMeta(result.mock_test_bank);
   const answerList = getAnswerList(result);
+  const questions = testMeta ? [...testMeta.byId.values()] : null;
   let listeningCorrectAnswers = 0;
   let readingCorrectAnswers = 0;
 
@@ -271,16 +284,16 @@ const buildSectionSummaries = (
     {
       name: 'Сонсгол',
       score: result.listening_score || 0,
-      maxScore: testMeta?.listeningScore || exam?.listening_questions || 0,
+      maxScore: testMeta?.listeningScore ?? exam?.listening_questions ?? 0,
       correctAnswers: listeningCorrectAnswers,
-      totalQuestions: exam?.listening_questions || 0,
+      totalQuestions: questions ? questions.filter((question) => question.section === 'listening').length : exam?.listening_questions || 0,
     },
     {
       name: 'Уншлага',
       score: result.reading_score || 0,
-      maxScore: testMeta?.readingScore || exam?.reading_questions || 0,
+      maxScore: testMeta?.readingScore ?? exam?.reading_questions ?? 0,
       correctAnswers: readingCorrectAnswers,
-      totalQuestions: exam?.reading_questions || 0,
+      totalQuestions: questions ? questions.filter((question) => question.section === 'reading').length : exam?.reading_questions || 0,
     },
   ].filter((section) => section.totalQuestions > 0);
 };
@@ -649,7 +662,7 @@ export const getProgressResultDetail = async (req: AuthRequest, res: Response) =
       .sort((left, right) => left.accuracy - right.accuracy);
 
     const incorrectQuestions = reviewQuestions.filter((question) => !question.isCorrect).length;
-    const answeredQuestions = answerList.length;
+    const answeredQuestions = reviewQuestions.filter((question) => question.selectedAnswer !== null).length;
     const unansweredQuestions = Math.max(reviewQuestions.length - answeredQuestions, 0);
 
     return res.json({
