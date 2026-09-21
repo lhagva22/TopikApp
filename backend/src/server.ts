@@ -10,7 +10,9 @@ import lessonRoutes from './routes/lessonRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import progressRoutes from './routes/progressRoutes';
 
-dotenv.config({ override: true });
+if (process.env.CLOUDFLARE_WORKER !== 'true') {
+  dotenv.config({ override: true });
+}
 
 const portValue = process.env.PORT ?? process.env.port ?? '5000';
 const PORT = Number(portValue);
@@ -20,7 +22,9 @@ export const createApp = () => {
 
   app.use(cors());
   app.use(express.json());
-  app.use('/media', express.static(path.join(__dirname, '..', 'public')));
+  if (process.env.CLOUDFLARE_WORKER !== 'true') {
+    app.use('/media', express.static(path.join(__dirname, '..', 'public')));
+  }
 
   app.use('/api/auth', authRoutes);
   app.use('/api', examRoutes);
@@ -73,6 +77,10 @@ export const startServer = () => {
   return server;
 };
 
-if (require.main === module) {
+if (
+  typeof require !== 'undefined' &&
+  typeof module !== 'undefined' &&
+  require.main === module
+) {
   startServer();
 }

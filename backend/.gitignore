@@ -34,3 +34,8 @@ pids/
 *.pid
 *.seed
 *.pid.lock
+
+.env.cloudflare
+.wrangler/
+.wrangler-dry-run/
+cloudflare/worker-configuration.d.ts

@@ -192,6 +192,32 @@ const LessonScreen = () => {
             </View>
           </ProtectedTouchable>
         ) : null}
+
+        {!isLoading && !loadError ? (
+          <ProtectedTouchable
+            requiredStatus="guest"
+            onPress={() => navigation.navigate('LessonListeningPractice')}
+            activeOpacity={0.82}
+            style={styles.cardWrapper}
+          >
+            <View style={[styles.card, styles.listeningCard]}>
+              <View style={[styles.imageBox, styles.listeningImageBox]}>
+                <Icon name="headset-outline" size={34} color="#7C3AED" />
+              </View>
+              <View style={styles.info}>
+                <AppText style={styles.cardTitle}>Сонсголын дасгал</AppText>
+                <AppText style={styles.cardDesc}>TOPIK I хэв маягийн богино яриа сонсох</AppText>
+                <View style={[styles.levelBadge, styles.listeningLevelBadge]}>
+                  <View style={[styles.levelDot, styles.listeningLevelDot]} />
+                  <AppText style={[styles.levelText, styles.listeningLevelText]}>TOPIK I</AppText>
+                </View>
+              </View>
+              <View style={styles.arrowBox}>
+                <Icon name="chevron-forward" size={18} color="#7C3AED" />
+              </View>
+            </View>
+          </ProtectedTouchable>
+        ) : null}
       </ScrollView>
 
     </>
@@ -301,6 +327,11 @@ const styles = StyleSheet.create({
   readingLevelBadge: { backgroundColor: '#FEF2F2' },
   readingLevelDot: { backgroundColor: '#DC2626' },
   readingLevelText: { color: '#DC2626' },
+  listeningCard: { borderLeftColor: '#7C3AED' },
+  listeningImageBox: { backgroundColor: '#F5F3FF' },
+  listeningLevelBadge: { backgroundColor: '#F5F3FF' },
+  listeningLevelDot: { backgroundColor: '#7C3AED' },
+  listeningLevelText: { color: '#7C3AED' },
 });
 
 export default LessonScreen;

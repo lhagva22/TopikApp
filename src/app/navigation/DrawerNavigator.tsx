@@ -14,6 +14,7 @@ import {
   BooksScreen,
   GrammarScreen,
   LessonScreen,
+  ListeningPracticeScreen,
   ReadingPracticeScreen,
   VideoLessonScreen,
   VocabularyScreen,
@@ -52,6 +53,7 @@ const AlphabetNumbersScreenWrapper = withShell(AlphabetNumbersScreen);
 const GrammarScreenWrapper = withShell(GrammarScreen);
 const VocabularyScreenWrapper = withShell(VocabularyScreen);
 const ReadingPracticeScreenWrapper = withShell(ReadingPracticeScreen);
+const ListeningPracticeScreenWrapper = withShell(ListeningPracticeScreen);
 const BooksScreenWrapper = withShell(BooksScreen);
 const BookReaderScreenWrapper = withShell(BookReaderScreen);
 const ExamScreenWrapper = withShell(ExamScreen);
@@ -125,6 +127,11 @@ export function DrawerNavigator() {
       <Drawer.Screen
         name="LessonReadingPractice"
         component={ReadingPracticeScreenWrapper}
+        options={{ drawerItemStyle: { display: 'none' } }}
+      />
+      <Drawer.Screen
+        name="LessonListeningPractice"
+        component={ListeningPracticeScreenWrapper}
         options={{ drawerItemStyle: { display: 'none' } }}
       />
       <Drawer.Screen

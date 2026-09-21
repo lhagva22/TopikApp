@@ -1,7 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
-dotenv.config({ override: true });
+if (process.env.CLOUDFLARE_WORKER !== 'true') {
+  dotenv.config({ override: true });
+}
 
 export const supabase = createClient(
   process.env.SUPABASE_URL!,
