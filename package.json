@@ -5,6 +5,8 @@
   "scripts": {
     "preandroid": "node scripts/setup_android_reverse.cjs",
     "android": "react-native run-android",
+    "android:preview": "node scripts/build_android_release.cjs",
+    "android:release": "node scripts/build_android_release.cjs --production",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "prestart": "node scripts/setup_android_reverse.cjs",

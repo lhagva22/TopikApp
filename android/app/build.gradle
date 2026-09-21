@@ -72,6 +72,43 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'org.webkit:android-jsc:+'
 
+// Public runtime URL is compiled into the app; signing secrets stay outside Git.
+def defaultReleaseApiUrl = 'https://topikapp-api.shine-ekhlel-narkhan.workers.dev/api'
+def releaseApiUrl = (System.getenv('TOPIK_API_URL') ?: defaultReleaseApiUrl).trim().replaceAll('/+$', '')
+def uploadStorePath = System.getenv('TOPIK_UPLOAD_STORE_FILE')
+def uploadStorePassword = System.getenv('TOPIK_UPLOAD_STORE_PASSWORD')
+def uploadKeyAlias = System.getenv('TOPIK_UPLOAD_KEY_ALIAS')
+def uploadKeyPassword = System.getenv('TOPIK_UPLOAD_KEY_PASSWORD')
+def hasUploadSigning = [uploadStorePath, uploadStorePassword, uploadKeyAlias, uploadKeyPassword].every { it }
+def quotedString = { value -> groovy.json.JsonOutput.toJson(value) }
+
+def validateProductionRelease = tasks.register('validateProductionRelease') {
+    doLast {
+        def apiUri
+        try {
+            apiUri = new URI(releaseApiUrl)
+        } catch (Exception ignored) {
+            throw new GradleException('TOPIK_API_URL must be a valid HTTPS URL ending in /api.')
+        }
+        if (apiUri.scheme != 'https' || !apiUri.host || apiUri.userInfo || apiUri.query || apiUri.fragment ||
+            apiUri.path != '/api' || apiUri.host in ['localhost', '127.0.0.1', '10.0.2.2']) {
+            throw new GradleException('Set TOPIK_API_URL to your deployed HTTPS backend ending in /api. For local testing use assemblePreview/bundlePreview.')
+        }
+        if (!hasUploadSigning || !file(uploadStorePath).isFile()) {
+            throw new GradleException('Release signing requires TOPIK_UPLOAD_STORE_FILE, TOPIK_UPLOAD_STORE_PASSWORD, TOPIK_UPLOAD_KEY_ALIAS and TOPIK_UPLOAD_KEY_PASSWORD environment variables.')
+        }
+        if (file(uploadStorePath).canonicalFile == file('debug.keystore').canonicalFile || uploadKeyAlias == 'androiddebugkey') {
+            throw new GradleException('The debug key must not be used for a production release.')
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name == 'preReleaseBuild') {
+        dependsOn(validateProductionRelease)
+    }
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -84,6 +121,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [appLabel: '@string/app_name']
+        buildConfigField 'String', 'TOPIK_API_URL', '""'
     }
     signingConfigs {
         debug {
@@ -92,17 +131,34 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (hasUploadSigning) {
+            release {
+                storeFile file(uploadStorePath)
+                storePassword uploadStorePassword
+                keyAlias uploadKeyAlias
+                keyPassword uploadKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig hasUploadSigning ? signingConfigs.release : null
+            buildConfigField 'String', 'TOPIK_API_URL', quotedString(releaseApiUrl)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+        preview {
+            initWith release
+            matchingFallbacks = ['release']
+            applicationIdSuffix '.preview'
+            versionNameSuffix '-preview'
+            manifestPlaceholders = [appLabel: 'TopikApp Preview']
+            buildConfigField 'String', 'TOPIK_API_URL', '"http://localhost:5000/api"'
+            signingConfig signingConfigs.debug
+            debuggable false
         }
     }
 

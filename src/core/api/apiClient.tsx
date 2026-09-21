@@ -1,9 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 import { logError } from '../../shared/lib/errors';
 
 export const getBaseUrl = (): string => {
+  const configuredUrl = NativeModules.AppRuntimeConfig?.apiUrl;
+  if (typeof configuredUrl === 'string' && configuredUrl.trim()) {
+    return configuredUrl.trim().replace(/\/+$/, '');
+  }
+
+  if (!__DEV__ && Platform.OS === 'android') {
+    throw new Error('Backend URL is missing from this Android build.');
+  }
+
   if (Platform.OS === 'android') {
     const androidDevice = `${Platform.constants.Brand} ${Platform.constants.Model} ${Platform.constants.Fingerprint}`;
     const isEmulator = /android sdk|emulator|generic|sdk_gphone|goldfish|ranchu/i.test(androidDevice);

@@ -21,6 +21,7 @@ class MainApplication : Application(), ReactApplication {
               add(ScreenshotPreventPackage())
               add(KoreanTtsPackage())
               add(KoreanSpeechRecognizerPackage())
+              add(AppRuntimeConfigPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

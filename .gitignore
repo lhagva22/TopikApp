@@ -33,6 +33,16 @@ local.properties
 .cxx/
 *.keystore
 !debug.keystore
+*.jks
+*.p12
+*.pfx
+keystore.properties
+.env
+.env.*
+!.env.example
+hs_err_pid*.log
+replay_pid*.log
+/artifacts/
 
 # node.js
 #
