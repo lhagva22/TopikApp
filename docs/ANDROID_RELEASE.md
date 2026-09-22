@@ -1,6 +1,6 @@
 # Android APK / AAB
 
-## Одоогийн local backend-тэй туршилт
+## Cloudflare backend-тэй туршилтын APK
 
 Төслийн үндсэн хавтсаас:
 
@@ -19,24 +19,16 @@ npm run android:preview
 Өмнөх аппын хэрэглэгчийн мэдээлэл болон татсан толь руу хандахгүй; тусдаа storage-той.
 Нийтийн debug key-ээр гарын үсэг зурсан тул production/Play Store-д зориулсан хувилбар биш.
 
-Backend-ээ тусдаа терминалд асаана:
-
-```powershell
-cd C:\TopikApp\backend
-npm run dev
-```
-
 USB debugging зөвшөөрсөн утас эсвэл emulator холбоод:
 
 ```powershell
 adb devices
-adb reverse tcp:5000 tcp:5000
 adb install -r C:\TopikApp\android\app\build\outputs\apk\preview\app-preview.apk
 ```
 
-Нэгээс олон төхөөрөмж байвал `adb -s DEVICE_SERIAL reverse ...`, `adb -s DEVICE_SERIAL install ...` хэрэглэнэ.
-Аппын API URL нь `http://localhost:5000/api`. USB холболт тасарвал local backend хүрэхгүй.
-Дахин холбоход `adb reverse tcp:5000 tcp:5000` командыг давтана. HTTP зөвхөн loopback хаягуудад зөвшөөрөгдөнө.
+Нэгээс олон төхөөрөмж байвал `adb -s DEVICE_SERIAL install ...` хэрэглэнэ.
+Апп `https://topikapp-api.shine-ekhlel-narkhan.workers.dev/api` backend ашиглана.
+Суулгасны дараа USB болон Metro шаардлагагүй, зөвхөн утас интернэттэй байна.
 
 Google login ашиглавал шинэ `com.topikapp.preview` package + debug SHA-1-д Android OAuth client бүртгүүлэх шаардлагатай.
 Имэйл нэвтрэлт нь энэ Android OAuth бүртгэлээс хамаарахгүй.

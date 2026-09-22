@@ -156,7 +156,7 @@ android {
             applicationIdSuffix '.preview'
             versionNameSuffix '-preview'
             manifestPlaceholders = [appLabel: 'TopikApp Preview']
-            buildConfigField 'String', 'TOPIK_API_URL', '"http://localhost:5000/api"'
+            buildConfigField 'String', 'TOPIK_API_URL', quotedString(defaultReleaseApiUrl)
             signingConfig signingConfigs.debug
             debuggable false
         }
