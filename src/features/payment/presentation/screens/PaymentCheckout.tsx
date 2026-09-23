@@ -5,9 +5,11 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -78,6 +80,15 @@ const PaymentCheckout = () => {
     setStatusVariant(variant);
   };
 
+  const showToast = (message: string) => {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+      return;
+    }
+
+    updateStatus(message, 'info');
+  };
+
   const showSuccess = () => {
     scaleAnim.setValue(0);
     setShowSuccessModal(true);
@@ -116,7 +127,7 @@ const PaymentCheckout = () => {
       if (fallbackUrl && fallbackUrl !== url) {
         try {
           await Linking.openURL(fallbackUrl);
-          updateStatus('Сонгосон банкны апп олдсонгүй. QPay холбоосоор үргэлжлүүллээ.', 'info');
+          // updateStatus('Сонгосон банкны апп олдсонгүй. QPay холбоосоор үргэлжлүүллээ.', 'info');
           return true;
         } catch (fallbackError) {
           logError('Open fallback payment link error', fallbackError);
@@ -190,10 +201,8 @@ const PaymentCheckout = () => {
         return;
       }
 
-      updateStatus(
-        response.message ?? 'Төлбөр хүлээгдэж байна. Хэдэн хоромын дараа дахин шалгана уу.',
-        'info',
-      );
+      updateStatus(null);
+      showToast(response.message ?? 'Төлбөр хүлээгдэж байна. Хэдэн хоромын дараа дахин шалгана уу.');
     } catch (error) {
       logError('Check payment error', error);
       updateStatus(getErrorMessage(error, 'Төлбөрийн төлөв шалгаж чадсангүй.'), 'error');
@@ -317,12 +326,12 @@ const PaymentCheckout = () => {
         {payment ? (
           <Card style={styles.qrCard}>
             <View style={styles.qrHeader}>
-              <View>
+              <View style={styles.qrHeaderText}>
                 <Text style={styles.qrTitle}>QPay төлбөр</Text>
-                <Text style={styles.qrSubtitle}>QR уншуулах эсвэл банкны апп сонгоно уу</Text>
+                <Text style={styles.qrSubtitle} numberOfLines={2}>QR уншуулах эсвэл банкны апп сонгоно уу</Text>
               </View>
               <View style={[styles.statusBadge, { backgroundColor: paymentStatus.backgroundColor }]}>
-                <Text style={[styles.statusText, { color: paymentStatus.textColor }]}>
+                <Text style={[styles.statusText, { color: paymentStatus.textColor }]} numberOfLines={1}>
                   {paymentStatus.label}
                 </Text>
               </View>
@@ -568,6 +577,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  qrHeaderText: {
+    flex: 1,
+    minWidth: 0,
+  },
   qrTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -579,6 +592,8 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   statusBadge: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
