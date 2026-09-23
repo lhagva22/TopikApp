@@ -213,6 +213,7 @@ export const createQPayInvoice = async (input: CreateInvoiceInput) => {
         sender_invoice_no: input.senderInvoiceNo,
         invoice_receiver_code: input.invoiceReceiverCode,
         invoice_description: input.invoiceDescription,
+        enable_expiry: false,
         amount: input.amount,
         callback_url: input.callbackUrl,
         allow_partial: false,

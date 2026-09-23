@@ -221,11 +221,8 @@ const syncPaymentStatus = async (
 
   const paymentCheck = await qpayService.checkInvoicePayments(payment.qpay_invoice_id);
   const rows = Array.isArray(paymentCheck.rows) ? paymentCheck.rows : [];
-  const paidRow =
-    rows.find((row) => row.payment_status === 'PAID') ??
-    rows.find((row) => row.payment_status === 'PARTIAL') ??
-    rows[0] ??
-    null;
+  const paidRows = rows.filter((row) => row.payment_status === 'PAID');
+  const paidRow = paidRows[0] ?? null;
 
   const mergedRawResponse = {
     ...parseRawResponse(payment.raw_response),
@@ -233,11 +230,12 @@ const syncPaymentStatus = async (
   };
 
   let nextStatus: PaymentRow['status'] = payment.status;
-  const paidAmount = Number(paymentCheck.paid_amount ?? 0);
+  const paidAmount = paidRows.reduce((total, row) => total + Number(row.payment_amount ?? 0), 0);
   const requiredAmount = Number(payment.amount);
   const qpayPaymentId = options.qpayPaymentId ?? paidRow?.payment_id ?? payment.transaction_id ?? null;
+  const hasValidCurrency = paidRows.length > 0 && paidRows.every((row) => row.payment_currency === 'MNT');
 
-  if (paidRow?.payment_status === 'PAID' && paidAmount >= requiredAmount) {
+  if (paidRow && hasValidCurrency && Number.isFinite(paidAmount) && paidAmount === requiredAmount) {
     nextStatus = 'completed';
   } else if (rows.some((row) => row.payment_status === 'FAILED')) {
     nextStatus = 'failed';
@@ -276,7 +274,7 @@ export const createQPayPayment = async (req: AuthRequest, res: Response) => {
   try {
     const profile = await getAuthenticatedProfile(userId);
     const senderInvoiceNo = createSenderInvoiceNo();
-    const invoiceDescription = `TOPIK ${plan.title} subscription`;
+    const invoiceDescription = `TOPIK App ${plan.months} month premium subscription`;
     const invoiceCode = getInvoiceCode();
 
     const { data: paymentRow, error: createError } = await supabaseAdmin
