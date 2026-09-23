@@ -28,32 +28,15 @@ import type { QPayDeeplink, QPayPayment } from '../../domain/types';
 
 const FEATURES = ['Бүх видео хичээл', 'Mock шалгалтууд', 'Дүрмийн дунд гүнзгий түвшин', 'Ахиц дэвшил хянах боломж'];
 
-const paymentMethods = [
-  { id: 'qpay', label: 'QPay', icon: 'qr-code-outline' },
-  { id: 'khan', label: 'Хаан банк', icon: 'card-outline' },
-  { id: 'golomt', label: 'Голомт банк', icon: 'card-outline' },
-  { id: 'khas', label: 'Хасбанк', icon: 'card-outline' },
-] as const;
-
 type RouteProps = RouteProp<RootDrawerParamList, 'PaymentCheckout'>;
 type StatusVariant = 'error' | 'info' | 'success';
 
-const methodLinkKeywords: Record<string, string[]> = {
-  qpay: ['qpay'],
-  khan: ['khan'],
-  golomt: ['golomt', 'socialpay'],
-  khas: ['khas'],
-};
+const getDeeplinkLabel = (item: QPayDeeplink) =>
+  item.description?.trim() || item.name?.trim() || 'Банкны апп';
 
-const findPreferredDeeplink = (methodId: string, deeplinks: QPayDeeplink[]): QPayDeeplink | null => {
-  const keywords = methodLinkKeywords[methodId] ?? [];
-
-  const match = deeplinks.find((item) => {
-    const haystack = `${item.name ?? ''} ${item.description ?? ''} ${item.link ?? ''}`.toLowerCase();
-    return keywords.some((keyword) => haystack.includes(keyword));
-  });
-
-  return match ?? deeplinks[0] ?? null;
+const getLogoUri = (logo?: string) => {
+  const value = logo?.trim();
+  return value && (value.startsWith('https://') || value.startsWith('data:image/')) ? value : null;
 };
 
 const getStatusMeta = (status?: QPayPayment['status']) => {
@@ -74,7 +57,6 @@ const PaymentCheckout = () => {
   const { planTitle, planPrice, planMonths } = route.params;
 
   const { updateUser } = useAppStore();
-  const [selectedMethod, setSelectedMethod] = useState<(typeof paymentMethods)[number]['id']>('qpay');
   const [payment, setPayment] = useState<QPayPayment | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -84,14 +66,9 @@ const PaymentCheckout = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
-  const selectedMethodLabel = useMemo(
-    () => paymentMethods.find((method) => method.id === selectedMethod)?.label ?? 'QPay',
-    [selectedMethod],
-  );
-
-  const preferredDeeplink = useMemo(
-    () => findPreferredDeeplink(selectedMethod, payment?.deeplinks ?? []),
-    [payment?.deeplinks, selectedMethod],
+  const availableDeeplinks = useMemo(
+    () => (payment?.deeplinks ?? []).filter((item) => typeof item.link === 'string' && item.link.trim().length > 0),
+    [payment?.deeplinks],
   );
 
   const paymentStatus = useMemo(() => getStatusMeta(payment?.status), [payment?.status]);
@@ -114,7 +91,6 @@ const PaymentCheckout = () => {
 
   const resetPaymentState = useCallback(() => {
     setPayment(null);
-    setSelectedMethod('qpay');
     setStatusMessage(null);
     setStatusVariant('info');
     setIsCreating(false);
@@ -134,38 +110,23 @@ const PaymentCheckout = () => {
 
   const openExternalLink = async (url: string, fallbackUrl?: string) => {
     try {
-      const canOpenPrimary = await Linking.canOpenURL(url);
-
-      if (canOpenPrimary) {
-        await Linking.openURL(url);
-        return true;
-      }
-
-      if (fallbackUrl) {
-        const canOpenFallback = await Linking.canOpenURL(fallbackUrl);
-
-        if (canOpenFallback) {
+      await Linking.openURL(url);
+      return true;
+    } catch (primaryError) {
+      if (fallbackUrl && fallbackUrl !== url) {
+        try {
           await Linking.openURL(fallbackUrl);
           updateStatus('Сонгосон банкны апп олдсонгүй. QPay холбоосоор үргэлжлүүллээ.', 'info');
           return true;
+        } catch (fallbackError) {
+          logError('Open fallback payment link error', fallbackError);
         }
       }
 
-      updateStatus(
-        'Сонгосон банкны апп энэ төхөөрөмж дээр байхгүй байна. QR кодоор төлөх эсвэл QPay холбоос ашиглана уу.',
-        'info',
-      );
-      return false;
-    } catch (error) {
-      logError('Open payment link error', error);
-      updateStatus('Төлбөрийн холбоос нээж чадсангүй. QR кодоор төлөөд дараа нь төлбөрөө шалгана уу.', 'error');
+      logError('Open payment link error', primaryError);
+      updateStatus('Төлбөрийн холбоос нээж чадсангүй. Тухайн банкны апп суусан эсэхийг шалгана уу.', 'error');
       return false;
     }
-  };
-
-  const openPreferredPaymentLink = async (url: string) => {
-    const fallbackUrl = payment?.shortUrl ?? undefined;
-    return openExternalLink(url, fallbackUrl);
   };
 
   const syncProfile = async () => {
@@ -338,34 +299,6 @@ const PaymentCheckout = () => {
           </CardTitle>
         </Card>
 
-        <Text style={styles.sectionLabel}>Төлбөрийн хэлбэр</Text>
-        <Card style={styles.methodCard}>
-          {paymentMethods.map((method, index) => (
-            <TouchableOpacity
-              key={method.id}
-              style={[
-                styles.methodRow,
-                index < paymentMethods.length - 1 && styles.methodRowBorder,
-              ]}
-              onPress={() => setSelectedMethod(method.id)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.methodLeft}>
-                <Icon name={method.icon} size={20} color="#555" style={styles.methodIcon} />
-                <Text style={styles.methodLabel}>{method.label}</Text>
-              </View>
-              <View
-                style={[
-                  styles.radio,
-                  selectedMethod === method.id && styles.radioSelected,
-                ]}
-              >
-                {selectedMethod === method.id && <View style={styles.radioDot} />}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </Card>
-
         <InlineMessage message={statusMessage} variant={statusVariant} containerStyle={styles.message} />
 
         <InlineMessage
@@ -386,7 +319,7 @@ const PaymentCheckout = () => {
             <View style={styles.qrHeader}>
               <View>
                 <Text style={styles.qrTitle}>QPay төлбөр</Text>
-                <Text style={styles.qrSubtitle}>Сонгосон арга: {selectedMethodLabel}</Text>
+                <Text style={styles.qrSubtitle}>QR уншуулах эсвэл банкны апп сонгоно уу</Text>
               </View>
               <View style={[styles.statusBadge, { backgroundColor: paymentStatus.backgroundColor }]}>
                 <Text style={[styles.statusText, { color: paymentStatus.textColor }]}>
@@ -414,16 +347,34 @@ const PaymentCheckout = () => {
               ) : null}
             </View>
 
-            {preferredDeeplink?.link ? (
-              <TouchableOpacity
-                style={styles.linkButton}
-                onPress={() => {
-                  openPreferredPaymentLink(preferredDeeplink.link!);
-                }}
-              >
-                <Icon name="open-outline" size={18} color="#155DFC" />
-                <Text style={styles.linkButtonText}>{selectedMethodLabel} апп нээх</Text>
-              </TouchableOpacity>
+            {availableDeeplinks.length > 0 ? (
+              <View style={styles.bankSection}>
+                <Text style={styles.bankSectionTitle}>Банкны апп-аар төлөх</Text>
+                <View style={styles.bankGrid}>
+                  {availableDeeplinks.map((deeplink, index) => {
+                    const logoUri = getLogoUri(deeplink.logo);
+                    const label = getDeeplinkLabel(deeplink);
+
+                    return (
+                      <TouchableOpacity
+                        key={`${deeplink.name ?? label}-${index}`}
+                        style={styles.bankButton}
+                        activeOpacity={0.75}
+                        onPress={() => openExternalLink(deeplink.link!, payment.shortUrl ?? undefined)}
+                      >
+                        {logoUri ? (
+                          <Image source={{ uri: logoUri }} style={styles.bankLogo} resizeMode="contain" />
+                        ) : (
+                          <View style={styles.bankLogoFallback}>
+                            <Icon name="card-outline" size={22} color="#155DFC" />
+                          </View>
+                        )}
+                        <Text style={styles.bankButtonText} numberOfLines={2}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
             ) : null}
 
             {payment.shortUrl ? (
@@ -665,6 +616,55 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 13,
     color: '#4B5563',
+  },
+  bankSection: {
+    marginTop: 18,
+  },
+  bankSectionTitle: {
+    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  bankGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  bankButton: {
+    width: '31%',
+    minHeight: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  bankLogo: {
+    width: 42,
+    height: 42,
+    marginBottom: 7,
+    borderRadius: 9,
+  },
+  bankLogoFallback: {
+    width: 42,
+    height: 42,
+    marginBottom: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+    backgroundColor: '#EFF6FF',
+  },
+  bankButtonText: {
+    minHeight: 32,
+    textAlign: 'center',
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '600',
+    color: '#374151',
   },
   linkButton: {
     marginTop: 12,
