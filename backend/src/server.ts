@@ -7,6 +7,7 @@ import authRoutes from './routes/authRoutes';
 import dictionaryRoutes from './routes/dictionaryRoutes';
 import examRoutes from './routes/examRoutes';
 import lessonRoutes from './routes/lessonRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import progressRoutes from './routes/progressRoutes';
 
@@ -32,6 +33,7 @@ export const createApp = () => {
   app.use('/api', progressRoutes);
   app.use('/api', dictionaryRoutes);
   app.use('/api', paymentRoutes);
+  app.use('/api', notificationRoutes);
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });

@@ -274,6 +274,9 @@ export const ENDPOINTS = {
     DEV_COMPLETE: (id: string) => `/payments/${id}/dev-complete`,
     WEBHOOK: '/payments/webhook',
   },
+  NOTIFICATIONS: {
+    TOKEN: '/notifications/token',
+  },
   PROGRESS: {
     SUMMARY: '/progress',
     DETAIL: (id: string) => `/progress/results/${id}`,

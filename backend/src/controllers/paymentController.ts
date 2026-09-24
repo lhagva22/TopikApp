@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
 import { supabaseAdmin } from '../config/supabase';
+import { sendPaymentReceiptEmail } from '../services/paymentEmailService';
 import { qpayService, type QPayDeeplink } from '../services/qpayService';
 import type { AuthRequest } from '../types';
 
@@ -26,6 +27,10 @@ type PaymentRow = {
   invoice_code?: string | null;
   invoice_description?: string | null;
   callback_received_at?: string | null;
+  receipt_email_status?: 'pending' | 'sending' | 'sent' | 'failed' | 'skipped';
+  receipt_email_sent_at?: string | null;
+  receipt_email_resend_id?: string | null;
+  receipt_email_error?: string | null;
   raw_response?: Record<string, any> | null;
 };
 
@@ -211,6 +216,73 @@ const getUserPaymentById = async (paymentId: string, userId: string) => {
   return data as PaymentRow;
 };
 
+const sendPaymentReceiptOnce = async (payment: PaymentRow) => {
+  const { data: claimedPayment, error: claimError } = await supabaseAdmin
+    .from('payments')
+    .update({
+      receipt_email_status: 'sending',
+      receipt_email_error: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', payment.id)
+    .eq('status', 'completed')
+    .in('receipt_email_status', ['pending', 'failed'])
+    .select('id')
+    .maybeSingle();
+
+  if (claimError) {
+    console.error('Payment receipt email claim failed:', { paymentId: payment.id, error: claimError.message });
+    return;
+  }
+
+  if (!claimedPayment) {
+    return;
+  }
+
+  try {
+    const [{ data: authData, error: authError }, profile] = await Promise.all([
+      supabaseAdmin.auth.admin.getUserById(payment.user_id),
+      getAuthenticatedProfile(payment.user_id),
+    ]);
+    const email = authData.user?.email;
+
+    if (authError || !email) {
+      throw new Error(authError?.message || 'Хэрэглэгчийн email олдсонгүй.');
+    }
+
+    const resendId = await sendPaymentReceiptEmail({
+      to: email,
+      customerName: profile.name,
+      amount: Number(payment.amount),
+      months: payment.months,
+      paymentId: payment.id,
+      paidAt: payment.paid_at || new Date().toISOString(),
+    });
+
+    await updatePaymentRow(payment.id, {
+      receipt_email_status: 'sent',
+      receipt_email_sent_at: new Date().toISOString(),
+      receipt_email_resend_id: resendId,
+      receipt_email_error: null,
+    });
+  } catch (emailError) {
+    const message = emailError instanceof Error ? emailError.message : 'Төлбөрийн email илгээхэд алдаа гарлаа.';
+
+    console.error('Payment receipt email failed:', { paymentId: payment.id, error: message });
+    try {
+      await updatePaymentRow(payment.id, {
+        receipt_email_status: 'failed',
+        receipt_email_error: message.slice(0, 1000),
+      });
+    } catch (statusError) {
+      console.error('Payment receipt email failure status update failed:', {
+        paymentId: payment.id,
+        error: statusError instanceof Error ? statusError.message : String(statusError),
+      });
+    }
+  }
+};
+
 const syncPaymentStatus = async (
   payment: PaymentRow,
   options: { qpayPaymentId?: string | null; callbackReceived?: boolean } = {},
@@ -253,6 +325,10 @@ const syncPaymentStatus = async (
 
   if (nextStatus === 'completed' && payment.status !== 'completed') {
     await activatePremiumSubscription(payment.user_id, payment.months);
+  }
+
+  if (nextStatus === 'completed') {
+    await sendPaymentReceiptOnce(updatedPayment);
   }
 
   return updatedPayment;
@@ -468,6 +544,8 @@ export const simulateQPayPaymentSuccess = async (req: AuthRequest, res: Response
     if (payment.status !== 'completed') {
       await activatePremiumSubscription(payment.user_id, payment.months);
     }
+
+    await sendPaymentReceiptOnce(updatedPayment);
 
     return res.json({
       success: true,

@@ -103,6 +103,8 @@ describe('backend API', () => {
       ['/api/payments/qpay/create', 'POST'],
       ['/api/dictionary/bookmarks', 'GET'],
       ['/api/dictionary/bookmarks', 'POST'],
+      ['/api/notifications/token', 'POST'],
+      ['/api/notifications/token', 'DELETE'],
     ];
 
     for (const [path, method] of requests) {
@@ -254,6 +256,16 @@ describe('backend API', () => {
     assert.equal(response.status, 200);
     assert.equal(body.results[0].percentage, 70);
     assert.equal(body.results[0].exam_title, 'TOPIK I 35');
+  });
+
+  it('rejects content notification webhooks without the shared secret', async () => {
+    const response = await fetch(`${origin}/api/notifications/content-created`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'INSERT', schema: 'public', table: 'learning_contents', record: { id: '1' } }),
+    });
+
+    assert.equal(response.status, 401);
   });
 
   it('uses actual imported point totals for TOPIK II and TOPIK I result history', async () => {

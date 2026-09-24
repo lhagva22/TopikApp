@@ -7,6 +7,7 @@
     "android": "react-native run-android",
     "android:preview": "node scripts/build_android_release.cjs",
     "android:release": "node scripts/build_android_release.cjs --production",
+    "backup:supabase": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/supabase-backup/backup-supabase.ps1",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "prestart": "node scripts/setup_android_reverse.cjs",
@@ -24,6 +25,8 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-firebase/app": "^23.3.1",
+    "@react-native-firebase/messaging": "^23.3.1",
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-native/gradle-plugin": "0.76.0",

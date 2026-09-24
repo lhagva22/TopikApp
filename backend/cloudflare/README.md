@@ -31,6 +31,13 @@ npx wrangler secret put QPAY_CLIENT_ID
 npx wrangler secret put QPAY_CLIENT_SECRET
 npx wrangler secret put QPAY_INVOICE_CODE
 npx wrangler secret put QPAY_CALLBACK_URL
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put RESEND_FROM_EMAIL
+npx wrangler secret put RESEND_FROM_NAME
+npx wrangler secret put FIREBASE_PROJECT_ID
+npx wrangler secret put FIREBASE_CLIENT_EMAIL
+npx wrangler secret put FIREBASE_PRIVATE_KEY
+npx wrangler secret put PUSH_WEBHOOK_SECRET
 npm run cloudflare:deploy
 ```
 

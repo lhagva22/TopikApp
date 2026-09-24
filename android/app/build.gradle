@@ -1,4 +1,5 @@
 apply plugin: "com.android.application"
+apply plugin: "com.google.gms.google-services"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
@@ -153,7 +154,6 @@ android {
         preview {
             initWith release
             matchingFallbacks = ['release']
-            applicationIdSuffix '.preview'
             versionNameSuffix '-preview'
             manifestPlaceholders = [appLabel: 'TopikApp Preview']
             buildConfigField 'String', 'TOPIK_API_URL', quotedString(defaultReleaseApiUrl)

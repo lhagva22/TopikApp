@@ -22,6 +22,8 @@ const Signin = () => {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
   const [activeInput, setActiveInput] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -161,9 +163,21 @@ const Signin = () => {
               onChangeText={setPassword}
               onFocus={() => setActiveInput('password')}
               onBlur={() => setActiveInput(null)}
-              secureTextEntry
+              secureTextEntry={!isPasswordVisible}
               selectionColor="#007AFF"
             />
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={isPasswordVisible ? 'Нууц үг нуух' : 'Нууц үг харах'}
+              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              onPress={() => setIsPasswordVisible(current => !current)}
+            >
+              <Icon
+                name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+                size={22}
+                color="#B1B1B1"
+              />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
 
@@ -185,9 +199,23 @@ const Signin = () => {
               onChangeText={setConfirmPassword}
               onFocus={() => setActiveInput('confirmPassword')}
               onBlur={() => setActiveInput(null)}
-              secureTextEntry
+              secureTextEntry={!isConfirmPasswordVisible}
               selectionColor="#007AFF"
             />
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={
+                isConfirmPasswordVisible ? 'Давтан оруулсан нууц үг нуух' : 'Давтан оруулсан нууц үг харах'
+              }
+              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              onPress={() => setIsConfirmPasswordVisible(current => !current)}
+            >
+              <Icon
+                name={isConfirmPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+                size={22}
+                color="#B1B1B1"
+              />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </View>

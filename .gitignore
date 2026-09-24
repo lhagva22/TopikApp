@@ -31,6 +31,8 @@ local.properties
 *.iml
 *.hprof
 .cxx/
+**/.cxx-stale-*/
+**/build-stale-*/
 *.keystore
 !debug.keystore
 *.jks
@@ -43,6 +45,9 @@ keystore.properties
 hs_err_pid*.log
 replay_pid*.log
 /artifacts/
+/backups/
+/database-backup/
+/supabase/.temp/
 
 # node.js
 #
