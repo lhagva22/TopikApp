@@ -3,6 +3,7 @@ import { createDrawerNavigator, type DrawerContentComponentProps } from '@react-
 import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DictionaryScreen } from '../../features/dictionary';
 import { ExamInterfaceScreen, ExamResultScreen, ExamScreen } from '../../features/exam';
@@ -30,11 +31,13 @@ import type { RootDrawerParamList } from './types';
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
 const ScreenWrapper = ({ children }: { children: React.ReactNode }) => (
-  <View style={styles.container}>
-    <Header />
-    <View style={styles.content}>{children}</View>
-    <Footer />
-  </View>
+  <SafeAreaView style={styles.safeArea} edges={['top', 'right', 'bottom', 'left']}>
+    <View style={styles.container}>
+      <Header />
+      <View style={styles.content}>{children}</View>
+      <Footer />
+    </View>
+  </SafeAreaView>
 );
 
 const withShell = <P extends object>(Component: React.ComponentType<P>) =>
@@ -172,6 +175,10 @@ export function DrawerNavigator() {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
