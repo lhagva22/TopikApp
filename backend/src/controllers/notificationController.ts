@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { Request, Response } from 'express';
 
-import { supabaseAdmin } from '../config/supabase';
+import { supabase, supabaseAdmin } from '../config/supabase';
 import { sendFirebaseMessages } from '../services/firebaseMessagingService';
 import type { AuthRequest } from '../types';
 
@@ -21,24 +21,37 @@ const isValidWebhookSecret = (provided: string | undefined) => {
 };
 
 export const registerPushToken = async (req: AuthRequest, res: Response) => {
-  const userId = req.userId;
   const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
   const platform = req.body?.platform;
+  const installationId = typeof req.body?.installationId === 'string'
+    ? req.body.installationId.trim()
+    : '';
 
-  if (!userId) return res.status(401).json({ success: false, error: 'Хэрэглэгч олдсонгүй.' });
-  if (!token || token.length > 4096 || !['android', 'ios'].includes(platform)) {
-    return res.status(400).json({ success: false, error: 'Push token эсвэл platform буруу байна.' });
+  if (
+    !token || token.length > 4096 ||
+    !installationId || installationId.length > 200 ||
+    !['android', 'ios'].includes(platform)
+  ) {
+    return res.status(400).json({ success: false, error: 'Push token, installationId эсвэл platform буруу байна.' });
+  }
+
+  const bearerToken = req.headers.authorization?.replace(/^Bearer\s+/i, '').trim();
+  let userId: string | null = null;
+  if (bearerToken) {
+    const { data: { user } } = await supabase.auth.getUser(bearerToken);
+    userId = user?.id ?? null;
   }
 
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin.from('push_notification_tokens').upsert({
+    installation_id: installationId,
     user_id: userId,
     token,
     platform,
     is_active: true,
     last_seen_at: now,
     updated_at: now,
-  }, { onConflict: 'token' });
+  }, { onConflict: 'installation_id' });
 
   if (error) return res.status(400).json({ success: false, error: error.message });
   return res.json({ success: true });
@@ -67,7 +80,7 @@ export const handleContentCreatedWebhook = async (req: Request, res: Response) =
   }
 
   const payload = req.body as WebhookPayload;
-  const supportedTables = new Set(['learning_contents', 'mock_test_bank']);
+  const supportedTables = new Set(['learning_contents', 'mock_test_bank', 'push_announcements']);
   const record = payload.record;
 
   if (payload.type !== 'INSERT' || payload.schema !== 'public' || !payload.table || !supportedTables.has(payload.table) || !record) {
@@ -92,38 +105,55 @@ export const handleContentCreatedWebhook = async (req: Request, res: Response) =
   }
   if (eventError) return res.status(500).json({ success: false, error: eventError.message });
 
-  const { data: premiumProfiles, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('id')
-    .eq('status', 'premium')
-    .gt('subscription_end_date', new Date().toISOString());
+  const isAnnouncement = payload.table === 'push_announcements';
+  const requestedAudience = isAnnouncement && typeof record.audience === 'string'
+    ? record.audience
+    : 'premium';
+  const audience = ['all', 'authenticated', 'premium'].includes(requestedAudience)
+    ? requestedAudience
+    : 'premium';
 
-  if (profileError) return res.status(500).json({ success: false, error: profileError.message });
-  const userIds = (premiumProfiles ?? []).map((profile) => profile.id);
+  let tokenQuery = supabaseAdmin
+    .from('push_notification_tokens')
+    .select('token, user_id')
+    .eq('is_active', true);
 
-  if (userIds.length === 0) {
-    return res.json({ success: true, sent: 0, failed: 0 });
+  if (audience === 'authenticated') {
+    tokenQuery = tokenQuery.not('user_id', 'is', null);
+  } else if (audience === 'premium') {
+    const { data: premiumProfiles, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('status', 'premium')
+      .gt('subscription_end_date', new Date().toISOString());
+
+    if (profileError) return res.status(500).json({ success: false, error: profileError.message });
+    const userIds = (premiumProfiles ?? []).map((profile) => profile.id);
+    if (userIds.length === 0) return res.json({ success: true, sent: 0, failed: 0 });
+    tokenQuery = tokenQuery.in('user_id', userIds);
   }
 
-  const { data: tokenRows, error: tokenError } = await supabaseAdmin
-    .from('push_notification_tokens')
-    .select('token')
-    .in('user_id', userIds)
-    .eq('is_active', true);
+  const { data: tokenRows, error: tokenError } = await tokenQuery;
 
   if (tokenError) return res.status(500).json({ success: false, error: tokenError.message });
 
   const isLesson = payload.table === 'learning_contents';
-  const title = isLesson ? 'Шинэ хичээл нэмэгдлээ' : 'Шинэ шалгалт нэмэгдлээ';
+  const title = isAnnouncement && typeof record.title === 'string'
+    ? record.title.trim()
+    : isLesson ? 'Шинэ хичээл нэмэгдлээ' : 'Шинэ шалгалт нэмэгдлээ';
   const contentTitle = typeof record.title === 'string' ? record.title.trim() : '';
-  const body = contentTitle
+  const announcementBody = typeof record.body === 'string' ? record.body.trim() : '';
+  const body = isAnnouncement
+    ? announcementBody
+    : contentTitle
     ? `${contentTitle} ашиглахад бэлэн боллоо.`
     : isLesson ? 'Шинэ хичээлтэй танилцаарай.' : 'Шинэ шалгалтаа ажиллаарай.';
+  if (!title || !body) return res.status(400).json({ success: false, error: 'Notification title, body шаардлагатай.' });
   const result = await sendFirebaseMessages((tokenRows ?? []).map(({ token }) => ({
     token,
     title,
     body,
-    data: { type: isLesson ? 'lesson' : 'exam', id: sourceId },
+    data: { type: isAnnouncement ? 'announcement' : isLesson ? 'lesson' : 'exam', id: sourceId },
   })));
 
   if (result.invalidTokens.length > 0) {

@@ -2,8 +2,12 @@ import { apiRequest, post } from '../../../core/api/apiClient';
 import type { NotificationRepository } from '../domain/repositories';
 
 export const notificationRepository: NotificationRepository = {
-  registerToken: (token, platform) =>
-    post<{ success: boolean; error?: string }>('/notifications/token', { token, platform }),
+  registerToken: (token, platform, installationId) =>
+    post<{ success: boolean; error?: string }>('/notifications/token', {
+      token,
+      platform,
+      installationId,
+    }),
   unregisterToken: token =>
     apiRequest<{ success: boolean; error?: string }>('/notifications/token', {
       method: 'DELETE',

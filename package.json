@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "preandroid": "node scripts/setup_android_reverse.cjs",
+    "postinstall": "patch-package",
     "android": "react-native run-android",
     "android:preview": "node scripts/build_android_release.cjs",
     "android:release": "node scripts/build_android_release.cjs --production",
@@ -68,6 +69,7 @@
     "babel-jest": "^29.6.3",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
+    "patch-package": "^8.0.1",
     "prettier": "2.8.8",
     "react-test-renderer": "18.3.1",
     "typescript": "^5.0.4"

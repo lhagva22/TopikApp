@@ -13,16 +13,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import { useAppStore } from '../../../app/store';
-import { isPaidStatus } from '../../../app/store/accessControl';
 import { logError } from '../../../shared/lib/errors';
 import { notificationUseCases } from './dependencies';
 
 const PROMPTED_KEY = 'pushNotificationPermissionPrompted';
+const INSTALLATION_ID_KEY = 'pushNotificationInstallationId';
 
 type ForegroundNotification = {
   title: string;
   body: string;
   type?: string;
+};
+
+const getInstallationId = async () => {
+  const storedId = await AsyncStorage.getItem(INSTALLATION_ID_KEY);
+  if (storedId) return storedId;
+
+  const randomPart = Array.from({ length: 4 }, () => Math.random().toString(36).slice(2, 12)).join('');
+  const installationId = `${Date.now().toString(36)}-${randomPart}`;
+  await AsyncStorage.setItem(INSTALLATION_ID_KEY, installationId);
+  return installationId;
 };
 
 const requestNotificationAccess = async () => {
@@ -61,8 +71,6 @@ export function NotificationBootstrap({ suppressBanner = false }: NotificationBo
   const translateY = useRef(new Animated.Value(-140)).current;
 
   useEffect(() => {
-    if (!token || !isPaidStatus(user)) return;
-
     const messaging = getMessaging();
     let unsubscribeRefresh: (() => void) | undefined;
     let cancelled = false;
@@ -72,11 +80,12 @@ export function NotificationBootstrap({ suppressBanner = false }: NotificationBo
       if (!granted || cancelled) return;
 
       await registerDeviceForRemoteMessages(messaging);
-      const fcmToken = await getToken(messaging);
-      await notificationUseCases.registerToken(fcmToken, Platform.OS === 'ios' ? 'ios' : 'android');
+      const [fcmToken, installationId] = await Promise.all([getToken(messaging), getInstallationId()]);
+      const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+      await notificationUseCases.registerToken(fcmToken, platform, installationId);
 
       unsubscribeRefresh = onTokenRefresh(messaging, nextToken => {
-        notificationUseCases.registerToken(nextToken, Platform.OS === 'ios' ? 'ios' : 'android')
+        notificationUseCases.registerToken(nextToken, platform, installationId)
           .catch(error => logError('Push token refresh error', error));
       });
     };

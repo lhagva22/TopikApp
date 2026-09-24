@@ -6,6 +6,7 @@
 
 ```sql
 \i 'C:/TopikApp/backend/sql/migrations/20260924_push_notifications.sql'
+\i 'C:/TopikApp/backend/sql/migrations/20260924_push_announcements.sql'
 ```
 
 ## 2. Firebase server credential
@@ -30,7 +31,7 @@ npx wrangler secret put PUSH_WEBHOOK_SECRET
 
 ## 3. Supabase Database Webhooks
 
-Supabase Dashboard → Database → Webhooks хэсэгт хоёр webhook үүсгэнэ.
+Supabase Dashboard → Database → Webhooks хэсэгт гурван webhook үүсгэнэ.
 
 Хоёуланд нь:
 
@@ -44,6 +45,17 @@ Supabase Dashboard → Database → Webhooks хэсэгт хоёр webhook үү�
 Хоёр дахь webhook table: `mock_test_bank`.
 
 `korean_grammar_lessons_v2` болон dictionary хүснэгтүүдэд webhook үүсгэхгүй.
+
+Гурав дахь webhook table: `push_announcements`. Event, URL болон secret header нь дээрхтэй ижил.
+
+Бүх суулгасан төхөөрөмжид чухал мэдээлэл илгээх:
+
+```sql
+INSERT INTO public.push_announcements (title, body, audience)
+VALUES ('TOPIK MATE мэдээлэл', 'Мэдэгдлийн дэлгэрэнгүй мэдээлэл.', 'all');
+```
+
+`audience` нь `all`, `authenticated`, эсвэл `premium` байна.
 
 ## 4. Туршилт
 

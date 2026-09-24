@@ -97,13 +97,12 @@ describe('backend API', () => {
     assert.match((await response.json()).error, /Token/);
   });
 
-  it('protects payment and dictionary bookmark data without a token', async () => {
+  it('protects private payment, bookmark, and notification data without a token', async () => {
     const requests = [
       ['/api/payments', 'GET'],
       ['/api/payments/qpay/create', 'POST'],
       ['/api/dictionary/bookmarks', 'GET'],
       ['/api/dictionary/bookmarks', 'POST'],
-      ['/api/notifications/token', 'POST'],
       ['/api/notifications/token', 'DELETE'],
     ];
 
@@ -256,6 +255,17 @@ describe('backend API', () => {
     assert.equal(response.status, 200);
     assert.equal(body.results[0].percentage, 70);
     assert.equal(body.results[0].exam_title, 'TOPIK I 35');
+  });
+
+  it('allows anonymous devices to reach push-token registration validation', async () => {
+    const response = await fetch(`${origin}/api/notifications/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /Push token/);
   });
 
   it('rejects content notification webhooks without the shared secret', async () => {

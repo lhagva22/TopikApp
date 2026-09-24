@@ -1,0 +1,12 @@
+diff --git a/node_modules/@react-native-google-signin/google-signin/android/build.gradle b/node_modules/@react-native-google-signin/google-signin/android/build.gradle
+index bed09d6..b69b790 100644
+--- a/node_modules/@react-native-google-signin/google-signin/android/build.gradle
++++ b/node_modules/@react-native-google-signin/google-signin/android/build.gradle
+@@ -59,6 +59,7 @@ android {
+     java {
+       if (isNewArchitectureEnabled()) {
+         srcDirs += 'src/newArch/java'
++        srcDirs += "$buildDir/generated/source/codegen/java"
+       } else {
+         srcDirs += 'src/oldArch/java'
+       }

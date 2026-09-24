@@ -1,0 +1,18 @@
+diff --git a/node_modules/@react-native-firebase/messaging/android/src/main/java/io/invertase/firebase/messaging/ReactNativeFirebaseMessagingReceiver.java b/node_modules/@react-native-firebase/messaging/android/src/main/java/io/invertase/firebase/messaging/ReactNativeFirebaseMessagingReceiver.java
+index cee80e8..fdbccb7 100644
+--- a/node_modules/@react-native-firebase/messaging/android/src/main/java/io/invertase/firebase/messaging/ReactNativeFirebaseMessagingReceiver.java
++++ b/node_modules/@react-native-firebase/messaging/android/src/main/java/io/invertase/firebase/messaging/ReactNativeFirebaseMessagingReceiver.java
+@@ -46,6 +46,13 @@ public class ReactNativeFirebaseMessagingReceiver extends BroadcastReceiver {
+       return;
+     }
+ 
++    // Android has already displayed notification payloads while the app is in the background.
++    // Starting HeadlessJS as well is unnecessary for TOPIK MATE and crashes with RN 0.76
++    // Bridgeless mode before AppRegistry's callable modules finish registering.
++    if (remoteMessage.getNotification() != null) {
++      return;
++    }
++
+     //  |-> ---------------------
+     //    App in Background/Quit
+     //   ------------------------
