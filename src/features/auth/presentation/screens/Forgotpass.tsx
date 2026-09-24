@@ -142,7 +142,7 @@ const ForgotPassword = () => {
     name: string,
     label: string,
     icon: string,
-    ref: React.RefObject<TextInput>,
+    ref: React.RefObject<TextInput | null>,
     value: string,
     onChangeText: (value: string) => void,
     placeholder: string,

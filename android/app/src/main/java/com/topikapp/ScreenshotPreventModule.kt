@@ -12,7 +12,7 @@ class ScreenshotPreventModule(private val reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun enable() {
-        val activity = currentActivity ?: return
+        val activity = reactApplicationContext.currentActivity ?: return
         activity.runOnUiThread {
             activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
@@ -20,7 +20,7 @@ class ScreenshotPreventModule(private val reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun disable() {
-        val activity = currentActivity ?: return
+        val activity = reactApplicationContext.currentActivity ?: return
         activity.runOnUiThread {
             activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }

@@ -1,6 +1,4 @@
 module.exports = {
   presets: ['module:@react-native/babel-preset'],
- plugins: [
-    'react-native-reanimated/plugin',  // Энэ мөр заавал байх ёстой
-  ],
+  plugins: ['react-native-worklets/plugin'],
 };

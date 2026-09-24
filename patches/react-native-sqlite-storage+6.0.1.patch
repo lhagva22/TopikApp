@@ -1,0 +1,38 @@
+diff --git a/node_modules/react-native-sqlite-storage/platforms/android/build.gradle b/node_modules/react-native-sqlite-storage/platforms/android/build.gradle
+index ba9b066..326a54d 100644
+--- a/node_modules/react-native-sqlite-storage/platforms/android/build.gradle
++++ b/node_modules/react-native-sqlite-storage/platforms/android/build.gradle
+@@ -1,14 +1,3 @@
+-buildscript {
+-    repositories {
+-        google()
+-        jcenter()
+-    }
+-
+-    dependencies {
+-        classpath 'com.android.tools.build:gradle:3.1.4'
+-    }
+-}
+-
+ apply plugin: 'com.android.library'
+ 
+ def safeExtGet(prop, fallback) {
+@@ -16,8 +5,8 @@ def safeExtGet(prop, fallback) {
+ }
+ 
+ android {
++    namespace 'org.pgsqlite'
+     compileSdkVersion safeExtGet('compileSdkVersion', 23)
+-    buildToolsVersion safeExtGet('buildToolsVersion', '27.0.3')
+ 
+     defaultConfig {
+         minSdkVersion safeExtGet('minSdkVersion', 16)
+@@ -26,7 +15,7 @@ android {
+         versionCode 1
+         versionName "1.0"
+     }
+-    lintOptions {
++    lint {
+         abortOnError false
+     }
+ }

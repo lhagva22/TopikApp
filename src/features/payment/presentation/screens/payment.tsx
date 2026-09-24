@@ -61,7 +61,7 @@ const Payment = ({ visible, onClose, onSelectPlan }: PaymentProps) => {
   return (
     <RNModal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={onClose} />
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
 
         <View style={styles.sheet}>
           <View style={styles.handle} />

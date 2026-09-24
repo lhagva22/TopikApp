@@ -193,7 +193,7 @@ const Videolesson = () => {
                   <View style={styles.thumbnail}>
                     <Video
                       source={{ uri: video.contentUrl }}
-                      style={StyleSheet.absoluteFillObject}
+                      style={StyleSheet.absoluteFill}
                       paused={true}
                       muted={true}
                       resizeMode="cover"
@@ -338,7 +338,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(15,23,42,0.3)',
     justifyContent: 'center',
     alignItems: 'center',

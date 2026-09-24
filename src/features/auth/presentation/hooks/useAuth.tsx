@@ -3,10 +3,11 @@ import type { NavigationProp } from '@react-navigation/native';
 
 import type { RootStackParamList } from '../../../../app/navigation/types';
 import { useAppStore } from '../../../../app/store';
+import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 
 export const useAuth = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<AuthStackParamList>>();
   const showToast = useAppStore((state) => state.showToast);
 
   const {
@@ -27,7 +28,7 @@ export const useAuth = () => {
 
   const getRootNavigation = () =>
     navigation.getParent<NavigationProp<RootStackParamList>>() ??
-    (navigation as NavigationProp<RootStackParamList>);
+    (navigation as unknown as NavigationProp<RootStackParamList>);
 
   const dismissAuthFlow = () => {
     const rootNavigation = getRootNavigation();
@@ -70,9 +71,9 @@ export const useAuth = () => {
     const success = await register(email, password, name);
 
     if (success) {
-      navigation.navigate('Login' as never, {
+      navigation.navigate('Login', {
         successMessage: 'Бүртгэл амжилттай. Одоо нэвтэрнэ үү.',
-      } as never);
+      });
     }
 
     return success;
