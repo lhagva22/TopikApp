@@ -49,6 +49,15 @@ const withShell = <P extends object>(Component: React.ComponentType<P>) =>
     );
   };
 
+const withSafeArea = <P extends object>(Component: React.ComponentType<P>) =>
+  function SafeAreaScreen(props: P) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'right', 'bottom', 'left']}>
+        <Component {...props} />
+      </SafeAreaView>
+    );
+  };
+
 const HomeScreenWrapper = withShell(HomeScreen);
 const VideoScreenWrapper = withShell(VideoLessonScreen);
 const LessonScreenWrapper = withShell(LessonScreen);
@@ -63,6 +72,10 @@ const ExamScreenWrapper = withShell(ExamScreen);
 const DictionaryScreenWrapper = withShell(DictionaryScreen);
 const ProgressScreenWrapper = withShell(Progress);
 const ExamReviewScreenWrapper = withShell(ExamReviewScreen);
+const AboutScreenWrapper = withSafeArea(AboutScreen);
+const ContactScreenWrapper = withSafeArea(ContactScreen);
+const ExamInterfaceScreenWrapper = withSafeArea(ExamInterfaceScreen);
+const ExamResultScreenWrapper = withSafeArea(ExamResultScreen);
 
 const PaymentScreenWrapper = () => {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
@@ -84,10 +97,12 @@ const PaymentScreenWrapper = () => {
   );
 };
 
-const PaymentCheckoutScreenWrapper = PaymentCheckoutScreen;
+const PaymentCheckoutScreenWrapper = withSafeArea(PaymentCheckoutScreen);
 
 const renderDrawerContent = (props: DrawerContentComponentProps) => (
-  <CustomDrawerContent {...props} />
+  <SafeAreaView style={styles.drawerSafeArea} edges={['top', 'bottom', 'left']}>
+    <CustomDrawerContent {...props} />
+  </SafeAreaView>
 );
 
 export function DrawerNavigator() {
@@ -108,8 +123,8 @@ export function DrawerNavigator() {
     >
       <Drawer.Screen name="Home" component={HomeScreenWrapper} />
       <Drawer.Screen name="Dictionary" component={DictionaryScreenWrapper} />
-      <Drawer.Screen name="About" component={AboutScreen} />
-      <Drawer.Screen name="Contact" component={ContactScreen} />
+      <Drawer.Screen name="About" component={AboutScreenWrapper} />
+      <Drawer.Screen name="Contact" component={ContactScreenWrapper} />
       <Drawer.Screen name="Video" component={VideoScreenWrapper} />
       <Drawer.Screen name="Lesson" component={LessonScreenWrapper} />
       <Drawer.Screen
@@ -162,12 +177,12 @@ export function DrawerNavigator() {
       />
       <Drawer.Screen
         name="ExamInterface"
-        component={ExamInterfaceScreen}
+        component={ExamInterfaceScreenWrapper}
         options={{ drawerItemStyle: { display: 'none' } }}
       />
       <Drawer.Screen
         name="ExamResultScreen"
-        component={ExamResultScreen}
+        component={ExamResultScreenWrapper}
         options={{ drawerItemStyle: { display: 'none' } }}
       />
     </Drawer.Navigator>
@@ -178,6 +193,10 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  drawerSafeArea: {
+    flex: 1,
+    backgroundColor: '#0F172A',
   },
   container: {
     flex: 1,
