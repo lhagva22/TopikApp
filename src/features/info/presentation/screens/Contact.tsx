@@ -7,6 +7,7 @@ import { IconButton } from '../../../../shared/components/molecules/IconButton';
 import { SectionHeader } from '../../../../shared/components/molecules/SectionHeader';
 
 const FACEBOOK_URL = 'https://www.facebook.com/profile.php?id=61586005296076';
+const INSTAGRAM_URL = 'https://www.instagram.com/brightrise_teenagers_c7ub';
 
 const CONTACT_ITEMS = [
   {
@@ -15,6 +16,7 @@ const CONTACT_ITEMS = [
     bg: '#ECFDF5',
     label: 'Утас',
     lines: ['9000-4547'],
+    url: 'tel:+97690004547',
   },
   {
     icon: 'logo-facebook',
@@ -22,6 +24,7 @@ const CONTACT_ITEMS = [
     bg: '#EFF6FF',
     label: 'Facebook',
     lines: ['BrightRise'],
+    url: FACEBOOK_URL,
   },
 ];
 
@@ -55,7 +58,12 @@ const Contact = () => {
         <SectionHeader title="Холбоо барих мэдээлэл" />
 
         {CONTACT_ITEMS.map((item, idx) => (
-          <View key={item.label} style={[styles.contactRow, idx < CONTACT_ITEMS.length - 1 && styles.contactRowBorder]}>
+          <TouchableOpacity
+            key={item.label}
+            style={[styles.contactRow, idx < CONTACT_ITEMS.length - 1 && styles.contactRowBorder]}
+            activeOpacity={0.7}
+            onPress={() => Linking.openURL(item.url)}
+          >
             <View style={[styles.contactIconBox, { backgroundColor: item.bg }]}>
               <Icon name={item.icon} size={18} color={item.color} />
             </View>
@@ -65,7 +73,8 @@ const Contact = () => {
                 <Text key={line} style={styles.contactLine}>{line}</Text>
               ))}
             </View>
-          </View>
+            <Icon name="chevron-forward" size={18} color="#CBD5E1" />
+          </TouchableOpacity>
         ))}
       </View>
 
@@ -98,7 +107,11 @@ const Contact = () => {
             <Text style={styles.socialBtnText}>Facebook</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.socialBtn, styles.instagramButton]} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={[styles.socialBtn, styles.instagramButton]}
+            activeOpacity={0.8}
+            onPress={() => Linking.openURL(INSTAGRAM_URL)}
+          >
             <Icon name="logo-instagram" size={20} color="#fff" />
             <Text style={styles.socialBtnText}>Instagram</Text>
           </TouchableOpacity>

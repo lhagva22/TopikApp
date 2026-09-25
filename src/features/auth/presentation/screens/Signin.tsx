@@ -1,5 +1,14 @@
 import React, { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
@@ -31,6 +40,15 @@ const Signin = () => {
   const nameRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const revealPasswordInput = (input: 'password' | 'confirmPassword') => {
+    setActiveInput(input);
+    setTimeout(() => {
+      const inputRef = input === 'password' ? passwordRef.current : confirmPasswordRef.current;
+      scrollRef.current?.scrollResponderScrollNativeHandleToKeyboard(inputRef, 24, true);
+    }, 150);
+  };
 
   const handleGoogleSignup = async () => {
     setFormError(null);
@@ -85,7 +103,16 @@ const Signin = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.keyboardArea}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        ref={scrollRef}
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
       <IconButton
         name="arrow-back-outline"
         onPress={() => navigation.navigate('Login')}
@@ -161,7 +188,7 @@ const Signin = () => {
               placeholderTextColor="#B1B1B1"
               value={password}
               onChangeText={setPassword}
-              onFocus={() => setActiveInput('password')}
+              onFocus={() => revealPasswordInput('password')}
               onBlur={() => setActiveInput(null)}
               secureTextEntry={!isPasswordVisible}
               selectionColor="#007AFF"
@@ -197,7 +224,7 @@ const Signin = () => {
               placeholderTextColor="#B1B1B1"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              onFocus={() => setActiveInput('confirmPassword')}
+              onFocus={() => revealPasswordInput('confirmPassword')}
               onBlur={() => setActiveInput(null)}
               secureTextEntry={!isConfirmPasswordVisible}
               selectionColor="#007AFF"
@@ -226,15 +253,22 @@ const Signin = () => {
         requiredStatus="guest"
         onPress={handleSignup}
       />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     padding: 16,
     backgroundColor: '#FFFFFF',
+  },
+  content: {
+    paddingBottom: 32,
   },
   topBackButton: {
     borderWidth: 0,

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -39,6 +41,18 @@ const Login = () => {
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const revealPasswordInput = () => {
+    setActiveInput('password');
+    setTimeout(() => {
+      scrollRef.current?.scrollResponderScrollNativeHandleToKeyboard(
+        passwordRef.current,
+        24,
+        true,
+      );
+    }, 150);
+  };
 
   const handleGoBack = () => {
     navigation.popToTop();
@@ -107,7 +121,17 @@ const Login = () => {
   };
 
   return (
-    <ScrollView style={styles.container} removeClippedSubviews={false}>
+    <KeyboardAvoidingView
+      style={styles.keyboardArea}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        ref={scrollRef}
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        removeClippedSubviews={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <IconButton
         name="arrow-back-outline"
         onPress={handleGoBack}
@@ -175,7 +199,7 @@ const Login = () => {
               placeholderTextColor="#B1B1B1"
               value={password}
               onChangeText={setPassword}
-              onFocus={() => setActiveInput('password')}
+              onFocus={revealPasswordInput}
               onBlur={() => setActiveInput(null)}
               secureTextEntry
               selectionColor="#007AFF"
@@ -193,15 +217,22 @@ const Login = () => {
       <TouchableOpacity style={styles.registerButton} onPress={() => navigation.navigate('Signin')}>
         <Text style={styles.linkText}>Бүртгүүлэх</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     padding: 16,
     backgroundColor: '#FFFFFF',
+  },
+  content: {
+    paddingBottom: 32,
   },
   topBackButton: {
     borderWidth: 0,

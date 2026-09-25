@@ -61,6 +61,7 @@ export const ExamInterface = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState(duration * 60);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +74,7 @@ export const ExamInterface = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioPlayerRef = useRef<VideoRef | null>(null);
   const allowExitRef = useRef(false);
+  const pendingExitActionRef = useRef<NavigationAction | undefined>(undefined);
 
   const stopAudioPlayback = useCallback((resetPosition = false, syncState = true) => {
     if (syncState) {
@@ -146,16 +148,8 @@ export const ExamInterface = () => {
         return;
       }
 
-      Alert.alert('Шалгалтаас гарах уу?', 'Гарвал энэ оролдлого дуусч, буцаад үргэлжлүүлэхгүй.', [
-        { text: 'Үлдэх', style: 'cancel' },
-        {
-          text: 'Гарах',
-          style: 'destructive',
-          onPress: () => {
-            exitExam(action).catch(() => undefined);
-          },
-        },
-      ]);
+      pendingExitActionRef.current = action;
+      setShowExitModal(true);
     },
     [exitExam, hasSubmitted, isSubmitting, loading, sessionId],
   );
@@ -696,6 +690,48 @@ export const ExamInterface = () => {
                 ) : (
                   <Text style={styles.modalConfirmText}>Дуусгах</Text>
                 )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showExitModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          pendingExitActionRef.current = undefined;
+          setShowExitModal(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Icon name="alert-circle-outline" size={48} color="#F59E0B" />
+            <Text style={styles.modalTitle}>Шалгалтаас гарах уу?</Text>
+            <Text style={styles.modalText}>
+              Гарвал энэ оролдлого дуусч, буцаад үргэлжлүүлэхгүй.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  pendingExitActionRef.current = undefined;
+                  setShowExitModal(false);
+                }}
+              >
+                <Text style={styles.modalCancelText}>Үлдэх</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={() => {
+                  const action = pendingExitActionRef.current;
+                  pendingExitActionRef.current = undefined;
+                  setShowExitModal(false);
+                  exitExam(action).catch(() => undefined);
+                }}
+              >
+                <Text style={styles.modalConfirmText}>Гарах</Text>
               </TouchableOpacity>
             </View>
           </View>

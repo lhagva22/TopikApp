@@ -272,7 +272,7 @@ const ForgotPassword = () => {
           {isSubmitting
             ? 'Илгээж байна...'
             : step === 'email'
-              ? 'OTP код авах'
+              ? 'Нэг удаагийн код авах'
               : step === 'otp'
                 ? 'OTP баталгаажуулах'
               : 'Нууц үг шинэчлэх'}

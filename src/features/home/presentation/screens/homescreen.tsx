@@ -25,6 +25,10 @@ const HomeScreen = () => {
   const { userLevel, startingLevelTest, loadUserLevel, startLevelTest } = useHome();
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [showLevelTestInfo, setShowLevelTestInfo] = React.useState(false);
+  const [showFreeTestNotice, setShowFreeTestNotice] = React.useState(false);
+  const closeFreeTestNotice = React.useCallback(() => {
+    setShowFreeTestNotice(false);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -69,12 +73,17 @@ const HomeScreen = () => {
       return;
     }
 
-    setActionError(
-      getErrorMessage(
-        'error' in result ? result.error : null,
-        'Шалгалт эхлүүлэхэд алдаа гарлаа.',
-      ),
+    const message = getErrorMessage(
+      'error' in result ? result.error : null,
+      'Шалгалт эхлүүлэхэд алдаа гарлаа.',
     );
+
+    if (message === 'Үнэгүй түвшин тогтоох шалгалтыг нэг удаа өгөх боломжтой.') {
+      setShowFreeTestNotice(true);
+      return;
+    }
+
+    setActionError(message);
   };
 
   const handleConfirmLevelTestStart = async () => {
@@ -99,7 +108,7 @@ const HomeScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.greeting}>
-          <View>
+          <View style={styles.greetText}>
             <Text style={styles.greetTitle}>
               {user?.name ? `Сайн байна уу, ${user.name}!` : 'Сайн байна уу!'}
             </Text>
@@ -252,6 +261,29 @@ const HomeScreen = () => {
         </View>
       </Modal>
 
+      <Modal
+        visible={showFreeTestNotice}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={closeFreeTestNotice}
+      >
+        <View style={styles.noticeOverlay}>
+          <View style={styles.noticeCard}>
+            <View style={styles.noticeIconBox}>
+              <Icon name="alert-circle-outline" size={28} color="#F59E0B" />
+            </View>
+            <Text style={styles.noticeTitle}>Анхааруулга</Text>
+            <Text style={styles.noticeText}>
+              Төлбөр төлөөгүй хэрэглэгч түвшин тогтоох шалгалтыг зөвхөн нэг удаа өгөх боломжтой
+            </Text>
+            <TouchableOpacity style={styles.noticeCloseButton} onPress={closeFreeTestNotice}>
+              <Text style={styles.noticeCloseText}>Хаах</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {startingLevelTest ? (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingCard}>
@@ -287,6 +319,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
+  },
+  greetText: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 12,
   },
   greetTitle: {
     fontSize: 17,
@@ -504,6 +541,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+
+  noticeOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  noticeCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+  },
+  noticeIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noticeTitle: {
+    marginTop: 14,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  noticeText: {
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#475569',
+    textAlign: 'center',
+  },
+  noticeCloseButton: {
+    alignSelf: 'stretch',
+    marginTop: 20,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  noticeCloseText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
   },
 
   loadingOverlay: {

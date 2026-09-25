@@ -5,7 +5,7 @@
   "scripts": {
     "preandroid": "node scripts/setup_android_reverse.cjs",
     "postinstall": "patch-package",
-    "android": "react-native run-android",
+    "android": "react-native run-android --active-arch-only",
     "android:preview": "node scripts/build_android_release.cjs",
     "android:release": "node scripts/build_android_release.cjs --production",
     "backup:supabase": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/supabase-backup/backup-supabase.ps1",
