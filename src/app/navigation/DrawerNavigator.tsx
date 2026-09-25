@@ -2,7 +2,7 @@ import React from 'react';
 import { createDrawerNavigator, type DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
-import { StyleSheet, View } from 'react-native';
+import { StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DictionaryScreen } from '../../features/dictionary';
@@ -30,14 +30,23 @@ import type { RootDrawerParamList } from './types';
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
 
+const SystemSafeArea = ({ children }: { children: React.ReactNode }) => (
+  <View style={styles.systemSafeArea}>
+    <SafeAreaView style={styles.statusBarArea} edges={['top']} />
+    <SafeAreaView style={styles.safeAreaContent} edges={['right', 'bottom', 'left']}>
+      {children}
+    </SafeAreaView>
+  </View>
+);
+
 const ScreenWrapper = ({ children }: { children: React.ReactNode }) => (
-  <SafeAreaView style={styles.safeArea} edges={['top', 'right', 'bottom', 'left']}>
+  <SystemSafeArea>
     <View style={styles.container}>
       <Header />
       <View style={styles.content}>{children}</View>
       <Footer />
     </View>
-  </SafeAreaView>
+  </SystemSafeArea>
 );
 
 const withShell = <P extends object>(Component: React.ComponentType<P>) =>
@@ -52,9 +61,9 @@ const withShell = <P extends object>(Component: React.ComponentType<P>) =>
 const withSafeArea = <P extends object>(Component: React.ComponentType<P>) =>
   function SafeAreaScreen(props: P) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'right', 'bottom', 'left']}>
+      <SystemSafeArea>
         <Component {...props} />
-      </SafeAreaView>
+      </SystemSafeArea>
     );
   };
 
@@ -107,7 +116,9 @@ const renderDrawerContent = (props: DrawerContentComponentProps) => (
 
 export function DrawerNavigator() {
   return (
-    <Drawer.Navigator
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor="#F1F5F9" translucent />
+      <Drawer.Navigator
       detachInactiveScreens={true}
       drawerContent={renderDrawerContent}
       screenOptions={{
@@ -120,7 +131,7 @@ export function DrawerNavigator() {
           backgroundColor: '#fff',
         },
       }}
-    >
+      >
       <Drawer.Screen name="Home" component={HomeScreenWrapper} />
       <Drawer.Screen name="Dictionary" component={DictionaryScreenWrapper} />
       <Drawer.Screen name="About" component={AboutScreenWrapper} />
@@ -185,18 +196,26 @@ export function DrawerNavigator() {
         component={ExamResultScreenWrapper}
         options={{ drawerItemStyle: { display: 'none' } }}
       />
-    </Drawer.Navigator>
+      </Drawer.Navigator>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  systemSafeArea: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+  },
+  statusBarArea: {
+    backgroundColor: '#F1F5F9',
+  },
+  safeAreaContent: {
     flex: 1,
     backgroundColor: '#fff',
   },
   drawerSafeArea: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#F1F5F9',
   },
   container: {
     flex: 1,
